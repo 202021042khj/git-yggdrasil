@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:" />
+  <title>Git Canvas</title>
+  <meta name="description" content="git 히스토리를 그래프 위에서 끌어 놓아 다루는 드래그 문법 검증용 목업" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="v2">
+  <!-- 아이콘 스프라이트 (Lucide, ISC) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></symbol>
+      <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+      <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+      <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+      <symbol id="i-branch" viewBox="0 0 24 24"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol>
+      <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
+      <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+      <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+    </defs>
+  </svg>
+
+  <header class="topbar">
+    <strong class="brand"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg>Git Canvas</strong>
+    <button type="button" id="open-repo" class="small" title="⌘O">저장소 열기</button>
+    <span class="sub" id="repo-path">드래그 문법 검증용 목업, 가짜 저장소</span>
+    <div class="spacer"></div>
+    <div class="seg" role="group" aria-label="드래그 방식">
+      <button type="button" data-mode="v1" aria-pressed="false" title="v1: 수정키 문법">v1</button>
+      <button type="button" data-mode="v2" aria-pressed="true" title="v2: 동사 라벨과 메뉴">v2</button>
+    </div>
+    <div class="sync" role="group" aria-label="원격과 동기화">
+      <button type="button" id="tb-pull" class="sync-btn"></button>
+      <button type="button" id="tb-push" class="sync-btn"></button>
+    </div>
+    <button type="button" id="undo" title="⌘Z"><svg class="i" aria-hidden="true"><use href="#i-undo"/></svg>되돌리기</button>
+    <button type="button" id="redo" title="⌘⇧Z"><svg class="i" aria-hidden="true"><use href="#i-redo"/></svg>다시 실행</button>
+    <button type="button" id="reset">초기화</button>
+    <button type="button" id="help-toggle">도움말</button>
+  </header>
+  <div id="op-banner" class="op-banner hidden"></div>
+
+  <div class="main">
+    <aside class="sidebar">
+      <h3>저장소</h3>
+      <div id="repo-tree"></div>
+      <div class="repo-tools">
+        <button type="button" id="new-branch" class="small" title="git switch -c">새 브랜치</button>
+        <button type="button" id="team-push" class="small" title="원격 main 에 다른 사람의 커밋이 생깁니다"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg>팀원 push</button>
+        <label class="muted">pull <select id="pull-mode"><option value="merge">merge</option><option value="rebase">rebase</option></select></label>
+      </div>
+      <h3>작업 영역</h3>
+      <div id="working" class="working-card" data-drop="working">
+        <textarea id="commit-msg" rows="2" aria-label="커밋 메시지" placeholder="커밋 메시지 (⌘Enter 로 커밋)"></textarea>
+        <button type="button" id="commit-btn" class="commit-btn">커밋</button>
+        <div class="working-handle" data-drag="working" title="브랜치 이름표나 커밋에 끌어 놓기 · 오른쪽 클릭으로 메뉴">변경 묶음 끌기</div>
+        <div class="tree-tools">
+          <span id="work-summary" class="muted"></span>
+          <label class="muted"><input type="checkbox" id="only-changed" /> 변경만</label>
+        </div>
+        <div id="file-tree" class="file-tree"></div>
+        <p class="muted hint">체크하면 stage (폴더는 하위 전체). 파일이나 폴더를 브랜치 이름표에 끌면 그 경로만 커밋합니다.</p>
+        <button type="button" id="add-change" class="small">가짜 변경 추가</button>
+      </div>
+    </aside>
+
+    <section class="canvas-wrap" id="canvas-wrap">
+      <svg id="graph" role="img" aria-label="커밋 그래프"></svg>
+      <svg id="ghost-graph" aria-hidden="true"></svg>
+    </section>
+
+    <aside class="detail">
+      <h3>상세</h3>
+      <div id="detail-body" class="muted">커밋을 클릭하면 상세 정보가 보입니다.</div>
+      <h3>실행 기록 (대응 git 명령)</h3>
+      <ol id="log" class="log"></ol>
+    </aside>
+  </div>
+
+  <footer class="footer">
+    <div class="stash-tray" data-drop="stash">
+      <span class="tray-title"><svg class="i" aria-hidden="true"><use href="#i-inbox"/></svg>Stash</span>
+      <div id="stash-list" class="stash-list"></div>
+    </div>
+    <div class="trash" data-drop="trash"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg>휴지통 <span class="muted">커밋 제거, 브랜치와 stash 삭제, 변경 버리기</span></div>
+  </footer>
+
+  <div id="preview" class="preview hidden">
+    <div class="preview-title">드롭 결과 미리보기</div>
+    <svg id="preview-svg" aria-hidden="true"></svg>
+  </div>
+
+  <div id="welcome" class="welcome hidden">
+    <div class="welcome-card">
+      <h1>Git Canvas</h1>
+      <p class="muted">git 저장소 폴더를 열면 커밋 그래프를 보여 줍니다. 지금은 1단계라 읽기만 하고, 끌어 놓으면 결과 미리보기까지만 보입니다.</p>
+      <button type="button" id="welcome-open" class="commit-btn">저장소 폴더 열기</button>
+      <h3>최근 저장소</h3>
+      <div id="recent-list" class="recent-list"></div>
+    </div>
+  </div>
+
+  <div id="v2-layer" class="v2-layer" aria-hidden="true"></div>
+  <div id="v2-menu" class="v2-menu hidden" role="menu"></div>
+  <div id="tip" class="tip hidden"></div>
+  <div id="ghost" class="ghost hidden"></div>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <div id="help" class="help hidden">
+    <h3>v2: 끌면 놓을 곳이 보입니다</h3>
+    <p>커밋, 브랜치 이름표, 변경 묶음, 파일, stash 카드, 원격 이름표를 끌기 시작하면 놓을 수 있는 모든 곳에 무슨 일이 일어나는지 적힌 라벨이 뜹니다. 라벨에 가까이 가면 자석처럼 붙고, 결과가 캔버스에 겹쳐 보입니다.</p>
+    <p>할 수 있는 일이 여러 개인 곳(예: 커밋을 다른 브랜치에 놓기 = 옮기기 또는 복사)에 놓으면 메뉴가 뜹니다. 숫자 키나 화살표와 Enter 로 고르고, <kbd>Esc</kbd> 로 취소합니다.</p>
+    <p>끌지 않고도 됩니다. 아무 항목이나 <b>오른쪽 클릭</b>하면 같은 조작을 메뉴에서 고를 수 있습니다.</p>
+    <p>브랜치 이름표를 끌면 그 브랜치의 커밋이 함께 움직입니다(rebase). 합치기(merge)와 포인터만 옮기기는 메뉴에 있습니다.</p>
+    <h3>공통</h3>
+    <p>이름표 더블클릭은 checkout, 커밋 더블클릭은 메시지 수정입니다. push 된 커밋(색이 찬 노드)을 다시 쓰는 조작은 실행 전에 확인합니다. 충돌이 나면 멈추고 오른쪽 패널에서 해결합니다. <kbd>⌘Z</kbd> 로 언제든 되돌립니다.</p>
+    <details>
+      <summary>v1 문법 (수정키 방식)</summary>
+      <table>
+        <tr><th>끄는 것</th><th>놓는 곳</th><th>결과</th></tr>
+        <tr><td>커밋</td><td>다른 브랜치 이름표</td><td>옮기기, <kbd>⌥</kbd> 복사</td></tr>
+        <tr><td>커밋</td><td>같은 줄기의 커밋 / 틈</td><td>합치기 / 순서 변경</td></tr>
+        <tr><td>줄기 핸들</td><td>커밋 / 이름표</td><td>rebase</td></tr>
+        <tr><td>이름표</td><td>커밋 / 이름표</td><td>포인터 이동, <kbd>⇧</kbd> merge</td></tr>
+        <tr><td>HEAD 이름표</td><td>과거 커밋</td><td>reset --mixed, <kbd>⇧</kbd> soft, <kbd>⌥</kbd> hard</td></tr>
+        <tr><td>공유된 히스토리 재작성</td><td></td><td><kbd>⌘</kbd> 를 누른 채 놓기</td></tr>
+      </table>
+    </details>
+  </div>
+
+  <script src="model.js"></script>
+  <script src="render.js"></script>
+  <script src="v2.js"></script>
+  <script src="app.js"></script>
+  <script src="bridge.js"></script>
+</body>
+</html>
