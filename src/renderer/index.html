@@ -39,6 +39,7 @@
       <button type="button" data-mode="v2" aria-pressed="true" title="v2: 동사 라벨과 메뉴">v2</button>
     </div>
     <div class="sync" role="group" aria-label="원격과 동기화">
+      <button type="button" id="tb-fetch" class="sync-btn" title="git fetch --all --prune">Fetch</button>
       <button type="button" id="tb-pull" class="sync-btn"></button>
       <button type="button" id="tb-push" class="sync-btn"></button>
     </div>
@@ -102,7 +103,7 @@
   <div id="welcome" class="welcome hidden">
     <div class="welcome-card">
       <h1>Git Canvas</h1>
-      <p class="muted">git 저장소 폴더를 열면 커밋 그래프를 보여 줍니다. 지금은 1단계라 읽기만 하고, 끌어 놓으면 결과 미리보기까지만 보입니다.</p>
+      <p class="muted">git 저장소 폴더를 열면 커밋 그래프를 보여 줍니다. 커밋, stage, checkout, pull/push 같은 기본 조작은 실제로 실행되고, rebase·cherry-pick 같은 히스토리 조작은 아직 미리보기까지만 됩니다.</p>
       <button type="button" id="welcome-open" class="commit-btn">저장소 폴더 열기</button>
       <h3>최근 저장소</h3>
       <div id="recent-list" class="recent-list"></div>

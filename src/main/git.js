@@ -10,13 +10,18 @@ const MAX_FILES = 5000;
 const US = "\x1f"; // 필드 구분
 const RS = "\x1e"; // 레코드 구분
 
-function git(cwd, args, { allowFail = false } = {}) {
+function git(cwd, args, { allowFail = false, env = {}, timeout = 30000 } = {}) {
   return new Promise((resolve, reject) => {
-    execFile("git", args, { cwd, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, GIT_OPTIONAL_LOCKS: "0", LC_ALL: "C" } },
+    execFile("git", args, {
+      cwd, timeout, maxBuffer: 64 * 1024 * 1024,
+      // 인증 프롬프트가 뜨면 앱이 멈추므로 바로 실패하게 한다 (자격 증명 도우미·SSH 에이전트는 그대로 쓴다)
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: "0", LC_ALL: "C", GIT_TERMINAL_PROMPT: "0", GIT_EDITOR: "true", ...env },
+    },
       (err, stdout, stderr) => {
         if (err && !allowFail) {
           const e = new Error(`git ${args.join(" ")}: ${(stderr || err.message).trim()}`);
           e.code = err.code;
+          e.stderr = (stderr || (err.killed ? "시간 초과로 중단했습니다." : err.message)).trim();
           return reject(e);
         }
         resolve(err ? null : stdout);

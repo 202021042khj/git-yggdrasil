@@ -3,6 +3,7 @@ const { app, BrowserWindow, dialog, ipcMain, Menu } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const { git, readRepo, repoRoot } = require("./git");
+const { execute } = require("./ops");
 
 let win = null;
 let current = null; // 열린 저장소 루트
@@ -56,6 +57,20 @@ ipcMain.handle("repo:pick", async () => {
 });
 ipcMain.handle("repo:open", (_e, dir) => openRepo(dir));
 ipcMain.handle("repo:read", () => (current ? readRepo(current) : null));
+// 2단계: 실제 git 조작 실행. 결과와 함께 새로 읽은 저장소 상태를 돌려준다.
+let busy = false;
+ipcMain.handle("repo:run", async (_e, { op, args, extra }) => {
+  if (!current) return { ok: false, error: "열린 저장소가 없습니다." };
+  if (busy) return { ok: false, error: "이전 작업이 아직 실행 중입니다." };
+  busy = true;
+  try {
+    const result = await execute(current, op, args, extra);
+    result.repo = await readRepo(current);
+    return result;
+  } finally {
+    busy = false;
+  }
+});
 ipcMain.handle("repo:diff", async (_e, { file, commit }) => {
   if (!current) return "";
   const MAX = 400;
@@ -83,6 +98,8 @@ function smoke(repoDir) {
         branches: Object.keys(state.branches), nodes: document.querySelectorAll('#graph .node').length,
         welcome: !document.getElementById('welcome').classList.contains('hidden'),
         tree: document.querySelectorAll('.ft-row').length })`);
+      // GC_EVAL=<js 파일>: 화면에서 시나리오를 실행하고 결과를 함께 출력 (끝까지 이어지는지 점검용)
+      if (process.env.GC_EVAL) info.eval = await win.webContents.executeJavaScript(fs.readFileSync(process.env.GC_EVAL, "utf8"));
       if (process.env.GC_SHOT) fs.writeFileSync(process.env.GC_SHOT, (await win.webContents.capturePage()).toPNG());
       console.log("SMOKE " + JSON.stringify({ ...info, errors }));
       app.quit();

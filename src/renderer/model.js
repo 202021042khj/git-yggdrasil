@@ -273,7 +273,8 @@ function rewriteStem(s, branch, newSpecs) {
 const under = (f, p) => p === "" || f === p || f.startsWith(p + "/");
 const underAny = (f, paths) => paths.some((p) => under(f, p));
 // git 명령에 쓸 pathspec 표기: 루트는 ".", 폴더는 "dir/"
-const pathspec = (s, paths) => paths.map((p) => (p === "" ? "." : s.files.includes(p) ? p : p + "/")).join(" ");
+const isFilePath = (s, p) => s.files.includes(p) || [...s.working.staged, ...s.working.unstaged, ...(s.working.conflicted || [])].includes(p);
+const pathspec = (s, paths) => paths.map((p) => (p === "" ? "." : isFilePath(s, p) ? p : p + "/")).join(" ");
 
 // 커밋할 파일을 꺼낸다. s 를 직접 바꾼다.
 // - paths 지정: 그 경로 아래의 변경만 (staged 여부 무관) → git commit -- <paths>

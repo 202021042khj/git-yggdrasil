@@ -1,22 +1,68 @@
-// bridge.js — 목업 화면을 실제 저장소에 연결한다 (1단계: 읽기 전용)
-//  - 저장소 열기 / 최근 저장소 / 파일 변경 시 자동 새로고침
-//  - 실제 diff 표시
-//  - 조작(커밋·rebase 등)은 아직 실행하지 않는다: 드래그 미리보기까지만 되고, 놓으면 안내만 한다
+// bridge.js — 목업 화면을 실제 저장소에 연결한다
+//  - 저장소 열기 / 최근 저장소 / 파일 변경 시 자동 새로고침 / 실제 diff
+//  - 2단계: 화면은 목업 모델(Ops)로 미리보기를 계산하고, 실행 순간에는 { op, args } 만 메인 프로세스로 보내
+//    실제 git 명령을 실행한 뒤 저장소를 다시 읽는다
 (() => {
   const api = window.gitApi;
   if (!api) return; // 브라우저에서 목업으로 열었을 때는 아무것도 하지 않는다
   document.body.classList.add("real");
   const RECENT_KEY = "gc-recent";
   let shownRoot = null;
+  let running = false;
 
-  // 1단계: 상태를 바꾸는 모든 조작을 막는다 (미리보기는 그대로 보인다)
-  apply = function () {
-    toast("1단계(읽기 전용)라 실제로 실행하지 않았습니다. 미리보기만 확인할 수 있습니다.");
-    render();
+  // Ops 결과에 "실제로는 어떤 조작인지"를 붙인다 (첫 인자인 상태는 빼고 나머지 인자를 그대로 보낸다)
+  for (const name of Object.keys(Ops)) {
+    const fake = Ops[name];
+    Ops[name] = (...a) => {
+      const r = fake(...a);
+      if (r && !r.error && r.state) {
+        Object.defineProperty(r.state, "__real", {
+          value: { op: name, args: a.slice(1), extra: { force: !!r.force } }, configurable: true,
+        });
+      }
+      return r;
+    };
+  }
+
+  // 화면이 상태를 바꾸려 할 때 → 실제 git 실행
+  apply = function (next, entry) {
+    const real = next && next.__real;
+    if (!real) { // 가짜 상태 편집 (예: 목업 전용 버튼) 은 실제 앱에서 하지 않는다
+      toast("이 조작은 실제 저장소에서는 지원하지 않습니다.");
+      return render();
+    }
+    runReal(real, entry || { summary: real.op });
   };
-  undo = redo = () => toast("1단계(읽기 전용)에서는 되돌릴 작업이 없습니다.");
+
+  async function runReal({ op, args, extra }, entry) {
+    if (running) return toast("이전 작업이 아직 실행 중입니다.");
+    running = true;
+    document.body.classList.add("busy");
+    toast(`실행 중… ${entry.summary}`);
+    try {
+      const r = await api.run(op, args, extra);
+      if (r.ok) {
+        log.push({ summary: entry.summary, cmd: r.cmds.join("\n") });
+        toast(entry.summary);
+      } else {
+        log.push({ summary: `${r.unsupported ? "아직 지원 안 함" : "실패"}: ${entry.summary}`, cmd: [...r.cmds, r.error].join("\n") });
+        toast(r.error);
+      }
+      if (r.repo) show(r.repo);
+      else render();
+    } catch (err) {
+      toast(String(err.message || err));
+      render();
+    } finally {
+      running = false;
+      document.body.classList.remove("busy");
+    }
+  }
+
+  undo = redo = () => toast("실제 저장소의 되돌리기는 3단계에서 연결됩니다. 지금은 조작 전 위치가 refs/git-canvas/backup/ 에 남습니다.");
   $("undo").onclick = () => undo();
   $("redo").onclick = () => redo();
+  $("tb-fetch").onclick = () => runReal({ op: "fetch", args: [] }, { summary: "원격 정보 받아오기 (fetch)" });
 
   // 실제 diff: 렌더링 후 비동기로 채운다
   diffHtml = function (file, seed, title) {
@@ -53,7 +99,8 @@
     if (!repo) return;
     if (selected && !repo.commits[selected]) selected = null;
     state = adapt(repo);
-    past = []; future = []; log = [];
+    past = []; future = [];
+    if (shownRoot !== repo.root) log = []; // 실행 기록은 같은 저장소에서는 유지
     $("repo-path").textContent = repo.root;
     $("repo-path").title = repo.root;
     document.body.classList.toggle("empty-repo", empty);
@@ -71,7 +118,7 @@
         wrap.scrollTop += r.top - w.top - w.height * 0.3;
       } else wrap.scrollLeft = wrap.scrollWidth;
     }
-    if (repo.gitOp) toast(`이 저장소는 ${repo.gitOp} 이 진행 중인 상태입니다 (1단계에서는 표시만 합니다).`);
+    if (repo.gitOp && firstOpen) toast(`이 저장소는 ${repo.gitOp} 이 진행 중인 상태입니다. 해결 화면은 4단계에서 연결됩니다. 지금은 터미널에서 마무리해 주세요.`);
     if (repo.truncated) $("repo-path").textContent = `${repo.root} · 최근 커밋 ${Object.keys(repo.commits).length}개만 표시`;
   }
 

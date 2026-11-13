@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("gitApi", {
   open: (dir) => ipcRenderer.invoke("repo:open", dir),
   read: () => ipcRenderer.invoke("repo:read"),
   diff: (file, commit) => ipcRenderer.invoke("repo:diff", { file, commit }),
+  run: (op, args, extra) => ipcRenderer.invoke("repo:run", { op, args, extra }),
   onChanged: (fn) => ipcRenderer.on("repo:changed", () => fn()),
   onMenuOpen: (fn) => ipcRenderer.on("menu:open", () => fn()),
 });

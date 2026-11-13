@@ -327,3 +327,7 @@ body.real #team-push, body.real #add-change, body.real .seg { display: none; }
 .recent { flex-direction: column; align-items: flex-start; gap: 0; width: 100%; text-align: left; background: var(--panel); }
 .recent .r-name { font-weight: 600; }
 .recent .r-path { font-size: 11px; color: var(--muted); }
+#tb-fetch { display: none; }
+body.real #tb-fetch { display: inline-flex; }
+body.busy { cursor: progress; }
+body.busy .sync-btn, body.busy .commit-btn { opacity: 0.55; pointer-events: none; }
