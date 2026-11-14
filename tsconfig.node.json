@@ -17,5 +17,5 @@
       "@shared/*": ["./src/shared/*"]
     }
   },
-  "include": ["electron.vite.config.ts", "vitest.config.mts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*", "tests/main/**/*"]
+  "include": ["electron.vite.config.ts", "vitest.config.mts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*", "tests/main/**/*", "tests/e2e/**/*", "playwright.config.ts"]
 }

@@ -7,6 +7,7 @@ Electron + 바닐라 TypeScript 에 맞게 옮긴 것입니다. React/Next.js �
 
 - **electron-vite + TypeScript** — main · preload · renderer 를 각각 빌드합니다. 출력은 `out/`.
 - **electron-builder** — 배포 패키지 (`electron-builder.config.cjs`, `build/` 아이콘·권한). 자세한 절차는 [RELEASE.md](RELEASE.md).
+- **Playwright** — E2E (`tests/e2e`, `playwright.config.ts`).
 - **Vitest** — `tests/` 아래, 임시 git 저장소에서 실제 git 을 돌려 보는 통합 테스트.
 - `npm run dev` (HMR) · `npm run build` · `npm start` (빌드 후 실행) · `npm run typecheck` · `npm test`
 
@@ -79,4 +80,5 @@ dev/debug.ts     window.__yggDebug (점검용)
 
 - `tests/renderer/*.test.ts` — 화면의 순수 계산(`model/`)을 시험합니다. Vitest 를 main·renderer 두 프로젝트로 나눠 `@/` 가 각 프로세스 폴더를 가리키게 했고, 타입 검사는 `tsconfig.web.json` 이 맡습니다. DOM 을 쓰는 코드는 넣지 않습니다.
 - `tests/main/*.test.ts` — 임시 폴더에 저장소를 만들고 `execute()` 로 조작을 돌린 뒤 git 으로 결과를 확인합니다. 네트워크는 로컬 bare 저장소로 대신합니다.
-- 화면은 `YGG_SMOKE=<저장소> YGG_EVAL=<시나리오.js> npm start` 로 실제 창에서 확인합니다 (`window.__yggDebug` 사용).
+- `tests/e2e/*.spec.ts` — Playwright 로 빌드한 Electron 앱을 띄워 사용자가 하듯 조작합니다 (`npm run e2e`). 임시 저장소와 `YGG_PROFILE` 임시 프로필을 써서 실제 설정·로그인을 건드리지 않습니다. 끌어 놓기는 `dragTo` 도우미로 실제 마우스를 움직입니다.
+- 빠른 확인은 `YGG_SMOKE=<저장소> YGG_EVAL=<시나리오.js> npm start` 로 창을 띄워 오류와 캡처만 봅니다 (`window.__yggDebug` 사용).

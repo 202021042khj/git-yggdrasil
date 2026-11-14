@@ -13,9 +13,11 @@
     "test": "vitest run",
     "dist": "electron-vite build && electron-builder --config electron-builder.config.cjs --publish never",
     "dist:mac": "electron-vite build && electron-builder --config electron-builder.config.cjs --mac --publish never",
-    "release": "electron-vite build && electron-builder --config electron-builder.config.cjs --publish always"
+    "release": "electron-vite build && electron-builder --config electron-builder.config.cjs --publish always",
+    "e2e": "electron-vite build && playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/node": "^24.19.2",
     "electron": "^45.3.2",
     "electron-builder": "^26.18.0",

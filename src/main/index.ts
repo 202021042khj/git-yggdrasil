@@ -16,10 +16,12 @@ import { initAutoUpdate } from "@/update";
 import { APP_NAME, buildMenu, createWindow } from "@/window";
 
 app.setName(APP_NAME);
-// 점검 실행은 따로 된 임시 프로필을 쓴다 (실제 설정·최근 저장소 목록·로그인을 건드리지 않게)
-if (process.env.YGG_SMOKE) {
-  const profile = path.join(os.tmpdir(), "ygg-smoke-profile");
-  fs.rmSync(profile, { recursive: true, force: true }); // 매번 기본 설정으로
+// 점검 실행(YGG_SMOKE)·E2E 테스트(YGG_PROFILE)는 따로 된 프로필을 쓴다
+// (실제 설정·최근 저장소 목록·로그인을 건드리지 않고, 키체인 확인 창도 띄우지 않게)
+const isolated = !!(process.env.YGG_SMOKE || process.env.YGG_PROFILE);
+if (isolated) {
+  const profile = process.env.YGG_PROFILE || path.join(os.tmpdir(), "ygg-smoke-profile");
+  if (process.env.YGG_SMOKE) fs.rmSync(profile, { recursive: true, force: true }); // 매번 기본 설정으로
   app.setPath("userData", profile);
 }
 
@@ -30,14 +32,13 @@ registerQueryIpc();
 registerGithubIpc();
 
 void app.whenReady().then(() => {
-  // 점검 실행에서는 저장된 토큰을 읽지 않는다 (macOS 키체인 확인 창이 떠서 멈추지 않도록)
-  if (!process.env.YGG_SMOKE) initAuth({ safeStorage, userData: app.getPath("userData") });
+  if (!isolated) initAuth({ safeStorage, userData: app.getPath("userData") });
   initSettings(app.getPath("userData"));
   setOpener(openInEditor); // 충돌 파일을 설정한 에디터(없으면 기본 앱)로 연다
   buildMenu();
   const win = createWindow();
   applyToWindow(win);
-  initAutoUpdate();
+  if (!isolated) initAutoUpdate();
   if (process.env.YGG_SMOKE) runSmoke(win, process.env.YGG_SMOKE);
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

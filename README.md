@@ -9,7 +9,8 @@ electron-vite + TypeScript 로 만들었고, 코드 구조 규칙은 [docs/ARCHI
 npm install
 npm run dev      # 개발 (화면 HMR)
 npm start        # 빌드 후 실행
-npm test         # 임시 저장소 통합 테스트
+npm test         # 단위·통합 테스트 (main·renderer)
+npm run e2e      # 실제 앱 화면 E2E (Playwright)
 npm run typecheck
 npm run dist:mac # 배포용 .dmg (docs/RELEASE.md)
 ```
