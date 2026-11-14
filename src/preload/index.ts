@@ -18,6 +18,7 @@ const gitApi: GitApi = {
   blame: (file, commit) => ipcRenderer.invoke("query:blame", { file, commit }),
   saveCredential: (args) => ipcRenderer.invoke("cred:save", args),
   forgetCredential: (url) => ipcRenderer.invoke("cred:forget", url),
+  reflog: () => ipcRenderer.invoke("query:reflog"),
   conflictText: (file) => ipcRenderer.invoke("query:conflictText", file),
   hunks: (file, staged) => ipcRenderer.invoke("query:hunks", { file, staged }),
   onChanged: (fn) => on("repo:changed", fn),

@@ -21,6 +21,9 @@ export const menuOpen = () => !byId("v2-menu").classList.contains("hidden");
 export function openMenu(x: number, y: number, title: string, list: MenuItem[], onClose?: () => void): void {
   closeMenu();
   const m = byId("v2-menu");
+  // 모달 창(dialog) 은 화면 맨 위 층에 그려지므로, 그 위에서 연 메뉴는 창 안으로 옮겨야 보인다
+  const host = document.querySelector("dialog[open]") ?? document.body;
+  if (m.parentElement !== host) host.appendChild(m);
   m.innerHTML = `<div class="m-title">${esc(title)}</div>` + list.map((a, i) => `
     <button type="button" role="menuitem" data-i="${i}">
       <span class="m-verb">${i < 9 ? `<kbd>${i + 1}</kbd>` : ""}${esc(a.label)}</span>

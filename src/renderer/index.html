@@ -107,7 +107,7 @@
     <aside class="detail">
       <h3>상세</h3>
       <div id="detail-body" class="muted">커밋을 클릭하면 상세 정보가 보입니다.</div>
-      <h3>실행 기록 (대응 git 명령)</h3>
+      <div class="pr-head"><h3>실행 기록 (대응 git 명령)</h3><button type="button" id="reflog-open" class="small" title="되돌리기로 찾을 수 없는 예전 커밋까지 (git reflog)">예전 커밋 찾기</button></div>
       <ol id="log" class="log"></ol>
     </aside>
   </div>
@@ -172,6 +172,12 @@
       <button type="button" id="rebase-reset">처음대로</button>
       <button type="button" id="rebase-cancel">취소</button>
     </div>
+  </dialog>
+  <dialog id="reflog" class="ask reflog" aria-labelledby="reflog-title">
+    <div class="pr-head"><h2 id="reflog-title">예전 커밋 찾기 (reflog)</h2><label class="muted"><input type="checkbox" id="reflog-lost" /> 잃어버린 커밋만</label></div>
+    <p class="muted reflog-help">HEAD 가 거쳐 간 모든 커밋과 앱이 히스토리를 바꾸기 전에 남긴 백업입니다. <b>잃어버림</b> 표시는 어느 브랜치에서도 닿지 않는 커밋이라, 브랜치로 살려 두지 않으면 언젠가 git 이 지웁니다.</p>
+    <div id="reflog-list" class="reflog-list" role="list"></div>
+    <div class="ask-actions"><button type="button" id="reflog-close">닫기</button></div>
   </dialog>
   <dialog id="notice" class="ask notice" aria-labelledby="notice-title">
     <form method="dialog">

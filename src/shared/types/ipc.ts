@@ -110,6 +110,21 @@ export interface CredentialSaveResult {
   message?: string;
 }
 
+export interface ReflogEntry {
+  id: string;
+  /** 무엇을 했는지 (커밋, 체크아웃, rebase, 앱 백업 …) */
+  action: string;
+  /** 자세히 (예: "main → feat", 커밋 메시지, 백업 이름) */
+  detail: string;
+  /** 그 일이 있었던 시각 (ms) */
+  date: number;
+  /** 그 커밋의 제목 */
+  subject: string;
+  /** 어느 브랜치·태그·원격에서도 닿지 않는 커밋 (브랜치를 만들지 않으면 언젠가 git gc 로 사라진다) */
+  lost: boolean;
+  source: "reflog" | "backup";
+}
+
 export interface GitApi {
   pick(): Promise<RepoState | null>;
   open(dir: string): Promise<RepoState>;
@@ -126,6 +141,8 @@ export interface GitApi {
   blame(file: string, commit?: string | null): Promise<BlameLine[]>;
   hunks(file: string, staged: boolean): Promise<Hunk[]>;
   conflictText(file: string): Promise<string | null>;
+  /** HEAD reflog 와 앱 백업 (최신 순) */
+  reflog(): Promise<ReflogEntry[]>;
   /** GitHub 밖 HTTPS 호스트의 사용자 이름·토큰을 git 자격 증명 도우미에 저장 */
   saveCredential(args: { url: string; username: string; password: string; enableHelper?: boolean }): Promise<CredentialSaveResult>;
   forgetCredential(url: string): Promise<void>;

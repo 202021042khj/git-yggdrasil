@@ -545,3 +545,20 @@ table.split td:nth-child(3) { border-left: 1px solid var(--line); }
 .ex-note.warn { color: var(--tag); }
 .badge.wt { color: var(--tag); border-color: color-mix(in srgb, var(--tag) 50%, transparent); }
 .tag-mini { font-size: 9.5px; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); vertical-align: 1px; }
+
+/* ---------- 예전 커밋 찾기 (reflog) ---------- */
+.reflog { width: min(720px, calc(100vw - 32px)); }
+.reflog h2 { font-size: 15px; margin: 0; }
+.reflog .pr-head label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 400; }
+.reflog-help { font-size: 12px !important; line-height: 1.5; }
+.reflog-list { display: grid; gap: 2px; max-height: 60vh; overflow: auto; margin-top: 6px; }
+.rl-row { display: grid; grid-template-columns: 70px 1fr auto auto; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; padding: 5px 6px; border-radius: var(--r-sm); }
+.rl-row:hover, .rl-row:focus-visible { background: var(--panel-2); }
+.rl-row.lost { background: color-mix(in srgb, var(--danger) 6%, transparent); }
+.rl-when { font-size: 11px; color: var(--muted); }
+.rl-main { display: grid; min-width: 0; }
+.rl-subject, .rl-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-what { font-size: 11px; }
+.rl-id { font-size: 11px; color: var(--muted); }
+
+.ask input[type="checkbox"] { width: auto; margin: 0; }

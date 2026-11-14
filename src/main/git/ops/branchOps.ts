@@ -51,7 +51,8 @@ const moveBranch: OpFn = async (ctx, [branch, id]: [string, string]) => {
   else await ctx.run(["branch", "-f", branch, id]);
 };
 
-const resetHead: OpFn = async (ctx, [id, mode]: [string, "soft" | "mixed" | "hard"]) => {
+/** keep: 파일까지 그 커밋으로 맞추되, 커밋하지 않은 변경과 겹치면 git 이 거절한다 (hard 보다 안전) */
+const resetHead: OpFn = async (ctx, [id, mode]: [string, "soft" | "mixed" | "hard" | "keep"]) => {
   const { tip } = await headInfo(ctx.root);
   await backup(ctx.root, "reset", tip);
   await ctx.run(["reset", `--${mode || "mixed"}`, id]);
