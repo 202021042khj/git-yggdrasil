@@ -1,7 +1,7 @@
 // 그래프 필터 (순수 함수)
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { dimmedCommits, NO_FILTER, visibleRepo } from "@renderer/model/filter";
+import { dimmedCommits, NO_FILTER, visibleRepo } from "@/model/filter";
 import type { RepoState } from "@shared/types/repo";
 
 const c = (id: string, parents: string[], author: string, date: number) => ({ id, parents, msg: id, files: [], author, date });

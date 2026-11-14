@@ -17,6 +17,8 @@ export interface DragSource {
   stash?: number;
   remote?: string;
   tag?: string;
+  /** 여러 커밋을 함께 끌 때 (오래된 것부터) */
+  ids?: string[];
 }
 
 export interface DropTarget {
@@ -53,6 +55,14 @@ export function actionsFor(src: DragSource, tgt: DropTarget, s: RepoState = stor
     if (!isError(res)) out.push({ verb, op, build, res, needs });
   };
 
+  if (src.kind === "commit" && src.ids && src.ids.length > 1) {
+    // 여러 커밋: 다른 브랜치에 한꺼번에 복사 (cherry-pick A B C)
+    const ids = src.ids;
+    let b = tgt.kind === "label" ? tgt.branch : undefined;
+    if (tgt.kind === "commit" && tgt.id && !ids.includes(tgt.id)) b = branchesAt(s, tgt.id)[0];
+    if (b) add(`커밋 ${ids.length}개를 ${b} 브랜치에 복사`, "cherryPick", () => [ids, b]);
+    return out;
+  }
   if (src.kind === "commit" && src.id) {
     const id = src.id, own = ownerBranch(s, id, st);
     let target = tgt;
@@ -186,7 +196,7 @@ export function quickLabelVerb(src: DragSource, c: string, s: RepoState = store.
 /** 끄는 것의 이름 (드래그 중 커서 옆, 메뉴 제목) */
 export function sourceLabel(src: DragSource, s: RepoState = store.repo): string {
   switch (src.kind) {
-    case "commit": return s.commits[src.id!]?.msg ?? "";
+    case "commit": return src.ids && src.ids.length > 1 ? `커밋 ${src.ids.length}개` : s.commits[src.id!]?.msg ?? "";
     case "label": return src.branch!;
     case "file": return src.file || "변경 전체";
     case "working": return s.working.staged.length ? `Staged ${s.working.staged.length}개` : `변경 ${s.working.unstaged.length}개 전체`;

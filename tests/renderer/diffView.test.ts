@@ -1,7 +1,7 @@
 // 좌우 비교 행 만들기 (순수 함수)
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { splitRows } from "@renderer/model/diffView";
+import { splitRows } from "@/model/diffView";
 
 test("지운 줄과 추가 줄을 나란히, 줄 번호는 양쪽 따로", () => {
   const rows = splitRows(["diff --git a/x b/x", "@@ -3,4 +3,3 @@", " c", "-d", "-e", "+D", " f"].join("\n"));

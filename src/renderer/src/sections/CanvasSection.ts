@@ -9,7 +9,7 @@ export function renderCanvas(): void {
   const s = store.repo;
   const wrap = byId("canvas-wrap");
   const f = store.ui.filter;
-  const r = renderGraph(visibleRepo(s, f), { interactive: true, selected: store.ui.selected, minWidth: wrap.clientWidth, dim: dimmedCommits(s, f) });
+  const r = renderGraph(visibleRepo(s, f), { interactive: true, selected: store.ui.selected, minWidth: wrap.clientWidth, dim: dimmedCommits(s, f), multi: store.ui.multi.length > 1 ? new Set(store.ui.multi) : undefined });
   const svg = byId("graph") as unknown as SVGSVGElement;
   svg.setAttribute("width", String(r.width));
   svg.setAttribute("height", String(Math.max(r.height, wrap.clientHeight - 4)));

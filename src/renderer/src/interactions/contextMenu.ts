@@ -4,7 +4,7 @@ import { blocked, run } from "@/app/actions";
 import { store } from "@/app/store";
 import { short } from "@/lib/html";
 import { isAncestor, stems } from "@/model/graph";
-import { actionMenuItem, hideInCanvas } from "@/interactions/drag";
+import { actionMenuItem, hideInCanvas, withSelection } from "@/interactions/drag";
 import { actionsFor, candidateTargets, sourceFromElement, sourceLabel, type DragSource } from "@/interactions/targets";
 import { askText, confirmAction } from "@/ui/dialog";
 import { openMenu, type MenuItem } from "@/ui/menu";
@@ -41,6 +41,10 @@ function dragActionItems(src: DragSource): MenuItem[] {
 function extraItems(src: DragSource): MenuItem[] {
   const s = store.repo;
   const items: MenuItem[] = [];
+  if (src.ids && src.ids.length > 1) {
+    items.push(direct("선택 풀기", "", () => store.update({ multi: [] })));
+    return items;
+  }
   if (src.kind === "commit" && src.id) {
     const id = src.id;
     items.push(direct("여기서 새 브랜치…", `git branch <이름> ${short(id)}`, async () => {
@@ -118,7 +122,7 @@ export function mountContextMenu(): void {
     const el = target.closest<HTMLElement>("[data-drag]");
     if (!el) return;
     e.preventDefault();
-    openContextMenu(sourceFromElement(el), e.clientX, e.clientY);
+    openContextMenu(withSelection(sourceFromElement(el)), e.clientX, e.clientY);
   });
   // 커밋 노드에 포커스가 있을 때 키보드로 메뉴 열기 (Shift+F10 / 메뉴 키)
   document.addEventListener("keydown", (e) => {
@@ -128,6 +132,6 @@ export function mountContextMenu(): void {
     e.preventDefault();
     const node = document.querySelector(`#graph .node[data-id="${CSS.escape(id)}"]`);
     const r = node?.getBoundingClientRect();
-    openContextMenu({ kind: "commit", id }, r ? r.right : 200, r ? r.bottom : 200);
+    openContextMenu(withSelection({ kind: "commit", id }), r ? r.right : 200, r ? r.bottom : 200);
   });
 }

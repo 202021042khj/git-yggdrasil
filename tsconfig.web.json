@@ -10,10 +10,11 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "composite": true,
+    "types": ["node"],
     "paths": {
       "@/*": ["./src/renderer/src/*"],
       "@shared/*": ["./src/shared/*"]
     }
   },
-  "include": ["src/renderer/src/**/*", "src/renderer/*.d.ts", "src/shared/**/*"]
+  "include": ["src/renderer/src/**/*", "src/renderer/*.d.ts", "src/shared/**/*", "tests/renderer/**/*"]
 }

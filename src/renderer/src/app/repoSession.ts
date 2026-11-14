@@ -26,7 +26,7 @@ export function show(repo: RepoState | null): void {
   if (!repo || holdRefresh()) return;
   const firstOpen = shownRoot !== repo.root;
   shownRoot = repo.root ?? null;
-  store.update({ repo: adapt(repo), ...(firstOpen ? { log: [], selected: null, selectedFile: null, undoCount: 0, redoCount: 0, filter: NO_FILTER } : {}) });
+  store.update({ repo: adapt(repo), ...(firstOpen ? { log: [], selected: null, multi: [], selectedFile: null, undoCount: 0, redoCount: 0, filter: NO_FILTER } : {}) });
   store.flush();
   byId("welcome").classList.add("hidden");
   if (firstOpen) {

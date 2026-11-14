@@ -10,6 +10,7 @@ import { under } from "@/lib/paths";
 import { branchesAt, stems } from "@/model/graph";
 import { dimmedCommits, visibleRepo } from "@/model/filter";
 import { renderGraph } from "@/model/layout";
+import { oldestFirst, rangeOnStem, toggleIn } from "@/model/selection";
 import { isError, preview, touchesPushed, type Preview } from "@/model/preview";
 import { actionsFor, candidateTargets, quickLabelVerb, sourceFromElement, sourceLabel, type Action, type DragSource, type DropTarget } from "@/interactions/targets";
 import { pinLaneNames } from "@/sections/CanvasSection";
@@ -242,6 +243,31 @@ export async function performAction(src: DragSource, a: Action): Promise<void> {
   await runPreviewed(a.op, args, res);
 }
 
+/** 여러 개 고른 커밋 중 하나를 끌거나 오른쪽 클릭하면 고른 것 전부를 대상으로 */
+export function withSelection(src: DragSource): DragSource {
+  const multi = store.ui.multi;
+  if (src.kind !== "commit" || !src.id || multi.length < 2 || !multi.includes(src.id)) return src;
+  return { ...src, ids: oldestFirst(store.repo, multi) };
+}
+
+/** 커밋 클릭: ⌘/Ctrl 은 하나씩 더하고 빼기, Shift 는 같은 줄기에서 범위, 그냥 클릭은 하나만 */
+function clickCommit(id: string, e: PointerEvent): void {
+  const ui = store.ui;
+  if (e.metaKey || e.ctrlKey) {
+    const base = ui.multi.length ? ui.multi : ui.selected ? [ui.selected] : [];
+    const multi = toggleIn(base, id);
+    store.update({ multi, selected: multi.includes(id) ? id : multi[multi.length - 1] ?? null, selectedFile: null });
+    return;
+  }
+  if (e.shiftKey && ui.selected) {
+    const range = rangeOnStem(store.repo, ui.selected, id);
+    if (!range) { toast("범위 선택은 같은 브랜치(줄기) 안에서만 됩니다. 다른 브랜치의 커밋은 ⌘ 클릭으로 더하세요."); return; }
+    store.update({ multi: range, selectedFile: null });
+    return;
+  }
+  store.update({ selected: id, multi: [], selectedFile: null });
+}
+
 // ---------- 포인터 · 키보드 ----------
 export function mountDrag(onCommitDoubleClick: (id: string) => void = focusMessageInput): void {
   setRefreshGuard(isDragging);
@@ -252,7 +278,7 @@ export function mountDrag(onCommitDoubleClick: (id: string) => void = focusMessa
     if (target.closest("input, textarea, select, button, .chev, dialog")) return; // 입력 요소는 드래그로 취급하지 않음
     const el = target.closest<HTMLElement>("[data-drag]");
     if (!el) return;
-    const src = sourceFromElement(el);
+    const src = withSelection(sourceFromElement(el));
     if (src.kind === "working" && !store.repo.working.staged.length && !store.repo.working.unstaged.length) { toast("커밋할 변경이 없습니다."); return; }
     drag = { src, srcEl: el, startX: e.clientX, startY: e.clientY, active: false };
     e.preventDefault();
@@ -286,12 +312,16 @@ export function mountDrag(onCommitDoubleClick: (id: string) => void = focusMessa
     const now = Date.now();
     const dbl = lastClick.id === d.src.id && now - lastClick.t < DOUBLE_CLICK_MS;
     lastClick = { id: d.src.id, t: now };
-    if (dbl) onCommitDoubleClick(d.src.id);
-    else store.update({ selected: d.src.id, selectedFile: null });
+    if (dbl && !e.metaKey && !e.ctrlKey && !e.shiftKey) onCommitDoubleClick(d.src.id);
+    else clickCommit(d.src.id, e);
   });
 
   document.addEventListener("keydown", (e) => {
     if (menuKey(e)) return;
+    if (!drag && e.key === "Escape" && store.ui.multi.length && !(e.target as Element).closest?.("input, textarea, dialog")) {
+      store.update({ multi: [] });
+      return;
+    }
     if (drag?.active && e.key === "Escape") {
       drag = null;
       cleanup();

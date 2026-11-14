@@ -20,6 +20,8 @@ export interface UiState {
   /** 열린 저장소 (없으면 시작 화면) */
   repo: RepoState | null;
   selected: string | null;
+  /** ⌘·Shift 클릭으로 함께 고른 커밋 (selected 포함, 2개 이상일 때만 의미) */
+  multi: string[];
   selectedFile: SelectedFile | null;
   detailTab: DetailTab;
   log: LogEntry[];
@@ -43,6 +45,7 @@ const EMPTY_REPO: RepoState = {
 const ui: UiState = {
   repo: null,
   selected: null,
+  multi: [],
   selectedFile: null,
   detailTab: "diff",
   log: [],
@@ -73,6 +76,7 @@ export const store = {
   update(patch: Partial<UiState>): void {
     Object.assign(ui, patch);
     if (ui.selected && ui.repo && !ui.repo.commits[ui.selected]) ui.selected = null;
+    if (ui.multi.length && ui.repo) ui.multi = ui.multi.filter((id) => ui.repo!.commits[id]);
     if (scheduled) return;
     scheduled = true;
     queueMicrotask(() => {

@@ -102,6 +102,12 @@ test("merge 충돌이면 아무것도 바꾸지 않는다 (fix 와 feat 가 모�
   assert.equal(tip("fix"), before);
 });
 
+test("여러 커밋을 한꺼번에 cherry-pick (떨어진 커밋도, 오래된 것부터)", async () => {
+  await run("cherryPick", [[ids.f1, ids.f3], "main"]);
+  assert.deepEqual(msgs("main", 4), ["f3", "f1", "m2", "m1"]);
+  assert.equal(fs.existsSync(path.join(repo, "api.js")), false, "사이의 f2 는 가져오지 않는다");
+});
+
 test("되돌리기: rebase → undo 하면 원래 위치", async () => {
   const before = tip("feat");
   await run("rebaseStem", ["feat", tip("main")], { base: ids.init });

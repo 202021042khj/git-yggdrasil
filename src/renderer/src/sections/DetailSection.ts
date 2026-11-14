@@ -5,6 +5,7 @@ import { byId } from "@/lib/dom";
 import { esc, short } from "@/lib/html";
 import { fullTime, relTime } from "@/lib/time";
 import { ownerBranch, pushedSet, stems } from "@/model/graph";
+import { oldestFirst } from "@/model/selection";
 import { confirmAction } from "@/ui/dialog";
 import { toast } from "@/ui/toast";
 import { handleConflictEditorClick, loadConflictEditor, mountConflictEditor } from "@/sections/ConflictEditor";
@@ -171,10 +172,21 @@ function commitView(id: string): string {
     ${sel && sel.commit === id ? fileView(sel.path, id) : ""}`;
 }
 
+/** 여러 커밋을 골랐을 때: 목록과 할 수 있는 일 안내 */
+function multiView(ids: string[]): string {
+  const s = store.repo;
+  const sorted = oldestFirst(s, ids);
+  return `<div class="multi-view"><h4>커밋 ${sorted.length}개 선택됨</h4>
+    <ol class="hist">${sorted.map((id) => `<li><button type="button" class="link" data-goto="${id}">${esc(s.commits[id].msg)}</button><span class="muted">${short(id)}${s.commits[id].author ? ` · ${esc(s.commits[id].author!)}` : ""}</span></li>`).join("")}</ol>
+    <p class="muted hint">고른 커밋 중 하나를 다른 브랜치 이름표에 끌어 놓거나 오른쪽 클릭하면, 오래된 것부터 한꺼번에 복사(cherry-pick)합니다. ⌘ 클릭으로 더하거나 빼고, Shift 클릭은 같은 브랜치에서 범위를 고릅니다. Esc 로 선택을 풉니다.</p>
+    <button type="button" class="small" data-multi-clear>선택 풀기</button></div>`;
+}
+
 export function renderDetail(): void {
   const s = store.repo, ui = store.ui;
   const body = byId("detail-body");
   renderSeq++;
+  if (ui.multi.length > 1) { body.innerHTML = conflictPanel() + multiView(ui.multi); return; }
   const c = ui.selected ? s.commits[ui.selected] : null;
   const main = c ? commitView(c.id)
     : ui.selectedFile && !ui.selectedFile.commit ? fileView(ui.selectedFile.path, null)
@@ -231,6 +243,7 @@ export function mountDetail(onGoto: (id: string) => void): void {
   byId("detail-body").addEventListener("click", (e) => {
     const t = e.target as Element;
     if (handleConflictEditorClick(t)) return;
+    if (t.closest("[data-multi-clear]")) return store.update({ multi: [] });
     const view = t.closest<HTMLElement>("[data-diff-view]");
     if (view) return setDiffPrefs({ split: view.dataset.diffView === "split" });
     const more = t.closest<HTMLElement>("[data-diff-full]");

@@ -182,6 +182,8 @@ select { font: inherit; font-size: 11px; color: var(--text); background: var(--b
 .node .msg { font-size: 11px; text-anchor: middle; fill: var(--text); }
 .node .halo { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 3 3; }
 .node.selected circle:not(.halo), .node.selected rect { stroke-width: 4; }
+.node.multi circle:not(.halo), .node.multi rect { stroke: var(--accent) !important; stroke-width: 4.5; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 70%, transparent)); }
+.node.multi .msg { fill: var(--accent); font-weight: 600; }
 .node.drop-hover circle:not(.halo), .node.drop-hover rect { stroke: var(--accent) !important; stroke-width: 5; }
 .node.going { opacity: 0.45; }
 .node.going .msg { text-decoration: line-through; fill: var(--danger); }

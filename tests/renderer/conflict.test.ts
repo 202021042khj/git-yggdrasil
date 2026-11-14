@@ -1,7 +1,7 @@
 // 화면의 충돌 구간 나누기·합치기 (순수 함수)
 import { test } from "vitest";
 import assert from "node:assert/strict";
-import { composeResolved, conflictCount, parseConflict } from "@renderer/model/conflict";
+import { composeResolved, conflictCount, parseConflict } from "@/model/conflict";
 
 const TEXT = ["head", "<<<<<<< HEAD", "a1", "a2", "=======", "b1", ">>>>>>> topic", "mid", "<<<<<<< HEAD", "x", "||||||| base", "o", "=======", ">>>>>>> topic", "tail"].join("\n");
 
