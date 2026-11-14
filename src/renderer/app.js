@@ -35,6 +35,7 @@ function render() {
   svg.setAttribute("width", r.width);
   svg.setAttribute("height", Math.max(r.height, wrap.clientHeight - 4));
   svg.innerHTML = r.svg;
+  pinLaneNames();
   if (selected && !state.commits[selected]) selected = null;
   renderBanner();
   renderTree();
@@ -129,7 +130,7 @@ function conflictBoxHtml() {
     <div class="cf-side">A = ${esc(o.oursName)}<br>B = ${esc(o.theirsName)}</div>${rebaseNote}
     ${o.conflicts.map((f) => `<div class="cf-file">
       <span class="cf-name ${o.resolved[f] ? "done" : ""}" data-cf="${esc(f)}">${o.resolved[f] ? "✓" : "⚠"} ${esc(f)}</span>
-      <div class="cf-actions">${btn(f, "ours", "A 쪽 사용")}${btn(f, "theirs", "B 쪽 사용")}${btn(f, "both", "둘 다 (직접 편집)")}</div></div>`).join("")}
+      <div class="cf-actions">${btn(f, "ours", "A 쪽 사용")}${btn(f, "theirs", "B 쪽 사용")}${btn(f, "both", state.op.real ? "직접 편집 (에디터)" : "둘 다 (직접 편집)")}</div></div>`).join("")}
     ${conflictMarkers(focus)}</div>`;
 }
 
@@ -269,6 +270,8 @@ function renderDetailInner() {
     </div>
     ${p ? `<div class="kv lock-note">push 된 커밋 — 수정하면 force push 가 필요합니다</div>` : ""}
     <div class="kv"><code>${c.id}</code></div>
+    ${c.author ? `<div class="kv">작성자: ${esc(c.author)}</div>` : ""}
+    ${c.date ? `<div class="kv" title="${esc(new Date(c.date).toLocaleString("ko-KR"))}">날짜: ${esc(relTime(c.date))} · ${esc(new Date(c.date).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" }))}</div>` : ""}
     <div class="kv">줄기: ${esc(br)}</div>
     <div class="kv">부모: ${c.parents.map((x) => `<code>${short(x)}</code>`).join(", ") || "없음 (root)"}</div>
     <div class="kv">${p ? "push 됨: 다시 쓰면 force push 필요" : "로컬 전용: 자유롭게 편집 가능"}</div>
@@ -722,3 +725,21 @@ function askText(title, value = "", hint = "") {
     input.setSelectionRange(input.value.length, input.value.length);
   });
 }
+
+// "3시간 전" 같은 상대 시간
+function relTime(t) {
+  const sec = Math.round((Date.now() - t) / 1000);
+  const units = [["년", 31536000], ["개월", 2592000], ["주", 604800], ["일", 86400], ["시간", 3600], ["분", 60]];
+  for (const [u, n] of units) if (sec >= n) return `${Math.floor(sec / n)}${u} 전`;
+  return "방금";
+}
+
+// 레인 이름을 가로 스크롤과 상관없이 왼쪽에 붙여 둔다
+function pinLaneNames() {
+  const x = $("canvas-wrap").scrollLeft;
+  for (const id of ["lane-names", "lane-names-preview"]) {
+    const g = document.getElementById(id);
+    if (g) g.setAttribute("transform", `translate(${x},0)`);
+  }
+}
+$("canvas-wrap").addEventListener("scroll", pinLaneNames, { passive: true });

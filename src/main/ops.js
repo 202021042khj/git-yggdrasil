@@ -48,6 +48,8 @@ function unsupported(what) {
 function runner(root) {
   const cmds = [];
   const note = (line) => cmds.push(line); // 내부 plumbing 대신 사람이 읽을 대응 명령을 기록
+  const warnings = [];
+  const warn = (msg) => { warnings.push(msg); cmds.push(`# 경고: ${msg}`); };
   const run = async (args, opts) => {
     cmds.push("git " + args.map((a) => (/[\s"']/.test(a) ? JSON.stringify(a) : a)).join(" ")); // 기록에는 토큰 설정을 넣지 않는다
     if (opts && opts.net) {
@@ -56,7 +58,7 @@ function runner(root) {
     }
     return git(root, args, opts);
   };
-  return { cmds, run, note };
+  return { cmds, run, note, warn, warnings };
 }
 
 const OPS = {
@@ -134,6 +136,32 @@ const OPS = {
     await run(["branch", name, id]);
   },
 
+  // 이름 바꾸기. withRemote 면 원격에도 새 이름으로 올리고 옛 이름을 지운다.
+  async renameBranch(root, run, [from, to, withRemote], _extra, _note, warn) {
+    const up = (await git(root, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", `${from}@{u}`], { allowFail: true }) || "").trim();
+    await run(["branch", "-m", from, to]);
+    if (withRemote && up) {
+      const [remote, ...rest] = up.split("/");
+      await run(["push", "-u", remote, `${to}:${to}`], NET);
+      try {
+        await run(["push", remote, "--delete", rest.join("/")], NET);
+      } catch (err) {
+        // 원격의 기본 브랜치는 지울 수 없다 (GitHub 포함). 새 이름은 이미 올렸으니 실패로 치지 않는다.
+        if (/refusing to delete the current branch|default branch/i.test(err.stderr || "")) {
+          warn(`${up} 는 원격의 기본 브랜치라 지우지 못했습니다. GitHub 저장소 설정에서 기본 브랜치를 ${to} 로 바꾼 뒤 ${up} 를 지우세요.`);
+        } else throw err;
+      }
+    }
+  },
+
+  // 원격에만 있는 브랜치를 같은 이름의 로컬 브랜치로 가져와 체크아웃
+  async checkoutRemote(root, run, [remoteBranch]) {
+    const name = remoteBranch.split("/").slice(1).join("/");
+    const exists = await git(root, ["rev-parse", "--verify", "-q", `refs/heads/${name}`], { allowFail: true });
+    if (exists) throw new Error(`로컬에 이미 ${name} 브랜치가 있습니다. 그 브랜치로 checkout 하세요.`);
+    await run(["switch", "--track", "-c", name, remoteBranch]);
+  },
+
   async deleteBranch(root, run, [name]) {
     // 병합되지 않은 브랜치는 git 이 거절한다 (-d). 강제 삭제는 일부러 막아 둔다.
     await run(["branch", "-d", name]);
@@ -148,10 +176,11 @@ const OPS = {
     if (branch !== cur) unsupported("체크아웃하지 않은 브랜치에 pull 하기");
     const up = await git(root, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], { allowFail: true });
     const rebase = mode === "rebase" ? "--rebase" : "--no-rebase";
-    if (up && (!remote || remote === up.trim())) await run(["pull", rebase], NET);
+    const warn = arguments[5];
+    if (up && (!remote || remote === up.trim())) await runOrStop(root, run, ["pull", rebase], warn, NET);
     else {
       const [rname, ...rest] = (remote || `origin/${branch}`).split("/");
-      await run(["pull", rebase, rname, rest.join("/")], NET);
+      await runOrStop(root, run, ["pull", rebase, rname, rest.join("/")], warn, NET);
     }
   },
 
@@ -209,9 +238,17 @@ async function commitInfo(root, id) {
 }
 
 function conflictError(files, what) {
-  const e = new Error(`충돌: ${files.join(", ")} — "${what}" 을(를) 적용하다 충돌이 나서 아무것도 바꾸지 않았습니다. 충돌 해결 화면은 다음 단계에서 연결됩니다.`);
+  const e = new Error(`충돌: ${files.join(", ")} — "${what}" 을(를) 적용하다 충돌이 나서 아무것도 바꾸지 않았습니다.`);
   e.conflicts = files;
   return e;
+}
+
+// 체크아웃하지 않은 브랜치에서 충돌: 그 브랜치로 체크아웃해야 충돌을 풀며 진행할 수 있다
+function needsCheckout(err, branch) {
+  err.code = "NEEDS_CHECKOUT";
+  err.branch = branch;
+  err.message += ` ${branch} 로 체크아웃하면 충돌을 해결하며 진행할 수 있습니다.`;
+  return err;
 }
 
 async function commitTree(root, tree, parents, c, msg = c.msg) {
@@ -263,9 +300,18 @@ async function setBranch(root, run, branch, newOid, oldOid) {
 }
 
 const HISTORY = {
-  async cherryPick(root, run, [ids, branch], extra, note) {
+  async cherryPick(root, run, [ids, branch], extra, note, warn) {
     const tip = await rev(root, branch);
-    const next = await chain(root, tip, ids.map((id) => ({ id })));
+    let next;
+    try {
+      next = await chain(root, tip, ids.map((id) => ({ id })));
+    } catch (err) {
+      // 충돌: 현재 브랜치면 실제 cherry-pick 으로 멈추고 해결 모드로, 아니면 체크아웃이 필요하다고 알린다
+      if (!err.conflicts) throw err;
+      if (branch !== (await headInfo(root)).branch) throw needsCheckout(err, branch);
+      await runOrStop(root, run, ["cherry-pick", ...ids], warn);
+      return;
+    }
     note(`git cherry-pick ${ids.map(short).join(" ")}  # ${branch} 에, 체크아웃 없이`);
     await setBranch(root, run, branch, next, tip);
   },
@@ -295,12 +341,21 @@ const HISTORY = {
     await setBranch(root, run, from, next, tip);
   },
 
-  async rebaseStem(root, run, [branch, onto], extra, note) {
+  async rebaseStem(root, run, [branch, onto], extra, note, warn) {
     const base = extra && extra.base;
     if (!base) throw new Error("이 브랜치의 시작점을 알 수 없습니다.");
     const tip = await rev(root, branch);
     const list = await firstParentRange(root, base, tip);
-    const next = await chain(root, onto, list.map((id) => ({ id })));
+    let next;
+    try {
+      next = await chain(root, onto, list.map((id) => ({ id })));
+    } catch (err) {
+      if (!err.conflicts) throw err;
+      if (branch !== (await headInfo(root)).branch) throw needsCheckout(err, branch);
+      await backup(root, branch, tip);
+      await runOrStop(root, run, ["rebase", "--autostash", "--onto", onto, base, branch], warn);
+      return;
+    }
     note(`git rebase --onto ${short(onto)} ${short(base)} ${branch}`);
     await setBranch(root, run, branch, next, tip);
   },
@@ -335,13 +390,8 @@ const HISTORY = {
     await setBranch(root, run, branch, next, tip);
   },
 
-  async revertCommit(root, run, [id]) {
-    try {
-      await run(["revert", "--no-edit", id]);
-    } catch (err) {
-      await git(root, ["revert", "--abort"], { allowFail: true });
-      throw new Error(`revert 중 충돌이 나서 취소했습니다. ${err.stderr || ""}`.trim());
-    }
+  async revertCommit(root, run, [id], _e, _n, warn) {
+    await runOrStop(root, run, ["revert", "--no-edit", id], warn);
   },
 
   async moveBranch(root, run, [branch, id]) {
@@ -358,15 +408,10 @@ const HISTORY = {
     await run(["reset", `--${mode || "mixed"}`, id]);
   },
 
-  async merge(root, run, [src, dst], extra, note) {
+  async merge(root, run, [src, dst], extra, note, warn) {
     const { branch: cur } = await headInfo(root);
     if (dst === cur) {
-      try {
-        await run(["merge", "--no-edit", src]);
-      } catch (err) {
-        await git(root, ["merge", "--abort"], { allowFail: true });
-        throw new Error(`merge 중 충돌이 나서 취소했습니다. 충돌 해결 화면은 다음 단계에서 연결됩니다.\n${err.stderr || ""}`.trim());
-      }
+      await runOrStop(root, run, ["merge", "--no-edit", src], warn);
       return;
     }
     const a = await rev(root, dst), b = await rev(root, src);
@@ -377,7 +422,7 @@ const HISTORY = {
     }
     const r = await gitRaw(root, ["merge-tree", "--write-tree", "--name-only", "--no-messages", a, b]);
     const lines = r.stdout.split("\n");
-    if (r.code === 1) throw conflictError(lines.slice(1).filter(Boolean), `merge ${src} → ${dst}`);
+    if (r.code === 1) throw needsCheckout(conflictError(lines.slice(1).filter(Boolean), `merge ${src} → ${dst}`), dst);
     if (r.code !== 0) throw new Error(r.stderr.trim());
     const me = await commitInfo(root, a);
     const id = (await git(root, ["commit-tree", lines[0].trim(), "-p", a, "-p", b, "-m", `Merge branch '${src}' into ${dst}`])).trim();
@@ -388,10 +433,93 @@ const HISTORY = {
 };
 Object.assign(OPS, HISTORY);
 
-// 아직 실제 저장소에서 지원하지 않는 조작
-for (const [name, label] of Object.entries({ resolveFile: "충돌 해결", continueOp: "계속", skipOp: "건너뛰기", abortOp: "중단" })) {
-  OPS[name] = () => unsupported(label);
+// ---------- 4단계: 충돌 해결과 진행 중 작업 ----------
+const { readOp, recordConflicts } = require("./git");
+const fsx = require("node:fs");
+const pathx = require("node:path");
+
+let opener = null; // 파일을 에디터로 여는 함수 (main 에서 shell.openPath 를 넣어 준다)
+function setOpener(fn) { opener = fn; }
+
+async function unmergedFiles(root) {
+  const out = await git(root, ["diff", "--name-only", "--diff-filter=U", "-z"], { allowFail: true });
+  return (out || "").split("\0").filter(Boolean);
 }
+
+const hasMarkers = (root, file) => {
+  try { return /^(<{7}|>{7}) /m.test(fsx.readFileSync(pathx.join(root, file), "utf8")); } catch { return false; }
+};
+
+// 실제 git 명령을 실행하다 충돌로 멈추면, 실패가 아니라 "진행 중" 으로 남기고 알린다
+async function runOrStop(root, run, args, warn, opts) {
+  try {
+    await run(args, opts);
+    return false;
+  } catch (err) {
+    if (readOp(root) || (await unmergedFiles(root)).length) {
+      const files = await recordConflicts(root);
+      warn(`충돌로 멈췄습니다 (${files.join(", ")}). 오른쪽 패널에서 해결한 뒤 위 배너의 계속을 누르세요.`);
+      return true;
+    }
+    throw err;
+  }
+}
+
+Object.assign(OPS, {
+  // choice: ours(A 쪽) · theirs(B 쪽) · both(에디터에서 직접 고치기 → 다시 누르면 해결 완료)
+  async resolveFile(root, run, [file, choice], _e, _n, warn) {
+    const unmerged = await unmergedFiles(root);
+    if (!unmerged.includes(file) && !(choice === "both" && hasMarkers(root, file))) {
+      throw new Error(`${file} 은(는) 충돌 중인 파일이 아닙니다.`);
+    }
+    if (choice === "both") {
+      if (hasMarkers(root, file)) {
+        if (opener) opener(pathx.join(root, file));
+        warn(`${file} 을(를) 에디터로 열었습니다. <<<<<<< ======= >>>>>>> 표시를 정리하고 저장한 뒤 다시 "직접 편집" 을 누르면 해결로 표시합니다.`);
+        return;
+      }
+      await run(["add", "--", file]);
+      return;
+    }
+    try {
+      await run(["checkout", `--${choice}`, "--", file]);
+      await run(["add", "--", file]);
+    } catch (err) {
+      // 한쪽에서 지운 파일: 그쪽을 고르면 삭제가 해결이다
+      if (/does not have (our|their) version/.test(err.stderr || "")) await run(["rm", "-q", "--", file]);
+      else throw err;
+    }
+  },
+
+  async continueOp(root, run, _a, _e, _n, warn) {
+    const left = await unmergedFiles(root);
+    if (left.length) throw new Error(`아직 해결하지 않은 파일이 있습니다: ${left.join(", ")}`);
+    const kind = readOp(root);
+    const marker = (await git(root, ["diff", "--cached", "--name-only", "-z"], { allowFail: true }) || "").split("\0").filter((f) => f && hasMarkers(root, f));
+    if (marker.length) throw new Error(`충돌 표시(<<<<<<<)가 남아 있는 파일이 있습니다: ${marker.join(", ")}`);
+    if (kind === "rebase") await runOrStop(root, run, ["rebase", "--continue"], warn);
+    else if (kind === "merge") await run(["commit", "--no-edit"]);
+    else if (kind === "cherry-pick") await runOrStop(root, run, ["cherry-pick", "--continue"], warn);
+    else if (kind === "revert") await runOrStop(root, run, ["revert", "--continue"], warn);
+    // kind 가 없으면 (stash 충돌 등) 파일 정리만으로 끝
+  },
+
+  async skipOp(root, run, _a, _e, _n, warn) {
+    const kind = readOp(root);
+    if (kind === "rebase") await runOrStop(root, run, ["rebase", "--skip"], warn);
+    else if (kind === "cherry-pick") await runOrStop(root, run, ["cherry-pick", "--skip"], warn);
+    else throw new Error("건너뛸 수 있는 작업이 아닙니다.");
+  },
+
+  async abortOp(root, run) {
+    const kind = readOp(root);
+    if (kind === "rebase") await run(["rebase", "--abort"]);
+    else if (kind === "merge") await run(["merge", "--abort"]);
+    else if (kind === "cherry-pick") await run(["cherry-pick", "--abort"]);
+    else if (kind === "revert") await run(["revert", "--abort"]);
+    else throw new Error("중단할 진행 중 작업이 없습니다. 충돌 파일은 A 쪽이나 B 쪽을 골라 정리하세요.");
+  },
+});
 
 // ---------- 되돌리기 ----------
 // 조작 전후의 브랜치 위치를 비교해 바뀐 것만 기록한다. (stage·변경 버리기처럼 브랜치가 안 바뀌는 조작은 되돌릴 수 없음)
@@ -413,6 +541,12 @@ OPS.undo = async (root, run, _args, _extra, note) => {
   const stack = undoStacks.get(root) || [];
   const last = stack.pop();
   if (!last) throw new Error("되돌릴 작업이 없습니다. (브랜치 위치를 바꾼 조작만 되돌릴 수 있습니다)");
+  if (last.op === "renameBranch") { // 이름 변경은 이름만 되돌린다 (원격에 반영한 것은 그대로)
+    await run(["branch", "-m", last.args[1], last.args[0]]);
+    note("# 되돌림: 브랜치 이름 변경 (원격은 그대로)");
+    undoStacks.set(root, stack);
+    return;
+  }
   const now = await snapshot(root);
   if (last.head && now.head !== last.head && last.before.heads[last.head]) await run(["switch", last.head]);
   const names = new Set([...Object.keys(last.before.heads), ...Object.keys(last.after.heads)]);
@@ -436,26 +570,26 @@ OPS.undo = async (root, run, _args, _extra, note) => {
 async function execute(root, op, args, extra) {
   const fn = OPS[op];
   if (!fn) throw new Error(`알 수 없는 조작: ${op}`);
-  const { cmds, run, note } = runner(root);
+  const { cmds, run, note, warn, warnings } = runner(root);
   const before = op === "undo" ? null : await snapshot(root).catch(() => null);
   try {
-    await fn(root, run, args || [], extra, note);
+    await fn(root, run, args || [], extra, note, warn);
     if (before) {
       const after = await snapshot(root);
       if (JSON.stringify(after.heads) !== JSON.stringify(before.heads)) {
         const stack = undoStacks.get(root) || [];
-        stack.push({ op, before, after, head: before.head });
+        stack.push({ op, args, before, after, head: before.head });
         undoStacks.set(root, stack.slice(-50));
       }
     }
-    return { ok: true, cmds, undoable: (undoStacks.get(root) || []).length };
+    return { ok: true, cmds, warnings, undoable: (undoStacks.get(root) || []).length };
   } catch (err) {
     return {
       ok: false, cmds, unsupported: !!err.unsupported, conflicts: err.conflicts,
-      code: err.code === "NO_REMOTE" ? "NO_REMOTE" : undefined,
+      code: ["NO_REMOTE", "NEEDS_CHECKOUT"].includes(err.code) ? err.code : undefined, branch: err.branch,
       error: err.stderr || String(err.message || err),
     };
   }
 }
 
-module.exports = { execute, OPS };
+module.exports = { execute, OPS, setOpener };

@@ -123,11 +123,11 @@ test("stash push → pop", async () => {
   await run("discard", ["README.md"]);
 });
 
-test("아직 지원하지 않는 조작(충돌 해결)은 실행하지 않고 안내만", async () => {
+test("충돌 중이 아닌 파일은 해결 조작을 거절한다", async () => {
   const before = sh(repo, "rev-parse", "HEAD");
   const r = await execute(repo, "resolveFile", ["README.md", "ours"]);
   assert.equal(r.ok, false);
-  assert.equal(r.unsupported, true);
+  assert.match(r.error, /충돌 중인 파일이 아닙니다/);
   assert.equal(sh(repo, "rev-parse", "HEAD"), before);
 });
 

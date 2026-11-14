@@ -111,28 +111,42 @@ function actionsFor(src, tgt) {
 }
 
 // 상태에서 후보 놓는 곳을 만든다 (DOM 과 무관 — 오른쪽 클릭 메뉴도 이걸 쓴다)
-function candidateTargets(src) {
+// opts.commitFilter(id): 이름표를 끌 때 후보 커밋을 줄인다 (화면에 보이는 것만 등)
+// opts.commits === false: 커밋 대상을 아예 빼다 (오른쪽 클릭 메뉴에서 이름표 → 모든 커밋 목록은 너무 길다)
+function candidateTargets(src, opts = {}) {
   const s = state;
+  const st = stems(s); // 한 번만 계산 (커밋마다 다시 계산하면 큰 저장소에서 매우 느리다)
   const t = [];
   Object.keys(s.branches).forEach((b) => t.push({ kind: "label", branch: b, name: b }));
   if (src.kind === "commit") {
     const own = ownerBranch(s, src.id);
     if (own) {
-      stems(s).stems[own].ids.forEach((c) => c !== src.id && t.push({ kind: "commit", id: c, name: `"${s.commits[c].msg}"` }));
-      stems(s).stems[own].ids.forEach((_, i, arr) => t.push({ kind: "gap", branch: own, index: i, name: `${i + 1}번째 자리` }));
-      t.push({ kind: "gap", branch: own, index: stems(s).stems[own].ids.length, name: "맨 끝" });
+      const ids = st.stems[own].ids;
+      ids.forEach((c) => c !== src.id && t.push({ kind: "commit", id: c, name: `"${s.commits[c].msg}"` }));
+      ids.forEach((_, i) => t.push({ kind: "gap", branch: own, index: i, name: `${i + 1}번째 자리` }));
+      t.push({ kind: "gap", branch: own, index: ids.length, name: "맨 끝" });
     }
     t.push({ kind: "canvas", name: "빈 곳" });
   }
-  if (src.kind === "label") {
+  if (src.kind === "label" && opts.commits !== false) {
     // 이름표는 아무 커밋에나 놓을 수 있다
-    Object.keys(s.commits).forEach((c) => stems(s).owner.has(c) && t.push({ kind: "commit", id: c, name: `"${s.commits[c].msg}"` }));
+    const ownTip = s.branches[src.branch];
+    for (const c of st.owner.keys()) {
+      if (c === ownTip) continue; // 자기 끝 커밋에는 놓을 일이 없다
+      if (!opts.commitFilter || opts.commitFilter(c)) t.push({ kind: "commit", id: c, name: `"${s.commits[c].msg}"`, lazy: true });
+    }
   }
   if (src.kind === "working" || src.kind === "file") {
-    stems(s).stems[s.head]?.ids.forEach((c) => t.push({ kind: "commit", id: c, name: `"${s.commits[c].msg}"` }));
+    st.stems[s.head]?.ids.forEach((c) => t.push({ kind: "commit", id: c, name: `"${s.commits[c].msg}"` }));
   }
   t.push({ kind: "working", name: "작업 영역" }, { kind: "trash", name: "휴지통" }, { kind: "stash", name: "stash" }, { kind: "remote", name: "origin" });
   return t;
+}
+
+// 이름표 → 커밋 대상의 라벨 문구 (미리보기를 계산하지 않고 정한다. 실제 가능 여부는 라벨에 닿을 때 계산)
+function quickLabelVerb(src, c) {
+  const b = src.branch;
+  return b === state.head && c !== state.branches[b] && isAncestor(state, c, state.branches[b]) ? "여기로 되돌리기" : "이 커밋 위로 올리기";
 }
 
 function targetSelector(tgt) {
@@ -159,21 +173,32 @@ function v2Begin() {
   layer.innerHTML = "";
   const targets = [];
   const seen = new Set();
-  for (const tgt of candidateTargets(src)) {
+  // 이름표를 끌 때는 화면에 보이는 커밋만 후보로 (큰 저장소에서 모든 커밋의 미리보기를 계산하면 수 초가 걸린다)
+  const view = $("canvas-wrap").getBoundingClientRect();
+  const visible = new Set();
+  if (src.kind === "label") {
+    document.querySelectorAll("#graph .node[data-id]").forEach((n) => {
+      const r = n.getBoundingClientRect();
+      if (r.right > view.left && r.left < view.right && r.bottom > view.top && r.top < view.bottom) visible.add(n.dataset.id);
+    });
+  }
+  for (const tgt of candidateTargets(src, { commitFilter: (c) => visible.has(c) })) {
     if (tgt.kind === "label" && src.kind === "label" && tgt.branch === src.branch) continue;
-    const actions = actionsFor(src, tgt);
-    if (!actions.length) continue;
+    // lazy: 라벨만 먼저 띄우고 조작 계산은 라벨에 닿을 때
+    const actions = tgt.lazy ? null : actionsFor(src, tgt);
+    if (actions && !actions.length) continue;
     const el = document.querySelector(targetSelector(tgt));
     if (!el || el === drag.srcEl || (tgt.kind !== "canvas" && el.contains(drag.srcEl))) continue;
     // 다른 브랜치 끝 커밋과 그 이름표는 같은 조작이라 이름표 하나만 남긴다
-    const key = actions.map((a) => a.verb).join("|") + (tgt.kind === "commit" ? branchesAt(tgt.id).join() : tgt.branch || tgt.kind);
+    const key = (actions ? actions.map((a) => a.verb).join("|") : "lazy") + (tgt.kind === "commit" ? branchesAt(tgt.id).join() : tgt.branch || tgt.kind);
     if (tgt.kind === "commit" && src.kind === "commit" && seen.has(key)) continue;
     seen.add(key);
     let rect = el.getBoundingClientRect();
     if (tgt.kind === "canvas") rect = { left: rect.left + 16, top: rect.bottom - 56, width: 10, height: 10 };
     const pill = document.createElement("div");
     pill.className = `v2-pill k-${tgt.kind}`;
-    pill.innerHTML = `<span class="v">${esc(tgt.kind === "canvas" ? "빈 곳에 놓기: " + actions[0].verb : actions[0].verb)}</span>${actions.length > 1 ? `<span class="more">외 ${actions.length - 1}</span>` : ""}`;
+    const first = actions ? actions[0].verb : quickLabelVerb(src, tgt.id);
+    pill.innerHTML = `<span class="v">${esc(tgt.kind === "canvas" ? "빈 곳에 놓기: " + first : first)}</span>${actions && actions.length > 1 ? `<span class="more">외 ${actions.length - 1}</span>` : ""}`;
     layer.appendChild(pill);
     const pw = pill.offsetWidth, ph = pill.offsetHeight;
     const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
@@ -181,7 +206,7 @@ function v2Begin() {
     const y = PANEL.has(tgt.kind) ? cy - ph / 2 : tgt.kind === "commit" ? rect.top - ph - 4 : cy - ph / 2;
     pill.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
     const hit = PANEL.has(tgt.kind) ? rect : { left: x, top: y, width: pw, height: ph };
-    targets.push({ tgt, actions, el, hit, pill });
+    targets.push({ tgt, actions, el, hit, pill, src });
   }
   v2 = { targets, hover: null };
   document.body.classList.add("v2-dragging");
@@ -201,6 +226,19 @@ function v2Move(e) {
   for (const t of v2.targets) {
     const d = distToRect(e.clientX, e.clientY, t.hit);
     if (d < bestD || (d === 0 && best && !PANEL.has(t.tgt.kind))) { best = t; bestD = d; }
+  }
+  // lazy 라벨: 처음 닿을 때 조작을 계산한다. 할 수 있는 게 없으면 그 라벨은 끈다
+  if (best && !best.actions) {
+    best.actions = actionsFor(best.src, best.tgt);
+    if (!best.actions.length) {
+      best.pill.classList.add("none");
+      best.pill.querySelector(".v").textContent = "놓을 수 없음";
+      best.hit = { left: -1e6, top: -1e6, width: 0, height: 0 };
+      best = null;
+    } else if (best.actions.length > 1) {
+      best.pill.querySelector(".v").textContent = best.actions[0].verb;
+      best.pill.insertAdjacentHTML("beforeend", `<span class="more">외 ${best.actions.length - 1}</span>`);
+    }
   }
   if (best !== v2.hover) {
     v2.hover?.pill.classList.remove("on");
@@ -239,6 +277,7 @@ function showInCanvas(res) {
   svg.setAttribute("width", r.width);
   svg.setAttribute("height", r.height);
   svg.innerHTML = r.svg;
+  if (typeof pinLaneNames === "function") pinLaneNames();
   $("canvas-wrap").classList.add("previewing");
 }
 function hideInCanvas() {
@@ -340,7 +379,7 @@ function srcFromEl(el) {
 }
 function contextItems(src) {
   const items = [];
-  for (const tgt of candidateTargets(src)) {
+  for (const tgt of candidateTargets(src, { commits: src.kind !== "label" })) {
     if (tgt.kind === "label" && src.kind === "label" && tgt.branch === src.branch) continue;
     if (tgt.kind === "canvas") continue;
     for (const a of actionsFor(src, tgt)) {

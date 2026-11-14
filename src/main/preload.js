@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld("gitApi", {
   clone: (url) => ipcRenderer.invoke("repo:clone", url),
   onMenuClone: (fn) => ipcRenderer.on("menu:clone", () => fn()),
   read: () => ipcRenderer.invoke("repo:read"),
+  more: () => ipcRenderer.invoke("repo:more"),
   diff: (file, commit) => ipcRenderer.invoke("repo:diff", { file, commit }),
   run: (op, args, extra) => ipcRenderer.invoke("repo:run", { op, args, extra }),
   onChanged: (fn) => ipcRenderer.on("repo:changed", () => fn()),

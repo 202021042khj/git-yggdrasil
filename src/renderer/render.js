@@ -25,15 +25,50 @@ function layout(s) {
   Object.values(s.branches).forEach(bump);
   Object.values(s.remotes).forEach(bump);
   if (s.op && s.op.tip) bump(s.op.tip);
+  // 레인 → 줄(row) 배치.
+  // 이름 있는 레인(로컬·원격 브랜치, 진행 중)은 각자 한 줄을 갖고, 이름 없는 레인(merge 후 지워진 브랜치의 커밋)은
+  // 가로 구간이 겹치지 않으면 같은 줄을 나눠 쓴다 (git log --graph 가 끝난 줄을 재사용하는 것과 같은 생각).
+  const xOf = (c) => col[g[c]];
+  const laneOf = new Map();
+  lanes.forEach((ln) => ln.ids.forEach((c) => laneOf.set(c, ln)));
+  lanes.forEach((ln) => {
+    const xs = ln.ids.map(xOf);
+    ln.lo = Math.min(...xs);
+    ln.hi = Math.max(...xs);
+    if (ln.base && xOf(ln.base) !== undefined) ln.lo = Math.min(ln.lo, xOf(ln.base)); // 갈라져 나온 곡선
+  });
+  for (const [c, cm] of Object.entries(s.commits)) { // 다른 레인으로 이어지는 간선(merge 등)도 구간에 넣는다
+    const lc = laneOf.get(c);
+    if (!lc) continue;
+    for (const p of cm.parents) {
+      const lp = laneOf.get(p);
+      if (lp && lp !== lc) lp.hi = Math.max(lp.hi, xOf(c));
+    }
+  }
+  const rows = [];
+  lanes.forEach((ln) => {
+    let row = null;
+    if (ln.kind === "anon") {
+      row = rows.find((r) => r.packable && r.spans.every(([a, b]) => ln.hi < a - 1 || ln.lo > b + 1));
+    }
+    if (!row) { row = { lanes: [], spans: [], packable: ln.kind === "anon" }; rows.push(row); }
+    row.lanes.push(ln);
+    row.spans.push([ln.lo, ln.hi]);
+  });
   const pos = {};
   let y = TOP;
-  lanes.forEach((ln) => {
-    ln.y = y;
-    ln.ids.forEach((c) => (pos[c] = { x: PADX + col[g[c]] * DX, y, lane: ln }));
-    const most = Math.max(0, ...ln.ids.map((c) => refCount[c] || 0));
+  rows.forEach((row) => {
+    let most = 0;
+    row.lanes.forEach((ln) => {
+      ln.y = y;
+      ln.ids.forEach((c) => {
+        pos[c] = { x: PADX + xOf(c) * DX, y, lane: ln };
+        most = Math.max(most, refCount[c] || 0);
+      });
+    });
     y += Math.max(DY, 30 + most * LABEL_STEP + 40);
   });
-  return { lanes, pos, owner, width: PADX * 2 + gens.length * DX + 120, height: y + 20 };
+  return { lanes, rows: rows.length, pos, owner, width: PADX * 2 + gens.length * DX + 120, height: y + 20 };
 }
 const LABEL_STEP = 24;
 
@@ -52,10 +87,10 @@ function renderGraph(s, opts = {}) {
       <text x="16" y="27">origin: 브랜치 이름표를 여기로 끌어 놓으면 push</text></g>`);
   }
 
-  // 레인 이름 (왼쪽)
-  L.lanes.forEach((ln, i) => {
-    if (ln.kind !== "anon") out.push(`<text class="lane-name ${ln.kind}" x="12" y="${ln.y + 4}" style="fill:${ln.color}">${esc(trunc(ln.name, 11))}</text>`);
-  });
+  // 레인 이름 (왼쪽). 가로로 스크롤해도 왼쪽에 붙어 있도록 맨 마지막에 따로 그린다 (아래 laneNames)
+  const laneNames = L.lanes.filter((ln) => ln.kind !== "anon").map((ln) =>
+    `<g class="lane-tag" transform="translate(0,${ln.y})"><rect x="4" y="-11" width="86" height="20" rx="4"/>
+      <text class="lane-name ${ln.kind}" x="10" y="4" style="fill:${ln.color}">${esc(trunc(ln.name, 11))}</text><title>${esc(ln.name)}</title></g>`).join("");
 
   // 간선
   for (const [c, p0] of Object.entries(pos)) {
@@ -106,7 +141,7 @@ function renderGraph(s, opts = {}) {
     out.push(`<g class="${cls}" ${opts.interactive ? `data-drag="commit" data-drop="commit" data-id="${c}"` : ""} transform="translate(${p.x},${p.y})">
       ${c === headTip ? `<circle class="halo" r="17"/>` : ""}${shape}
       <text class="msg" y="-22">${esc(trunc(cm.msg, 15))}</text>
-      <title>${short(c)} ${esc(cm.msg)}\n파일: ${esc(cm.files.join(", ") || "-")}\n${isPushed ? "push 됨 (공유된 히스토리)" : "로컬 전용 (자유롭게 편집 가능)"}</title></g>`);
+      <title>${short(c)} ${esc(cm.msg)}${cm.author ? `\n${esc(cm.author)} · ${esc(relTime(cm.date))}` : ""}\n파일: ${esc(cm.files.join(", ") || "-")}\n${isPushed ? "push 됨 (공유된 히스토리)" : "로컬 전용 (자유롭게 편집 가능)"}</title></g>`);
 
     // 이름표 (노드 아래로 쌓기)
     (refsAt[c] || []).sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "local" ? -1 : 1)).forEach((r, i) => {
@@ -138,5 +173,6 @@ function renderGraph(s, opts = {}) {
     });
   }
 
+  out.push(`<g id="${opts.interactive ? "lane-names" : "lane-names-preview"}" class="lane-names">${laneNames}</g>`);
   return { svg: out.join(""), width: W, height: L.height, layout: L };
 }

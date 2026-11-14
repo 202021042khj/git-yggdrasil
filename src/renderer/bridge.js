@@ -11,10 +11,15 @@
   let running = false;
 
   // Ops 결과에 "실제로는 어떤 조작인지"를 붙인다 (첫 인자인 상태는 빼고 나머지 인자를 그대로 보낸다)
+  // 충돌 해결 조작은 실제 저장소 상태에서 목업 모델로 계산할 수 없으므로 그대로 실행기로 보낸다
+  const REAL_ONLY = { resolveFile: "충돌 파일 해결", continueOp: "계속", skipOp: "이 커밋 건너뛰기", abortOp: "중단 (시작 전으로)" };
   for (const name of Object.keys(Ops)) {
     const fake = Ops[name];
     Ops[name] = (...a) => {
-      const r = fake(...a);
+      const r = REAL_ONLY[name] && a[0] && a[0].op && a[0].op.real
+        ? { state: { ...a[0] }, summary: name === "resolveFile" ? `${a[1]}: ${{ ours: "A 쪽", theirs: "B 쪽", both: "직접 편집" }[a[2]]}` : `${a[0].op.title} — ${REAL_ONLY[name]}`,
+            cmd: "", conflicts: [], rewrites: [] }
+        : fake(...a);
       if (r && !r.error && r.state) {
         Object.defineProperty(r.state, "__real", {
           value: { op: name, args: a.slice(1), extra: { force: !!r.force, ...realExtra(name, a) } }, configurable: true,
@@ -57,13 +62,22 @@
       const r = await api.run(op, args, extra);
       if (r.ok) {
         log.push({ summary: entry.summary, cmd: r.cmds.join("\n") });
-        toast(entry.summary);
+        toast(r.warnings && r.warnings.length ? `${entry.summary} — ${r.warnings.join(" ")}` : entry.summary);
       } else {
-        log.push({ summary: `${r.unsupported ? "아직 지원 안 함" : "실패"}: ${entry.summary}`, cmd: [...r.cmds, r.error].join("\n") });
+        const label = r.unsupported ? "아직 지원 안 함" : r.code === "NEEDS_CHECKOUT" ? "충돌 — 체크아웃 필요" : "실패";
+        log.push({ summary: `${label}: ${entry.summary.replace(/ — ⏸ 충돌로 멈춤.*$/, "")}`, cmd: [...r.cmds, r.error].join("\n") });
         toast(r.error);
       }
       if (r.repo) show(r.repo);
       else render();
+      // 체크아웃하지 않은 브랜치에서 충돌: 체크아웃한 뒤 같은 조작을 다시 해서 충돌 해결 모드로 들어간다
+      if (r.code === "NEEDS_CHECKOUT" && !retried) {
+        running = false;
+        if (confirm(`${r.error}\n\n${r.branch} 로 체크아웃하고 다시 진행할까요? 충돌 지점에서 멈추면 오른쪽 패널에서 해결할 수 있습니다.`)) {
+          await runReal({ op: "checkout", args: [r.branch] }, { summary: `${r.branch} 로 전환` }, true);
+          if (state.head === r.branch) await runReal({ op, args, extra }, entry, true);
+        }
+      }
       // 원격이 없어서 push 가 실패했으면: 주소를 받아 origin 으로 추가하고 다시 시도
       if (r.code === "NO_REMOTE" && !retried) {
         running = false;
@@ -91,12 +105,19 @@
           <button type="button" data-remote-edit="${esc(r.name)}">주소</button>
           <button type="button" data-remote-del="${esc(r.name)}" aria-label="${esc(r.name)} 삭제">삭제</button></div>`).join("")
       : `<p class="muted remote-empty">연결된 원격이 없습니다.</p>`;
+    // 로컬에 없는 원격 브랜치: 가져오기 버튼
+    const onlyRemote = Object.keys(state.remotes || {}).filter((r) => !state.branches[r.split("/").slice(1).join("/")]);
+    if (onlyRemote.length) {
+      $("remote-list").insertAdjacentHTML("beforeend", `<div class="remote-only"><p class="muted">원격에만 있는 브랜치</p>${onlyRemote.map((r) =>
+        `<div class="remote-row"><span class="ru">${esc(r)}</span><button type="button" data-remote-co="${esc(r)}">가져오기</button></div>`).join("")}</div>`);
+    }
     $("remote-list").querySelectorAll("[data-remote-edit]").forEach((b) => (b.onclick = async () => {
       const name = b.dataset.remoteEdit;
       const cur = list.find((r) => r.name === name)?.url || "";
       const url = await askText(`${name} 주소 바꾸기`, cur);
       if (url && url !== cur) runReal({ op: "remoteSetUrl", args: [name, url] }, { summary: `원격 ${name} 주소 변경` });
     }));
+    $("remote-list").querySelectorAll("[data-remote-co]").forEach((b) => (b.onclick = () => checkoutRemoteFlow(b.dataset.remoteCo)));
     $("remote-list").querySelectorAll("[data-remote-del]").forEach((b) => (b.onclick = () => {
       const name = b.dataset.remoteDel;
       if (confirm(`원격 ${name} 연결을 지울까요?\n원격 저장소 자체는 지워지지 않고, 이 폴더와의 연결과 원격 브랜치 정보만 사라집니다.`)) {
@@ -112,6 +133,49 @@
   };
   const baseRenderTree = renderTree;
   renderTree = function () { baseRenderTree(); renderRemotes(); };
+
+  // ---------- 오른쪽 클릭 메뉴에 붙는 실제 앱 전용 항목 ----------
+  // custom 항목: git 미리보기 없이 바로 실행 (메뉴에는 대응 명령만 보여 준다)
+  const customItem = (label, cmd, run, src) => ({
+    label, verb: label, src, tgt: { kind: "custom" },
+    res: { cmd, conflicts: [], rewrites: [], state: { op: null } },
+    custom: run,
+  });
+
+  async function renameFlow(from) {
+    const to = await askText("새 브랜치 이름", from, `${from} 의 이름을 바꿉니다.`);
+    if (!to || to === from) return;
+    if (state.branches[to]) return toast(`${to} 브랜치가 이미 있습니다.`);
+    const up = state.upstream && state.upstream[from];
+    const withRemote = !!up && confirm(`${from} 은(는) 원격 ${up} 와 연결되어 있습니다.\n원격에도 ${to} 로 올리고 옛 이름(${up})을 원격에서 지울까요?\n\n확인 = 원격까지 변경, 취소 = 로컬 이름만 변경`);
+    runReal({ op: "renameBranch", args: [from, to, withRemote] }, { summary: `${from} → ${to} 이름 변경${withRemote ? " (원격 포함)" : ""}` });
+  }
+  const checkoutRemoteFlow = (rb) =>
+    runReal({ op: "checkoutRemote", args: [rb] }, { summary: `${rb} 를 로컬 브랜치로 가져오기` });
+
+  const baseContextItems = contextItems;
+  contextItems = function (src) {
+    const items = baseContextItems(src);
+    if (src.kind === "label" && state.branches[src.branch] && src.branch !== "HEAD") {
+      items.push(customItem("이름 바꾸기…", `git branch -m ${src.branch} <새 이름>`, () => renameFlow(src.branch), src));
+    }
+    if (src.kind === "remote") {
+      const local = src.remote.split("/").slice(1).join("/");
+      if (!state.branches[local]) items.unshift(customItem(`로컬 브랜치 ${local} 로 가져오기`, `git switch --track ${src.remote}`, () => checkoutRemoteFlow(src.remote), src));
+    }
+    return items;
+  };
+
+  // 사이드바 브랜치 목록에서도 오른쪽 클릭 메뉴
+  $("repo-tree").addEventListener("contextmenu", (e) => {
+    const row = e.target.closest("[data-checkout]");
+    if (!row) return;
+    e.preventDefault();
+    if (blocked()) return;
+    const src = { kind: "label", branch: row.dataset.checkout };
+    const items = contextItems(src);
+    if (items.length) openMenu(e.clientX, e.clientY, src.branch, items);
+  });
 
   // 되돌리기: 앱에서 한 조작 중 브랜치 위치를 바꾼 것을 하나씩 되돌린다 (커밋류는 변경을 Staged 로 남김)
   undo = () => runReal({ op: "undo", args: [] }, { summary: "되돌리기" });
@@ -137,10 +201,16 @@
     return `<div class="diff" data-key="${esc(key)}"><div class="dh">${esc(title)}</div><pre><span class="ctx">불러오는 중…</span></pre></div>`;
   };
 
+  // 충돌 패널: 가짜 대신 실제 파일의 충돌 표시 (작업 파일 vs HEAD diff)
+  conflictMarkers = function (file) {
+    return diffHtml(file, "wt", `${file} — 실제 충돌 내용`);
+  };
+
   // 실제 저장소 상태를 화면이 쓰는 모양으로 맞춘다
   function adapt(repo) {
     const s = repo;
-    if (!s.head && s.detached && s.commits[s.detached]) {
+    if (!s.head && s.op && s.op.branch && s.branches[s.op.branch]) s.head = s.op.branch; // rebase 도중
+    else if (!s.head && s.detached && s.commits[s.detached]) {
       s.branches = { ...s.branches, HEAD: s.detached };
       s.head = "HEAD";
     }
@@ -174,8 +244,10 @@
         wrap.scrollTop += r.top - w.top - w.height * 0.3;
       } else wrap.scrollLeft = wrap.scrollWidth;
     }
-    if (repo.gitOp && firstOpen) toast(`이 저장소는 ${repo.gitOp} 이 진행 중인 상태입니다. 해결 화면은 4단계에서 연결됩니다. 지금은 터미널에서 마무리해 주세요.`);
-    if (repo.truncated) $("repo-path").textContent = `${repo.root} · 최근 커밋 ${Object.keys(repo.commits).length}개만 표시`;
+    if (repo.op && firstOpen) toast(`이 저장소는 ${repo.op.title} 도중에 멈춰 있습니다. 오른쪽 패널에서 충돌을 해결하고 위 배너에서 계속하거나 중단하세요.`);
+    const shownN = Object.keys(repo.commits).length;
+    $("load-more").hidden = !repo.truncated;
+    $("load-more").textContent = `이전 커밋 더 불러오기 (${shownN.toLocaleString()} / ${(repo.totalCommits || shownN).toLocaleString()})`;
   }
 
   function remember(root) {
@@ -208,6 +280,16 @@
     $("recent-list").querySelectorAll("[data-path]").forEach((b) => (b.onclick = () => open(api.open(b.dataset.path))));
   }
 
+  // 오래된 커밋 더 불러오기: 지금 보던 자리(오른쪽 끝 기준)를 유지한다
+  $("load-more").onclick = async () => {
+    const wrap = $("canvas-wrap");
+    const fromRight = wrap.scrollWidth - wrap.scrollLeft;
+    $("load-more").disabled = true;
+    try {
+      const repo = await api.more();
+      if (repo) { show(repo); wrap.scrollLeft = wrap.scrollWidth - fromRight; }
+    } finally { $("load-more").disabled = false; }
+  };
   $("open-repo").onclick = () => open(api.pick());
   $("welcome-open").onclick = () => open(api.pick());
   api.onMenuOpen(() => open(api.pick()));

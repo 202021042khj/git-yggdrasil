@@ -5,7 +5,10 @@ const { execFile } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const MAX_COMMITS = 400;
+const MAX_COMMITS = 400; // 처음 불러오는 커밋 수. "더 불러오기" 로 저장소마다 늘릴 수 있다
+const limits = new Map(); // root → 불러올 커밋 수
+const limitOf = (root) => limits.get(root) || MAX_COMMITS;
+function loadMore(root, step = MAX_COMMITS) { limits.set(root, limitOf(root) + step); return limitOf(root); }
 const MAX_FILES = 5000;
 const US = "\x1f"; // 필드 구분
 const RS = "\x1e"; // 레코드 구분
@@ -45,9 +48,9 @@ async function repoRoot(dir) {
 }
 
 // 커밋 그래프: 모든 ref 에서 닿는 최근 커밋들 + 각 커밋이 바꾼 파일
-async function readCommits(root) {
+async function readCommits(root, limit = MAX_COMMITS) {
   const out = await git(root, [
-    "log", "--branches", "--remotes", "--tags", "HEAD", "--topo-order", `-n${MAX_COMMITS}`,
+    "log", "--branches", "--remotes", "--tags", "HEAD", "--topo-order", `-n${limit}`,
     "--name-only", `--format=${RS}%H${US}%P${US}%an${US}%at${US}%s`,
   ], { allowFail: true });
   const commits = {};
@@ -135,8 +138,15 @@ async function readStash(root) {
   });
 }
 
-// 진행 중인 작업 (1단계에서는 표시만 한다)
-function readOp(root) {
+// ---------- 진행 중인 작업 (rebase · merge · cherry-pick · revert 가 충돌로 멈춘 상태) ----------
+const CONFLICT_FILE = "ygg-conflicts.json"; // 앱이 멈춘 시점의 충돌 파일 목록 (해결한 파일을 ✓ 로 보여 주려고)
+
+async function gitDir(root) {
+  const d = (await git(root, ["rev-parse", "--git-dir"], { allowFail: true }) || ".git").trim();
+  return path.isAbsolute(d) ? d : path.join(root, d);
+}
+
+function readOp(root) { // 이전 호환: 종류만
   const g = path.join(root, ".git");
   const has = (f) => fs.existsSync(path.join(g, f));
   if (has("rebase-merge") || has("rebase-apply")) return "rebase";
@@ -144,6 +154,65 @@ function readOp(root) {
   if (has("CHERRY_PICK_HEAD")) return "cherry-pick";
   if (has("REVERT_HEAD")) return "revert";
   return null;
+}
+
+const readText = (f) => { try { return fs.readFileSync(f, "utf8").trim(); } catch { return ""; } };
+const subjectOf = async (root, rev) => ((await git(root, ["show", "-s", "--format=%s", rev], { allowFail: true })) || "").trim();
+const branchAt = async (root, oid) => ((await git(root, ["for-each-ref", "--points-at", oid, "--format=%(refname:short)", "refs/heads"], { allowFail: true })) || "").split("\n").filter(Boolean)[0];
+
+// 화면의 state.op 모양으로 돌려준다 (목업의 배너·충돌 해결 화면이 그대로 쓴다)
+async function readOpState(root, unmerged, head) {
+  const g = await gitDir(root);
+  const has = (f) => fs.existsSync(path.join(g, f));
+  let op = null;
+  if (has("rebase-merge") || has("rebase-apply")) {
+    const dir = path.join(g, has("rebase-merge") ? "rebase-merge" : "rebase-apply");
+    const branch = readText(path.join(dir, "head-name")).replace(/^refs\/heads\//, "");
+    const onto = readText(path.join(dir, "onto"));
+    const ontoName = (onto && (await branchAt(root, onto))) || (onto ? onto.slice(0, 7) : "대상");
+    const step = Number(readText(path.join(dir, "msgnum")) || readText(path.join(dir, "next")) || 1);
+    const total = Number(readText(path.join(dir, "end")) || readText(path.join(dir, "last")) || step);
+    const cur = has("REBASE_HEAD") ? await subjectOf(root, "REBASE_HEAD") : "";
+    const tip = ((await git(root, ["rev-parse", "-q", "--verify", "HEAD"], { allowFail: true })) || "").trim();
+    op = { kind: "rebase", branch, title: `${branch} 를 ${ontoName} 위로 rebase`, step: Math.max(0, step - 1), total,
+      current: { msg: cur || "(현재 커밋)" }, tip, oursName: `대상 ${ontoName}`, theirsName: `적용 중인 커밋 "${cur}"` };
+  } else if (has("MERGE_HEAD")) {
+    const msg = readText(path.join(g, "MERGE_MSG")).split("\n")[0];
+    const from = (msg.match(/^Merge (?:remote-tracking )?branch '([^']+)'/) || [])[1] || "들어오는 쪽";
+    op = { kind: "merge", title: msg || "merge", oursName: `현재 ${head || "HEAD"}`, theirsName: from };
+  } else if (has("CHERRY_PICK_HEAD")) {
+    const cur = await subjectOf(root, "CHERRY_PICK_HEAD");
+    const todo = readText(path.join(g, "sequencer", "todo")).split("\n").filter((l) => /^\w/.test(l)).length;
+    op = { kind: "cherry-pick", title: `${head || "HEAD"} 에 cherry-pick`, step: 0, total: Math.max(1, todo),
+      current: { msg: cur }, oursName: `현재 ${head || "HEAD"}`, theirsName: `가져오는 커밋 "${cur}"` };
+  } else if (has("REVERT_HEAD")) {
+    const cur = await subjectOf(root, "REVERT_HEAD");
+    op = { kind: "revert", title: `"${cur}" 되돌리기 (revert)`, step: 0, total: 1, current: { msg: `Revert "${cur}"` },
+      oursName: `현재 ${head || "HEAD"}`, theirsName: `되돌리는 커밋 "${cur}"` };
+  } else if (unmerged.length) {
+    // 진행 중인 작업 없이 충돌 파일만 있는 경우 (예: stash pop 충돌)
+    op = { kind: "files", title: "충돌 파일 정리", oursName: "현재 작업 영역", theirsName: "적용한 변경 (예: stash)" };
+  }
+  if (!op) { try { fs.rmSync(path.join(g, CONFLICT_FILE), { force: true }); } catch {} return null; }
+  let recorded = [];
+  try {
+    const r = JSON.parse(fs.readFileSync(path.join(g, CONFLICT_FILE), "utf8"));
+    if (r.kind === op.kind) recorded = r.files || [];
+  } catch {}
+  const conflicts = [...new Set([...recorded, ...unmerged])];
+  const resolved = {};
+  conflicts.forEach((f) => { if (!unmerged.includes(f)) resolved[f] = "done"; });
+  return { real: true, ...op, conflicts, resolved };
+}
+
+// 앱이 충돌로 멈춘 순간의 충돌 파일을 기록해 둔다
+async function recordConflicts(root) {
+  const g = await gitDir(root);
+  const kind = readOp(root);
+  const st = await readStatus(root);
+  if (!kind && !st.conflicted.length) return [];
+  fs.writeFileSync(path.join(g, CONFLICT_FILE), JSON.stringify({ kind: kind || "files", files: st.conflicted }));
+  return st.conflicted;
 }
 
 async function readRemotes(root) {
@@ -159,7 +228,12 @@ async function readRemotes(root) {
 async function readRepo(dir) {
   const root = await repoRoot(dir);
   if (!root) throw new Error(`git 저장소가 아닙니다: ${dir}`);
-  const { commits, truncated } = await readCommits(root);
+  const limit = limitOf(root);
+  const [{ commits, truncated }, totalOut] = await Promise.all([
+    readCommits(root, limit),
+    git(root, ["rev-list", "--count", "--branches", "--remotes", "--tags", "HEAD"], { allowFail: true }),
+  ]);
+  const totalCommits = Number((totalOut || "0").trim()) || Object.keys(commits).length;
   const [refs, headInfo, working, files, stash, remoteList] = await Promise.all([
     readRefs(root, commits), readHead(root), readStatus(root), readFiles(root), readStash(root), readRemotes(root),
   ]);
@@ -167,7 +241,8 @@ async function readRepo(dir) {
     root,
     repoName: path.basename(root),
     commits,
-    truncated,
+    truncated: truncated || totalCommits > Object.keys(commits).length,
+    totalCommits,
     branches: refs.branches,
     remotes: refs.remotes,
     upstream: refs.upstream,
@@ -177,10 +252,10 @@ async function readRepo(dir) {
     files,
     working,
     stash,
-    op: null,
+    op: await readOpState(root, working.conflicted, headInfo.head),
     gitOp: readOp(root),
     born: {},
   };
 }
 
-module.exports = { git, gitRaw, repoRoot, readRepo, readStatus };
+module.exports = { git, gitRaw, repoRoot, readRepo, loadMore, readStatus, readOp, recordConflicts, gitDir };

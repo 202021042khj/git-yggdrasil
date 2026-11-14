@@ -142,3 +142,45 @@ test("원격 추가 · 주소 변경 · 삭제, 원격 없이 push 하면 NO_REM
   await run("remoteRemove", ["origin"]);
   assert.equal(sh(repo, "remote"), "");
 });
+
+test("브랜치 이름 변경 → 되돌리기", async () => {
+  await run("renameBranch", ["feat", "feature", false]);
+  assert.equal(sh(repo, "branch", "--list", "feat"), "");
+  assert.ok(sh(repo, "branch", "--list", "feature").length > 0);
+  await run("undo", []);
+  assert.equal(sh(repo, "branch", "--list", "feature"), "");
+  assert.ok(sh(repo, "branch", "--list", "feat").length > 0);
+});
+
+test("현재 브랜치 이름 변경 + 원격까지 반영", async () => {
+  const bare = path.join(tmp, "remote.git");
+  sh(tmp, "init", "-q", "--bare", "-b", "main", bare);
+  sh(repo, "remote", "add", "origin", bare);
+  sh(repo, "push", "-q", "-u", "origin", "main");
+  const r = await run("renameBranch", ["main", "dev", true]);
+  assert.equal(sh(repo, "branch", "--show-current"), "dev");
+  assert.equal(sh(repo, "rev-parse", "--abbrev-ref", "dev@{u}"), "origin/dev");
+  assert.ok(sh(bare, "branch", "--list", "dev").length > 0);
+  // main 은 원격의 기본 브랜치라 지울 수 없다 → 실패가 아니라 경고
+  assert.equal(r.warnings.length, 1);
+  assert.match(r.warnings[0], /기본 브랜치/);
+
+  // 기본 브랜치가 아닌 브랜치는 원격에서 옛 이름까지 지운다
+  sh(repo, "push", "-q", "-u", "origin", "feat");
+  await run("renameBranch", ["feat", "feature", true]);
+  assert.equal(sh(bare, "branch", "--list", "feat"), "");
+  assert.ok(sh(bare, "branch", "--list", "feature").length > 0);
+});
+
+test("원격에만 있는 브랜치를 로컬로 가져오기", async () => {
+  const bare = path.join(tmp, "remote.git");
+  sh(tmp, "init", "-q", "--bare", "-b", "main", bare);
+  sh(repo, "remote", "add", "origin", bare);
+  sh(repo, "push", "-q", "origin", "feat:topic");
+  sh(repo, "fetch", "-q", "origin");
+  await run("checkoutRemote", ["origin/topic"]);
+  assert.equal(sh(repo, "branch", "--show-current"), "topic");
+  assert.equal(sh(repo, "rev-parse", "--abbrev-ref", "topic@{u}"), "origin/topic");
+  const again = await execute(repo, "checkoutRemote", ["origin/topic"]);
+  assert.equal(again.ok, false);
+});

@@ -3,8 +3,8 @@ const { app, BrowserWindow, dialog, ipcMain, Menu, shell, safeStorage, clipboard
 const github = require("./github");
 const fs = require("node:fs");
 const path = require("node:path");
-const { git, readRepo, repoRoot } = require("./git");
-const { execute } = require("./ops");
+const { git, readRepo, repoRoot, loadMore } = require("./git");
+const { execute, setOpener } = require("./ops");
 
 app.setName("Git Yggdrasil");
 
@@ -75,6 +75,7 @@ ipcMain.handle("repo:clone", async (_e, url) => {
   return openRepo(dest);
 });
 ipcMain.handle("repo:read", () => (current ? readRepo(current) : null));
+ipcMain.handle("repo:more", () => { if (!current) return null; loadMore(current); return readRepo(current); });
 // 2단계: 실제 git 조작 실행. 결과와 함께 새로 읽은 저장소 상태를 돌려준다.
 let busy = false;
 ipcMain.handle("repo:run", async (_e, { op, args, extra }) => {
@@ -197,6 +198,7 @@ ipcMain.handle("gh:prDefaults", async (_e, head) => {
 
 app.whenReady().then(() => {
   github.init({ safeStorage, userData: app.getPath("userData") });
+  setOpener((file) => shell.openPath(file)); // 충돌 파일을 기본 에디터로 연다
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { role: "appMenu" },
     { label: "파일", submenu: [

@@ -170,7 +170,7 @@ function predictConflicts(s, files, origBase, onto) {
 //   oursName, theirsName, after, snapshot(시작 전 상태 = 중단 시 복원)
 // }
 const OP_REF = "⏸ 진행 중";
-const OP_CMD = { rebase: "git rebase", "cherry-pick": "git cherry-pick", merge: "git merge", stash: "git stash" };
+const OP_CMD = { revert: "git revert", files: "git add",  rebase: "git rebase", "cherry-pick": "git cherry-pick", merge: "git merge", stash: "git stash" };
 
 function startSequence(s0, s, op) {
   op.snapshot = clone(s0);
