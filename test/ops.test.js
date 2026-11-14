@@ -20,7 +20,7 @@ const run = async (op, ...args) => {
 const msgs = (dir, n = 10) => sh(dir, "log", `-n${n}`, "--format=%s").split("\n");
 
 before(() => {
-  tmp = fs.mkdtempSync(path.join(os.tmpdir(), "git-canvas-test-"));
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ygg-test-"));
   remote = path.join(tmp, "remote.git");
   repo = path.join(tmp, "repo");
   other = path.join(tmp, "other");
@@ -44,7 +44,7 @@ test("메시지 수정: HEAD 커밋", async () => {
   const head = sh(repo, "rev-parse", "HEAD");
   await run("reword", head, "third");
   assert.equal(msgs(repo, 1)[0], "third");
-  assert.ok(sh(repo, "for-each-ref", "refs/git-canvas/backup").length > 0, "백업 ref 가 남아야 함");
+  assert.ok(sh(repo, "for-each-ref", "refs/yggdrasil/backup").length > 0, "백업 ref 가 남아야 함");
 });
 
 test("메시지 수정: 과거 커밋 (작성자·내용 유지, 뒤 커밋 다시 올림)", async () => {
@@ -123,9 +123,9 @@ test("stash push → pop", async () => {
   await run("discard", ["README.md"]);
 });
 
-test("3단계 조작은 실행하지 않고 안내만", async () => {
+test("아직 지원하지 않는 조작(충돌 해결)은 실행하지 않고 안내만", async () => {
   const before = sh(repo, "rev-parse", "HEAD");
-  const r = await execute(repo, "rebaseStem", ["main", before]);
+  const r = await execute(repo, "resolveFile", ["README.md", "ours"]);
   assert.equal(r.ok, false);
   assert.equal(r.unsupported, true);
   assert.equal(sh(repo, "rev-parse", "HEAD"), before);

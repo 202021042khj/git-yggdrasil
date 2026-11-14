@@ -562,7 +562,7 @@ document.addEventListener("pointerup", (e) => {
 });
 
 // 드롭 확정 후 공통 처리 (v1·v2 공용). remake(input) 은 입력값(메시지·이름)을 받아 결과를 다시 계산한다.
-function finishDrop(src, tgt, res, remake) {
+async function finishDrop(src, tgt, res, remake) {
   // 입력이 필요한 조작: 커밋 메시지 칸에 적어 둔 게 있으면 그걸 쓰고, 없으면 묻는다
   const isCommitDrop = (src.kind === "working" || src.kind === "file") && (tgt.kind === "label" || tgt.kind === "commit")
     && !res.summary.includes("amend") && !res.summary.includes("fixup");
@@ -570,7 +570,7 @@ function finishDrop(src, tgt, res, remake) {
     const w = state.working;
     const first = src.kind === "file" ? [...w.staged, ...w.unstaged].find((f) => under(f, src.file)) : w.staged[0] || w.unstaged[0];
     const typed = $("commit-msg").value.trim();
-    const msg = typed || prompt("커밋 메시지 (메시지 칸에 미리 적어 두면 묻지 않습니다)", "update " + first.split("/").pop());
+    const msg = typed || await askText("커밋 메시지", "update " + first.split("/").pop(), "메시지 칸에 미리 적어 두면 묻지 않습니다.");
     if (msg === null) return;
     res = remake({ msg: msg || "새 커밋" });
     if (res.error) return toast(res.error);
@@ -578,7 +578,7 @@ function finishDrop(src, tgt, res, remake) {
   } else if (src.kind === "working" && tgt.kind === "stash") {
     res = remake({ msg: $("commit-msg").value.trim() });
   } else if (src.kind === "commit" && tgt.kind === "canvas") {
-    const name = prompt("새 브랜치 이름", "feat/new");
+    const name = await askText("새 브랜치 이름", "feat/new");
     if (!name) return;
     res = remake({ name });
     if (res.error) return toast(res.error);
@@ -629,7 +629,7 @@ $("file-tree").addEventListener("change", (e) => {
 });
 $("file-tree").addEventListener("click", (e) => {
   const dis = e.target.closest("[data-discard]");
-  if (dis) return runOp(Ops.discard(state, [dis.dataset.discard]), "⌘Z 로 되돌릴 수 있습니다");
+  if (dis) return runOp(Ops.discard(state, [dis.dataset.discard]));
   const t = e.target.closest("[data-toggle]");
   if (t) {
     const p = t.dataset.toggle;
@@ -649,8 +649,8 @@ $("repo-tree").addEventListener("click", (e) => {
 $("pull-mode").onchange = () => renderTree();
 $("tb-pull").onclick = () => runOp(Ops.pull(state, state.head, $("pull-mode").value));
 $("tb-push").onclick = () => runOp(Ops.push(state, state.head));
-$("new-branch").onclick = () => {
-  const name = prompt(`${state.head} 에서 새 브랜치 (git switch -c)`, "feat/");
+$("new-branch").onclick = async () => {
+  const name = await askText("새 브랜치 이름", "feat/", `${state.head} 에서 새 브랜치를 만들고 전환합니다 (git switch -c).`);
   if (name) runOp(Ops.switchCreate(state, name.trim()));
 };
 $("team-push").onclick = () => runOp(Ops.simulateTeamPush(state, "origin/main"), null, true);
@@ -704,3 +704,21 @@ window.addEventListener("resize", render);
 document.querySelectorAll("[data-mode]").forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
 
 setMode(uiMode); // v1/v2 반영 후 첫 렌더
+
+// 앱 안 입력창 (Electron 은 window.prompt 를 지원하지 않는다). 취소하면 null.
+function askText(title, value = "", hint = "") {
+  return new Promise((resolve) => {
+    const d = $("ask");
+    $("ask-title").textContent = title;
+    $("ask-hint").textContent = hint;
+    const input = $("ask-input");
+    input.value = value;
+    d.returnValue = "";
+    d.onclose = () => resolve(d.returnValue === "ok" ? input.value.trim() : null);
+    // Enter 는 항상 "확인" 으로 처리한다 (브라우저마다 기본 버튼 판정이 달라서 직접 처리)
+    input.onkeydown = (e) => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); d.close("ok"); } };
+    d.showModal();
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  });
+}

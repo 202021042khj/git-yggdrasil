@@ -29,6 +29,16 @@ function git(cwd, args, { allowFail = false, env = {}, timeout = 30000 } = {}) {
   });
 }
 
+// 종료 코드까지 필요한 경우 (예: merge-tree 는 충돌이면 1 을 돌려준다)
+function gitRaw(cwd, args, { env = {}, timeout = 30000 } = {}) {
+  return new Promise((resolve) => {
+    execFile("git", args, {
+      cwd, timeout, maxBuffer: 64 * 1024 * 1024,
+      env: { ...process.env, LC_ALL: "C", GIT_TERMINAL_PROMPT: "0", GIT_EDITOR: "true", ...env },
+    }, (err, stdout, stderr) => resolve({ code: err ? (typeof err.code === "number" ? err.code : -1) : 0, stdout, stderr }));
+  });
+}
+
 async function repoRoot(dir) {
   const out = await git(dir, ["rev-parse", "--show-toplevel"], { allowFail: true });
   return out ? out.trim() : null;
@@ -136,12 +146,22 @@ function readOp(root) {
   return null;
 }
 
+async function readRemotes(root) {
+  const out = await git(root, ["remote", "-v"], { allowFail: true });
+  const map = {};
+  for (const line of (out || "").split("\n")) {
+    const m = line.match(/^(\S+)\s+(\S+)\s+\((fetch|push)\)$/);
+    if (m && m[3] === "fetch") map[m[1]] = m[2];
+  }
+  return Object.entries(map).map(([name, url]) => ({ name, url }));
+}
+
 async function readRepo(dir) {
   const root = await repoRoot(dir);
   if (!root) throw new Error(`git 저장소가 아닙니다: ${dir}`);
   const { commits, truncated } = await readCommits(root);
-  const [refs, headInfo, working, files, stash] = await Promise.all([
-    readRefs(root, commits), readHead(root), readStatus(root), readFiles(root), readStash(root),
+  const [refs, headInfo, working, files, stash, remoteList] = await Promise.all([
+    readRefs(root, commits), readHead(root), readStatus(root), readFiles(root), readStash(root), readRemotes(root),
   ]);
   return {
     root,
@@ -151,6 +171,7 @@ async function readRepo(dir) {
     branches: refs.branches,
     remotes: refs.remotes,
     upstream: refs.upstream,
+    remoteList,
     head: headInfo.head,
     detached: headInfo.detached,
     files,
@@ -162,4 +183,4 @@ async function readRepo(dir) {
   };
 }
 
-module.exports = { git, repoRoot, readRepo, readStatus };
+module.exports = { git, gitRaw, repoRoot, readRepo, readStatus };

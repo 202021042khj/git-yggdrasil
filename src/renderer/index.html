@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:" />
-  <title>Git Canvas</title>
+  <title>Git Yggdrasil</title>
   <meta name="description" content="git 히스토리를 그래프 위에서 끌어 놓아 다루는 드래그 문법 검증용 목업" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -30,7 +30,7 @@
   </svg>
 
   <header class="topbar">
-    <strong class="brand"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg>Git Canvas</strong>
+    <strong class="brand"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg>Git Yggdrasil</strong>
     <button type="button" id="open-repo" class="small" title="⌘O">저장소 열기</button>
     <span class="sub" id="repo-path">드래그 문법 검증용 목업, 가짜 저장소</span>
     <div class="spacer"></div>
@@ -58,6 +58,11 @@
         <button type="button" id="new-branch" class="small" title="git switch -c">새 브랜치</button>
         <button type="button" id="team-push" class="small" title="원격 main 에 다른 사람의 커밋이 생깁니다"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg>팀원 push</button>
         <label class="muted">pull <select id="pull-mode"><option value="merge">merge</option><option value="rebase">rebase</option></select></label>
+      </div>
+      <div class="remotes-box">
+        <h3>원격</h3>
+        <div id="remote-list"></div>
+        <button type="button" id="remote-add" class="small">원격 추가</button>
       </div>
       <h3>작업 영역</h3>
       <div id="working" class="working-card" data-drop="working">
@@ -102,9 +107,10 @@
 
   <div id="welcome" class="welcome hidden">
     <div class="welcome-card">
-      <h1>Git Canvas</h1>
+      <h1>Git Yggdrasil</h1>
       <p class="muted">git 저장소 폴더를 열면 커밋 그래프를 보여 줍니다. 커밋, stage, checkout, pull/push 같은 기본 조작은 실제로 실행되고, rebase·cherry-pick 같은 히스토리 조작은 아직 미리보기까지만 됩니다.</p>
       <button type="button" id="welcome-open" class="commit-btn">저장소 폴더 열기</button>
+      <button type="button" id="welcome-clone" class="clone-btn">URL 로 clone</button>
       <h3>최근 저장소</h3>
       <div id="recent-list" class="recent-list"></div>
     </div>
@@ -112,6 +118,18 @@
 
   <div id="v2-layer" class="v2-layer" aria-hidden="true"></div>
   <div id="v2-menu" class="v2-menu hidden" role="menu"></div>
+  <dialog id="ask" class="ask">
+    <form method="dialog">
+      <label for="ask-input" id="ask-title"></label>
+      <p id="ask-hint" class="muted"></p>
+      <input id="ask-input" type="text" autocomplete="off" spellcheck="false" />
+      <div class="ask-actions">
+        <!-- Enter 는 첫 submit 버튼을 누르므로 "확인" 을 먼저 두고 화면에서는 오른쪽에 놓는다 -->
+        <button type="submit" value="ok" class="primary">확인</button>
+        <button type="submit" value="cancel" formnovalidate>취소</button>
+      </div>
+    </form>
+  </dialog>
   <div id="tip" class="tip hidden"></div>
   <div id="ghost" class="ghost hidden"></div>
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>

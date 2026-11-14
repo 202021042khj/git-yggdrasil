@@ -4,6 +4,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("gitApi", {
   pick: () => ipcRenderer.invoke("repo:pick"),
   open: (dir) => ipcRenderer.invoke("repo:open", dir),
+  clone: (url) => ipcRenderer.invoke("repo:clone", url),
+  onMenuClone: (fn) => ipcRenderer.on("menu:clone", () => fn()),
   read: () => ipcRenderer.invoke("repo:read"),
   diff: (file, commit) => ipcRenderer.invoke("repo:diff", { file, commit }),
   run: (op, args, extra) => ipcRenderer.invoke("repo:run", { op, args, extra }),

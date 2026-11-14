@@ -331,3 +331,27 @@ body.real #team-push, body.real #add-change, body.real .seg { display: none; }
 body.real #tb-fetch { display: inline-flex; }
 body.busy { cursor: progress; }
 body.busy .sync-btn, body.busy .commit-btn { opacity: 0.55; pointer-events: none; }
+
+/* ---------- 입력창 ---------- */
+.ask { border: none; border-radius: var(--r-md); padding: 16px; width: min(420px, calc(100vw - 32px)); background: var(--panel); color: var(--text); box-shadow: var(--shadow); }
+.ask::backdrop { background: rgb(0 0 0 / 0.45); }
+.ask label { font-weight: 600; display: block; }
+.ask p { margin: 4px 0 10px; font-size: var(--fs-sm); }
+.ask p:empty { display: none; }
+.ask input { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 6px 8px; user-select: text; }
+.ask input:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+.ask-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.ask-actions .primary { order: 2; background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 600; }
+
+/* ---------- 원격 ---------- */
+.remotes-box { display: none; }
+body.real .remotes-box { display: block; }
+.remote-row { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: var(--r-sm); }
+.remote-row:hover { background: var(--panel-2); }
+.remote-row .rn { font-weight: 600; }
+.remote-row .ru { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; }
+.remote-row button { min-height: 22px; padding: 1px 6px; font-size: 11px; }
+.remote-empty { font-size: var(--fs-sm); margin: 2px 0 6px; }
+.clone-btn { width: 100%; justify-content: center; margin-top: -8px; margin-bottom: 8px; }
+
+body.real #reset, body.real #redo { display: none; }

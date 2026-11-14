@@ -6,7 +6,7 @@
   const api = window.gitApi;
   if (!api) return; // 브라우저에서 목업으로 열었을 때는 아무것도 하지 않는다
   document.body.classList.add("real");
-  const RECENT_KEY = "gc-recent";
+  const RECENT_KEY = "ygg-recent";
   let shownRoot = null;
   let running = false;
 
@@ -17,11 +17,22 @@
       const r = fake(...a);
       if (r && !r.error && r.state) {
         Object.defineProperty(r.state, "__real", {
-          value: { op: name, args: a.slice(1), extra: { force: !!r.force } }, configurable: true,
+          value: { op: name, args: a.slice(1), extra: { force: !!r.force, ...realExtra(name, a) } }, configurable: true,
         });
       }
       return r;
     };
+  }
+
+  // 히스토리 조작에 필요한 줄기 정보 (어느 브랜치의 커밋인지, 줄기가 어디서 시작하는지)를 실행기에 함께 보낸다
+  function realExtra(name, a) {
+    const s = a[0];
+    try {
+      if (name === "moveCommit" || name === "dropCommit" || name === "squash") return { from: ownerBranch(s, a[1]) };
+      if (name === "rebaseStem") return { base: stems(s).stems[a[1]].base };
+      if (name === "reorder") { const st = stems(s).stems[a[2]]; return { stem: st.ids, base: st.base }; }
+    } catch {}
+    return {};
   }
 
   // 화면이 상태를 바꾸려 할 때 → 실제 git 실행
@@ -31,10 +42,13 @@
       toast("이 조작은 실제 저장소에서는 지원하지 않습니다.");
       return render();
     }
+    if (real.op === "resetHead" && real.args[1] === "hard"
+      && !confirm("작업 영역의 변경까지 모두 버리고 되돌립니다 (git reset --hard).\n버린 변경은 되돌리기(⌘Z)로도 복구되지 않습니다. 계속할까요?")) return render();
+    if (real.op === "discard" && !confirm("변경을 버립니다. 버린 변경은 되돌리기(⌘Z)로 복구되지 않습니다. 계속할까요?")) return render();
     runReal(real, entry || { summary: real.op });
   };
 
-  async function runReal({ op, args, extra }, entry) {
+  async function runReal({ op, args, extra }, entry, retried = false) {
     if (running) return toast("이전 작업이 아직 실행 중입니다.");
     running = true;
     document.body.classList.add("busy");
@@ -50,6 +64,15 @@
       }
       if (r.repo) show(r.repo);
       else render();
+      // 원격이 없어서 push 가 실패했으면: 주소를 받아 origin 으로 추가하고 다시 시도
+      if (r.code === "NO_REMOTE" && !retried) {
+        running = false;
+        const url = await askText("원격 저장소 주소", "", "예: https://github.com/아이디/저장소.git 또는 git@github.com:아이디/저장소.git — origin 으로 추가한 뒤 다시 push 합니다.");
+        if (url) {
+          await runReal({ op: "remoteAdd", args: ["origin", url] }, { summary: `원격 origin 추가 (${url})` }, true);
+          await runReal({ op, args, extra }, entry, true);
+        }
+      }
     } catch (err) {
       toast(String(err.message || err));
       render();
@@ -59,7 +82,40 @@
     }
   }
 
-  undo = redo = () => toast("실제 저장소의 되돌리기는 3단계에서 연결됩니다. 지금은 조작 전 위치가 refs/git-canvas/backup/ 에 남습니다.");
+  // ---------- 원격 목록 ----------
+  function renderRemotes() {
+    const list = state.remoteList || [];
+    $("remote-list").innerHTML = list.length
+      ? list.map((r) => `<div class="remote-row" title="${esc(r.url)}">
+          <span class="rn">${esc(r.name)}</span><span class="ru">${esc(r.url)}</span>
+          <button type="button" data-remote-edit="${esc(r.name)}">주소</button>
+          <button type="button" data-remote-del="${esc(r.name)}" aria-label="${esc(r.name)} 삭제">삭제</button></div>`).join("")
+      : `<p class="muted remote-empty">연결된 원격이 없습니다.</p>`;
+    $("remote-list").querySelectorAll("[data-remote-edit]").forEach((b) => (b.onclick = async () => {
+      const name = b.dataset.remoteEdit;
+      const cur = list.find((r) => r.name === name)?.url || "";
+      const url = await askText(`${name} 주소 바꾸기`, cur);
+      if (url && url !== cur) runReal({ op: "remoteSetUrl", args: [name, url] }, { summary: `원격 ${name} 주소 변경` });
+    }));
+    $("remote-list").querySelectorAll("[data-remote-del]").forEach((b) => (b.onclick = () => {
+      const name = b.dataset.remoteDel;
+      if (confirm(`원격 ${name} 연결을 지울까요?\n원격 저장소 자체는 지워지지 않고, 이 폴더와의 연결과 원격 브랜치 정보만 사라집니다.`)) {
+        runReal({ op: "remoteRemove", args: [name] }, { summary: `원격 ${name} 연결 삭제` });
+      }
+    }));
+  }
+  $("remote-add").onclick = async () => {
+    const url = await askText("원격 저장소 주소", "", "예: https://github.com/아이디/저장소.git");
+    if (!url) return;
+    const name = await askText("원격 이름", (state.remoteList || []).some((r) => r.name === "origin") ? "upstream" : "origin");
+    if (name) runReal({ op: "remoteAdd", args: [name, url] }, { summary: `원격 ${name} 추가` });
+  };
+  const baseRenderTree = renderTree;
+  renderTree = function () { baseRenderTree(); renderRemotes(); };
+
+  // 되돌리기: 앱에서 한 조작 중 브랜치 위치를 바꾼 것을 하나씩 되돌린다 (커밋류는 변경을 Staged 로 남김)
+  undo = () => runReal({ op: "undo", args: [] }, { summary: "되돌리기" });
+  redo = () => toast("다시 실행은 아직 지원하지 않습니다. 되돌린 위치는 refs/yggdrasil/backup/ 에도 남아 있습니다.");
   $("undo").onclick = () => undo();
   $("redo").onclick = () => redo();
   $("tb-fetch").onclick = () => runReal({ op: "fetch", args: [] }, { summary: "원격 정보 받아오기 (fetch)" });
@@ -129,7 +185,7 @@
     } catch {}
   }
   function recent() {
-    try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(RECENT_KEY) || localStorage.getItem("gc-recent") || "[]"); } catch { return []; }
   }
 
   async function open(promise) {
@@ -155,6 +211,16 @@
   $("open-repo").onclick = () => open(api.pick());
   $("welcome-open").onclick = () => open(api.pick());
   api.onMenuOpen(() => open(api.pick()));
+  async function cloneFlow() {
+    const url = await askText("clone 할 저장소 주소", "", "예: https://github.com/아이디/저장소.git — 다음 단계에서 받을 위치(상위 폴더)를 고릅니다.");
+    if (!url) return;
+    toast(`clone 하는 중… ${url}`);
+    document.body.classList.add("busy");
+    await open(api.clone(url));
+    document.body.classList.remove("busy");
+  }
+  $("welcome-clone").onclick = cloneFlow;
+  api.onMenuClone(cloneFlow);
   api.onChanged(async () => {
     try { show(await api.read()); } catch {}
   });

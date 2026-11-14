@@ -5,11 +5,11 @@
 //  4) 결과가 본 캔버스 위에 겹쳐 보인다
 //  5) 오른쪽 클릭(또는 Shift+F10)으로 같은 조작을 드래그 없이 고를 수 있다 (WCAG 2.2 Dragging Movements)
 
-let uiMode = (() => { try { return localStorage.getItem("gc-ui") || "v2"; } catch { return "v2"; } })();
+let uiMode = (() => { try { return localStorage.getItem("ygg-ui") || "v2"; } catch { return "v2"; } })();
 
 function setMode(m) {
   uiMode = m;
-  try { localStorage.setItem("gc-ui", m); } catch {}
+  try { localStorage.setItem("ygg-ui", m); } catch {}
   document.body.classList.toggle("v2", m === "v2");
   document.querySelectorAll("[data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
   closeMenu();

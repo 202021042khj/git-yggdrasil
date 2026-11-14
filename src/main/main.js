@@ -5,6 +5,8 @@ const path = require("node:path");
 const { git, readRepo, repoRoot } = require("./git");
 const { execute } = require("./ops");
 
+app.setName("Git Yggdrasil");
+
 let win = null;
 let current = null; // 열린 저장소 루트
 let watchers = [];
@@ -17,7 +19,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 640,
     backgroundColor: "#0f141c",
-    title: "Git Canvas",
+    title: "Git Yggdrasil",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -56,6 +58,20 @@ ipcMain.handle("repo:pick", async () => {
   return openRepo(r.filePaths[0]);
 });
 ipcMain.handle("repo:open", (_e, dir) => openRepo(dir));
+// clone: 받을 위치(상위 폴더)를 고르게 한 뒤 그 안에 저장소 이름으로 받는다
+ipcMain.handle("repo:clone", async (_e, url) => {
+  const r = await dialog.showOpenDialog(win, { title: "어느 폴더 안에 받을까요?", properties: ["openDirectory", "createDirectory"] });
+  if (r.canceled || !r.filePaths[0]) return null;
+  const name = url.replace(/[\/]+$/, "").split(/[\/:]/).pop().replace(/\.git$/, "") || "repo";
+  const dest = path.join(r.filePaths[0], name);
+  if (fs.existsSync(dest)) throw new Error(`이미 같은 이름의 폴더가 있습니다: ${dest}`);
+  try {
+    await git(r.filePaths[0], ["clone", "--", url, dest], { timeout: 10 * 60 * 1000 });
+  } catch (err) {
+    throw new Error(err.stderr || err.message);
+  }
+  return openRepo(dest);
+});
 ipcMain.handle("repo:read", () => (current ? readRepo(current) : null));
 // 2단계: 실제 git 조작 실행. 결과와 함께 새로 읽은 저장소 상태를 돌려준다.
 let busy = false;
@@ -85,22 +101,22 @@ ipcMain.handle("repo:diff", async (_e, { file, commit }) => {
   } catch { return ""; }
 });
 
-// 점검용 실행: GC_SMOKE=<저장소 경로> [GC_SHOT=<png 경로>] npm start
+// 점검용 실행: YGG_SMOKE=<저장소 경로> [YGG_SHOT=<png 경로>] npm start
 // 저장소를 열고 화면 오류를 모은 뒤, 캡처를 남기고 종료한다
 function smoke(repoDir) {
   const errors = [];
   win.webContents.on("console-message", (_e, level, message) => level >= 3 && errors.push(message));
   win.webContents.once("did-finish-load", async () => {
-    await win.webContents.executeJavaScript(`localStorage.setItem("gc-recent", JSON.stringify([${JSON.stringify(repoDir)}])); location.reload();`);
+    await win.webContents.executeJavaScript(`localStorage.setItem("ygg-recent", JSON.stringify([${JSON.stringify(repoDir)}])); location.reload();`);
     win.webContents.once("did-finish-load", () => setTimeout(async () => {
       const info = await win.webContents.executeJavaScript(`({
         repo: state.repoName, head: state.head, commits: Object.keys(state.commits).length,
         branches: Object.keys(state.branches), nodes: document.querySelectorAll('#graph .node').length,
         welcome: !document.getElementById('welcome').classList.contains('hidden'),
         tree: document.querySelectorAll('.ft-row').length })`);
-      // GC_EVAL=<js 파일>: 화면에서 시나리오를 실행하고 결과를 함께 출력 (끝까지 이어지는지 점검용)
-      if (process.env.GC_EVAL) info.eval = await win.webContents.executeJavaScript(fs.readFileSync(process.env.GC_EVAL, "utf8"));
-      if (process.env.GC_SHOT) fs.writeFileSync(process.env.GC_SHOT, (await win.webContents.capturePage()).toPNG());
+      // YGG_EVAL=<js 파일>: 화면에서 시나리오를 실행하고 결과를 함께 출력 (끝까지 이어지는지 점검용)
+      if (process.env.YGG_EVAL) info.eval = await win.webContents.executeJavaScript(fs.readFileSync(process.env.YGG_EVAL, "utf8"));
+      if (process.env.YGG_SHOT) fs.writeFileSync(process.env.YGG_SHOT, (await win.webContents.capturePage()).toPNG());
       console.log("SMOKE " + JSON.stringify({ ...info, errors }));
       app.quit();
     }, 1500));
@@ -112,6 +128,7 @@ app.whenReady().then(() => {
     { role: "appMenu" },
     { label: "파일", submenu: [
       { label: "저장소 열기…", accelerator: "CmdOrCtrl+O", click: () => win?.webContents.send("menu:open") },
+      { label: "URL 로 clone…", accelerator: "CmdOrCtrl+Shift+O", click: () => win?.webContents.send("menu:clone") },
       { type: "separator" }, { role: "close" },
     ] },
     { role: "editMenu" },
@@ -119,7 +136,7 @@ app.whenReady().then(() => {
     { role: "windowMenu" },
   ]));
   createWindow();
-  if (process.env.GC_SMOKE) smoke(process.env.GC_SMOKE);
+  if (process.env.YGG_SMOKE) smoke(process.env.YGG_SMOKE);
   app.on("activate", () => BrowserWindow.getAllWindows().length === 0 && createWindow());
 });
 app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());
