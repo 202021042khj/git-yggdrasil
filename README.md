@@ -58,6 +58,7 @@ npm run typecheck
 - 원격 오류 안내: SSH 키·호스트 키·주소·인증·권한 문제를 원인과 해결 방법으로 보여 줌. SSH 는 암호·호스트 키를 묻느라 멈추지 않게 BatchMode 로 실행 (core.sshCommand 를 정해 두었으면 그대로 사용)
 - GitHub 밖 HTTPS 호스트(GitLab·Bitbucket·사내 서버) 로그인: 인증이 필요하면 사용자 이름·토큰을 받아 git 자격 증명 도우미(macOS 키체인 등)에 저장하고 다시 시도. 앱은 토큰을 따로 보관하지 않음
 - 여러 커밋 선택: ⌘ 클릭(하나씩)·Shift 클릭(같은 브랜치 범위)으로 고른 뒤 다른 브랜치 이름표에 끌거나 오른쪽 클릭하면 오래된 것부터 한꺼번에 cherry-pick
+- 커밋 정리(interactive rebase): 브랜치 이름표 오른쪽 클릭 → 순서 바꾸기·메시지 수정·합치기(squash/fixup)·빼기를 한 창에서 정하고 미리 본 뒤 실행. 체크아웃 없이 처리하고, 충돌이 나면 현재 브랜치에서는 실제 rebase -i 로 멈춰 해결
 - 다른 OAuth App 으로 시험하려면 `YGG_GH_CLIENT_ID` 환경 변수로 Client ID 를 바꿀 수 있음
 
 ## 구조

@@ -31,7 +31,7 @@ export function blocked(op?: OpName): boolean {
 export function extraFor(op: OpName, args: unknown[], s: RepoState): OpExtra {
   const st = stems(s);
   if (op === "moveCommit" || op === "dropCommit" || op === "squash") return { from: ownerBranch(s, args[0] as string, st) };
-  if (op === "rebaseStem") return { base: st.stems[args[0] as string]?.base };
+  if (op === "rebaseStem" || op === "rebasePlan") return { base: st.stems[args[0] as string]?.base };
   if (op === "reorder") {
     const stem = st.stems[args[1] as string];
     return { stem: stem?.ids, base: stem?.base };

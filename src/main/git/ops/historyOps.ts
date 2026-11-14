@@ -1,7 +1,11 @@
 // 히스토리 조작: cherry-pick · 커밋 옮기기 · 제거 · rebase · 합치기 · 순서 변경 · revert · merge
 // 작업 폴더를 건드리지 않고 merge-tree + commit-tree 로 새 커밋을 계산한다.
 // 충돌이 있으면: 현재 브랜치면 실제 git 명령으로 멈추고(해결 모드), 아니면 아무것도 바꾸지 않고 체크아웃이 필요하다고 알린다.
+import fs from "node:fs";
+import path from "node:path";
 import { git, gitRaw } from "@/git/cli";
+import { gitDir } from "@/git/opState";
+import type { RebaseStep } from "@shared/types/ipc";
 import { runOrStop } from "@/git/ops/conflictOps";
 import { backup, headInfo, rev, short, type OpContext, type OpError, type OpFn } from "@/git/ops/context";
 
@@ -55,6 +59,8 @@ interface ChainItem {
   id: string;
   /** 직전 커밋에 합친다 */
   fixup?: boolean;
+  /** 새 메시지 (fixup 이면 합친 커밋의 메시지) */
+  msg?: string;
 }
 
 /** items 를 onto 위에 차례로 쌓은 새 끝 커밋 */
@@ -65,12 +71,14 @@ async function chain(root: string, onto: string, items: ChainItem[]): Promise<st
     const c = await commitInfo(root, it.id);
     const tree = await applyTree(root, tip, c);
     if (it.fixup && prev) {
-      tip = await commitTree(root, tree, prev.parents, prev);
-      prev = { ...prev, id: tip, tree };
+      const msg = it.msg ?? prev.msg;
+      tip = await commitTree(root, tree, prev.parents, prev, msg);
+      prev = { ...prev, id: tip, tree, msg };
     } else {
       const parent = prev ? prev.id : onto;
-      tip = await commitTree(root, tree, [tip], c);
-      prev = { ...c, id: tip, tree, parents: [parent] };
+      const msg = it.msg ?? c.msg;
+      tip = await commitTree(root, tree, [tip], c, msg);
+      prev = { ...c, id: tip, tree, parents: [parent], msg };
     }
   }
   return tip;
@@ -205,4 +213,63 @@ const merge: OpFn = async (ctx, [src, dst]: [string, string]) => {
   await setBranch(ctx, dst, id, a);
 };
 
-export const historyOps = { cherryPick, moveCommit, dropCommit, rebaseStem, squash, reorder, revertCommit, merge };
+/** 계획 확인: 줄기의 커밋이 빠짐없이 한 번씩, 첫 줄은 합치기가 아니어야 한다 */
+export function checkPlan(stem: string[], steps: RebaseStep[]): void {
+  const ids = steps.map((s) => s.id);
+  if (ids.length !== stem.length || new Set(ids).size !== ids.length || !ids.every((id) => stem.includes(id))) {
+    throw new Error("계획이 지금 브랜치의 커밋과 맞지 않습니다. 저장소가 바뀌었으면 창을 다시 여세요.");
+  }
+  const kept = steps.filter((s) => s.action !== "drop");
+  if (!kept.length) throw new Error("커밋을 모두 빼면 브랜치가 시작점으로 돌아갑니다. 그렇게 하려면 브랜치를 시작점으로 되돌리기(reset)를 쓰세요.");
+  if (kept[0].action === "squash" || kept[0].action === "fixup") throw new Error("맨 위(가장 오래된) 커밋은 앞에 합칠 커밋이 없습니다. pick 이나 reword 로 바꾸세요.");
+  for (const s of steps) {
+    if ((s.action === "reword" || s.action === "squash") && s.msg !== undefined && !s.msg.trim()) throw new Error("메시지가 비어 있는 줄이 있습니다.");
+  }
+}
+
+/** 실제 git rebase -i 에 넘길 todo (충돌로 멈추며 진행해야 할 때). 메시지는 파일로 넘긴다 */
+export function todoFor(steps: RebaseStep[], msgFile: (i: number) => string): string {
+  const q = (p: string) => `'${p.replace(/'/g, "'\\''")}'`;
+  const lines: string[] = [];
+  steps.forEach((s, i) => {
+    if (s.action === "drop") { lines.push(`drop ${s.id}`); return; }
+    lines.push(`${s.action === "squash" || s.action === "fixup" ? "fixup" : "pick"} ${s.id}`);
+    if (s.msg !== undefined && (s.action === "reword" || s.action === "squash")) lines.push(`exec git commit --amend -q --no-verify -F ${q(msgFile(i))}`);
+  });
+  return lines.join("\n") + "\n";
+}
+
+/** 커밋 정리: 순서·합치기·메시지·빼기를 한 번에. ctx.extra.base = 줄기 시작점 */
+const rebasePlan: OpFn = async (ctx, [branch, steps]: [string, RebaseStep[]]) => {
+  const base = ctx.extra.base;
+  if (!base) throw new Error("이 브랜치의 시작점을 알 수 없습니다.");
+  const tip = await rev(ctx.root, branch);
+  checkPlan(await firstParentRange(ctx.root, base, tip), steps);
+  const items: ChainItem[] = steps.filter((s) => s.action !== "drop").map((s) => ({
+    id: s.id,
+    fixup: s.action === "squash" || s.action === "fixup",
+    msg: s.action === "reword" || s.action === "squash" ? s.msg : undefined,
+  }));
+  let next: string;
+  try {
+    next = await chain(ctx.root, base, items);
+  } catch (err) {
+    if (!isConflict(err)) throw err;
+    if (branch !== (await headInfo(ctx.root)).branch) throw needsCheckout(err, branch);
+    // 현재 브랜치: 실제 rebase -i 로 같은 계획을 실행하고, 충돌이 나면 멈춰서 해결 모드로
+    const dir = path.join(await gitDir(ctx.root), "ygg-rebase");
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.mkdirSync(dir, { recursive: true });
+    steps.forEach((s, i) => { if (s.msg !== undefined) fs.writeFileSync(path.join(dir, `msg-${i}`), s.msg); });
+    const todo = path.join(dir, "todo");
+    fs.writeFileSync(todo, todoFor(steps, (i) => path.join(dir, `msg-${i}`)));
+    await backup(ctx.root, branch, tip);
+    await runOrStop(ctx, ["rebase", "-i", "--autostash", base], { env: { GIT_SEQUENCE_EDITOR: `cp '${todo.replace(/'/g, "'\\''")}'` } });
+    return;
+  }
+  const n = steps.filter((s) => s.action !== "pick").length;
+  ctx.note(`git rebase -i ${short(base)}  # ${branch}: ${steps.map((s) => `${s.action} ${short(s.id)}`).join(", ")}${n ? "" : " (순서만)"}`);
+  await setBranch(ctx, branch, next, tip);
+};
+
+export const historyOps = { rebasePlan, cherryPick, moveCommit, dropCommit, rebaseStem, squash, reorder, revertCommit, merge };

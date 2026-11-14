@@ -108,6 +108,39 @@ test("여러 커밋을 한꺼번에 cherry-pick (떨어진 커밋도, 오래된 
   assert.equal(fs.existsSync(path.join(repo, "api.js")), false, "사이의 f2 는 가져오지 않는다");
 });
 
+test("커밋 정리: 순서 바꾸기 · 메시지 수정 · squash · 빼기를 한 번에 (체크아웃 없이)", async () => {
+  // feat: f1 ─ f2 ─ f3  →  f3(새 메시지) ─ f1+f2(합친 메시지), 그리고 아무것도 빼지 않은 경우와 뺀 경우
+  await run("rebasePlan", ["feat", [
+    { id: ids.f3, action: "reword", msg: "테스트 먼저" },
+    { id: ids.f1, action: "pick" },
+    { id: ids.f2, action: "squash", msg: "로그인과 API" },
+  ]], { base: ids.init });
+  assert.deepEqual(msgs("feat", 3), ["로그인과 API", "테스트 먼저", "init"]);
+  assert.deepEqual(sh(repo, "show", "--name-only", "--format=", "feat").split("\n").sort(), ["api.js", "app.js", "login.js"]);
+  assert.equal(sh(repo, "branch", "--show-current"), "main", "작업 영역은 그대로");
+  const tipBefore = tip("feat");
+  const bad = await execute(repo, "rebasePlan", ["feat", [{ id: sh(repo, "rev-parse", "feat~1"), action: "drop" }, { id: tipBefore, action: "fixup" }]], { base: ids.init });
+  assert.equal(bad.ok, false, "남는 첫 커밋이 fixup 이면 거부");
+  assert.match(bad.error ?? "", /합칠 커밋이 없습니다/);
+  await run("rebasePlan", ["feat", [{ id: sh(repo, "rev-parse", "feat~1"), action: "drop" }, { id: tipBefore, action: "pick" }]], { base: ids.init });
+  assert.deepEqual(msgs("feat", 2), ["로그인과 API", "init"]);
+  const stale = await execute(repo, "rebasePlan", ["feat", [{ id: ids.f1, action: "pick" }]], { base: ids.init });
+  assert.equal(stale.ok, false, "브랜치와 맞지 않는 계획은 거부");
+});
+
+test("커밋 정리: 충돌이 나면 현재 브랜치에서는 실제 rebase -i 로 멈추고, 해결 후 계속하면 계획대로", async () => {
+  // fix: x1(app.js=fixed) ─ x2(app.js=again). x1 을 빼면 x2 가 m1 위에서 app.js 충돌
+  sh(repo, "switch", "-q", "fix");
+  write("app.js", "again\n"); sh(repo, "commit", "-qam", "x2");
+  const x2 = tip("fix");
+  const r = await run("rebasePlan", ["fix", [{ id: ids.x1, action: "drop" }, { id: x2, action: "reword", msg: "x2 만 남김" }]], { base: ids.m1 });
+  assert.match(r.warnings?.[0] ?? "", /충돌로 멈췄습니다/);
+  write("app.js", "again\n"); sh(repo, "add", "app.js");
+  await run("continueOp", []);
+  assert.deepEqual(msgs("fix", 2), ["x2 만 남김", "m1"], "멈췄다 이어서도 메시지가 바뀐다 (exec amend)");
+  assert.equal(fs.readFileSync(path.join(repo, "app.js"), "utf8"), "again\n");
+});
+
 test("되돌리기: rebase → undo 하면 원래 위치", async () => {
   const before = tip("feat");
   await run("rebaseStem", ["feat", tip("main")], { base: ids.init });

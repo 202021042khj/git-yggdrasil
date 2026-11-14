@@ -10,7 +10,7 @@ export type OpName =
   | "tagCreate" | "tagMove" | "tagDelete" | "tagPush"
   | "stashPush" | "stashPop" | "stashDrop"
   | "cherryPick" | "moveCommit" | "dropCommit" | "rebaseStem" | "squash" | "reorder" | "revertCommit" | "merge" | "splitCommit"
-  | "resolveFile" | "resolveContent" | "checkoutPull" | "continueOp" | "skipOp" | "abortOp"
+  | "resolveFile" | "resolveContent" | "checkoutPull" | "rebasePlan" | "continueOp" | "skipOp" | "abortOp"
   | "undo"
   | "redo";
 
@@ -23,6 +23,15 @@ export interface OpExtra {
   base?: string | null;
   /** 줄기의 커밋들 (오래된 것부터) */
   stem?: string[];
+}
+
+/** 커밋 정리(interactive rebase) 한 줄: 위에서부터 오래된 커밋 */
+export interface RebaseStep {
+  id: string;
+  /** pick 그대로 · reword 메시지 바꿈 · squash 앞 커밋에 합치고 메시지도 합침 · fixup 앞 커밋에 합치고 메시지 버림 · drop 빼기 */
+  action: "pick" | "reword" | "squash" | "fixup" | "drop";
+  /** reword·squash 때 새 메시지 (squash 는 합친 커밋의 메시지) */
+  msg?: string;
 }
 
 export interface RunResult {

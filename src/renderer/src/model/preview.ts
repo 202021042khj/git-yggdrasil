@@ -4,7 +4,7 @@
 import { short } from "@/lib/html";
 import { pathspec, underAny } from "@/lib/paths";
 import { ancestors, generations, isAncestor, mergeBase, ownerBranch, pushedSet, stems } from "@/model/graph";
-import type { OpName } from "@shared/types/ipc";
+import type { OpName, RebaseStep } from "@shared/types/ipc";
 import type { RepoState } from "@shared/types/repo";
 
 export interface Preview {
@@ -154,6 +154,41 @@ export const previews: Partial<Record<OpName, PreviewFn>> = {
     }
     const rewrites = rewriteStem(s, br, specs);
     return ok(s, `${label(s0, src)} 를 ${label(s0, dst)} 에 합치기`, `git rebase -i  # fixup ${short(src)} → ${short(dst)}`, { rewrites });
+  },
+
+  /** 커밋 정리(interactive rebase): 위에서부터 오래된 커밋 */
+  rebasePlan(s0, branch: string, steps: RebaseStep[]) {
+    const st = stems(s0).stems[branch];
+    if (!st) return fail("로컬 브랜치만 정리할 수 있습니다.");
+    if (steps.length !== st.ids.length || !steps.every((x) => st.ids.includes(x.id))) return fail("계획이 지금 브랜치의 커밋과 맞지 않습니다.");
+    const kept = steps.filter((x) => x.action !== "drop");
+    if (!kept.length) return fail("커밋을 모두 뺄 수는 없습니다.");
+    if (kept[0].action === "squash" || kept[0].action === "fixup") return fail("맨 위(가장 오래된) 커밋은 앞에 합칠 커밋이 없습니다.");
+    if (steps.some((x) => (x.action === "reword" || x.action === "squash") && !(x.msg ?? "").trim())) return fail("메시지가 비어 있는 줄이 있습니다.");
+    const s = clone(s0);
+    const specs: Spec[] = [];
+    for (const x of kept) {
+      const c = s.commits[x.id];
+      const last = specs[specs.length - 1];
+      if ((x.action === "squash" || x.action === "fixup") && last) {
+        const files = [...(last.files ?? s.commits[last.keep!].files), ...c.files];
+        specs[specs.length - 1] = { msg: x.action === "squash" ? x.msg! : last.msg ?? s.commits[last.keep!].msg, files: [...new Set(files)] };
+      } else if (x.action === "reword") specs.push({ msg: x.msg!, files: [...c.files] });
+      else specs.push({ keep: x.id });
+    }
+    const same = specs.length === st.ids.length && specs.every((sp, i) => sp.keep === st.ids[i]);
+    if (same) return fail("바뀐 것이 없습니다.");
+    // 순서를 바꾼 커밋이 같은 파일을 건드리면 충돌할 수 있다
+    const moved = kept.filter((x, i) => st.ids.filter((id) => kept.some((k) => k.id === id))[i] !== x.id);
+    const seen = new Map<string, number>();
+    moved.forEach((x) => s0.commits[x.id].files.forEach((f) => seen.set(f, (seen.get(f) ?? 0) + 1)));
+    const dropped = steps.filter((x) => x.action === "drop");
+    const later = new Set(kept.flatMap((x) => s0.commits[x.id].files));
+    const conflicts = [...new Set([...[...seen].filter(([, n]) => n > 1).map(([f]) => f), ...dropped.flatMap((x) => s0.commits[x.id].files.filter((f) => later.has(f)))])];
+    const rewrites = rewriteStem(s, branch, specs);
+    const counts = (["reword", "squash", "fixup", "drop"] as const).map((a) => [a, steps.filter((x) => x.action === a).length] as const).filter(([, n]) => n);
+    const parts = [moved.length ? "순서 변경" : "", ...counts.map(([a, n]) => `${{ reword: "메시지 수정", squash: "합치기", fixup: "합치기(메시지 버림)", drop: "빼기" }[a]} ${n}`)].filter(Boolean);
+    return ok(s, `${branch} 커밋 정리: ${parts.join(", ")}`, `git rebase -i ${st.base ? short(st.base) : "--root"}  # ${branch}`, { conflicts, rewrites });
   },
 
   reorder(s0, id: string, branch: string, index: number) {

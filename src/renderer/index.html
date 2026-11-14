@@ -159,6 +159,17 @@
       </div>
     </form>
   </dialog>
+  <dialog id="rebase" class="ask rebase" aria-labelledby="rebase-title">
+    <h2 id="rebase-title">커밋 정리</h2>
+    <p class="muted rebase-help">위가 오래된 커밋입니다. 줄을 끌거나 ↑↓(또는 Alt+↑↓)로 순서를 바꾸고, 줄마다 할 일을 고르세요.</p>
+    <ol id="rebase-list" class="rebase-list"></ol>
+    <div id="rebase-result" class="rebase-result" aria-live="polite"></div>
+    <div class="ask-actions">
+      <button type="button" id="rebase-run" class="primary">실행</button>
+      <button type="button" id="rebase-reset">처음대로</button>
+      <button type="button" id="rebase-cancel">취소</button>
+    </div>
+  </dialog>
   <dialog id="notice" class="ask notice" aria-labelledby="notice-title">
     <form method="dialog">
       <h2 id="notice-title"></h2>
