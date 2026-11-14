@@ -98,7 +98,8 @@
         <button type="button" id="filter-clear" class="small" hidden>필터 해제</button>
       </div>
       <section class="canvas-wrap" id="canvas-wrap">
-      <svg id="graph" role="img" aria-label="커밋 그래프"></svg>
+      <svg id="graph" role="group" aria-label="커밋 그래프" aria-describedby="graph-help"></svg>
+      <p id="graph-help" class="sr-only">화살표로 커밋 사이를 움직이고 Enter 로 고릅니다. Space 는 여러 개 고르기, Shift+F10 은 할 일 메뉴, Home 과 End 는 줄기의 처음과 끝입니다.</p>
       <svg id="ghost-graph" aria-hidden="true"></svg>
     </section>
       <button type="button" id="load-more" class="load-more" hidden>이전 커밋 더 불러오기</button>
@@ -232,7 +233,7 @@
   </dialog>
   <dialog id="search" class="ask search" aria-label="커밋·파일 찾기">
     <input id="search-input" type="search" placeholder="커밋 메시지, 작성자, 해시, 파일 이름" aria-label="찾기" autocomplete="off" spellcheck="false" />
-    <div id="search-list" class="search-list" role="listbox"></div>
+    <div id="search-list" class="search-list" role="listbox" aria-label="찾은 커밋과 파일"></div>
   </dialog>
   <div id="tip" class="tip hidden"></div>
   <div id="ghost" class="ghost hidden"></div>

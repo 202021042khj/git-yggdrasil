@@ -76,6 +76,22 @@ dev/debug.ts     window.__yggDebug (점검용)
 - 색은 `:root` 의 토큰(`--bg`, `--panel`, `--line`, `--text`, `--muted`, `--accent`, `--tag` …)만 씁니다. 라이트 모드는 `prefers-color-scheme: light` 에서 같은 토큰을 덮어씁니다.
 - 숨김은 `hidden` 속성 (`[hidden] { display:none !important }`) 또는 `.hidden` 클래스.
 
+## 접근성
+
+- 끌어 놓는 조작은 모두 **오른쪽 클릭 / Shift+F10 메뉴**로도 할 수 있어야 합니다 (WCAG 2.5.7). 새 드래그 조작은 `interactions/targets.ts` 에 넣으면 메뉴에도 저절로 나옵니다.
+- 그래프의 커밋·이름표는 `role="button"` 과 말로 된 `aria-label`(메시지 · 해시 · 줄기 · push 여부 · HEAD)을 가집니다. 그래프 안에서 Tab 으로 닿는 커밋은 하나뿐이고(roving tabindex), 나머지는 화살표로 움직입니다.
+- 메뉴와 창을 닫으면 초점을 열기 전 자리로 돌려줍니다.
+- 색은 토큰으로만 쓰고, `tests/e2e/a11y.spec.ts` 가 어두운·밝은 화면 모두에서 axe(WCAG 2.2 AA)로 점검합니다.
+
+| 키 | 동작 |
+|---|---|
+| ←→ / ↑↓ | 같은 줄기 앞뒤 커밋 / 위아래 줄기의 가까운 커밋 |
+| Home · End | 줄기의 처음 · 끝 |
+| Enter | 커밋 고르기 (사이드바 브랜치에서는 checkout) |
+| Space | 여러 개 고르기에 더하기·빼기 |
+| Shift+F10 · 메뉴 키 | 할 일 메뉴 (끌어 놓기로 하는 조작 전부) |
+| ⌘K · ⌘Z · ⌘⇧Z · ⌘, | 찾기 · 되돌리기 · 다시 실행 · 설정 |
+
 ## 테스트
 
 - `tests/renderer/*.test.ts` — 화면의 순수 계산(`model/`)을 시험합니다. Vitest 를 main·renderer 두 프로젝트로 나눠 `@/` 가 각 프로세스 폴더를 가리키게 했고, 타입 검사는 `tsconfig.web.json` 이 맡습니다. DOM 을 쓰는 코드는 넣지 않습니다.

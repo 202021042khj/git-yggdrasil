@@ -15,11 +15,14 @@ export interface MenuItem {
 
 let items: MenuItem[] | null = null;
 let onCloseHook: (() => void) | null = null;
+/** 메뉴를 닫으면 초점을 열기 전 자리로 돌려준다 (키보드 사용자가 길을 잃지 않게) */
+let returnFocus: HTMLElement | SVGElement | null = null;
 
 export const menuOpen = () => !byId("v2-menu").classList.contains("hidden");
 
 export function openMenu(x: number, y: number, title: string, list: MenuItem[], onClose?: () => void): void {
   closeMenu();
+  returnFocus = document.activeElement instanceof HTMLElement || document.activeElement instanceof SVGElement ? document.activeElement : null;
   const m = byId("v2-menu");
   // 모달 창(dialog) 은 화면 맨 위 층에 그려지므로, 그 위에서 연 메뉴는 창 안으로 옮겨야 보인다
   const host = document.querySelector("dialog[open]") ?? document.body;
@@ -58,6 +61,9 @@ export function closeMenu(): void {
   const hook = onCloseHook;
   onCloseHook = null;
   hook?.();
+  const back = returnFocus;
+  returnFocus = null;
+  if (back?.isConnected && (m.contains(document.activeElement) || document.activeElement === document.body)) back.focus({ preventScroll: true });
 }
 
 /** 메뉴가 열려 있을 때의 키 처리. 처리했으면 true */

@@ -5,6 +5,7 @@ import { byId } from "@/lib/dom";
 import { esc, short } from "@/lib/html";
 import { branchOrder, syncInfo } from "@/model/graph";
 import { layout } from "@/model/layout";
+import { openContextMenu } from "@/interactions/contextMenu";
 import { saveSettings } from "@/sections/SettingsSection";
 import { askText } from "@/ui/dialog";
 
@@ -24,7 +25,7 @@ export function renderSidebar(): void {
     }
     const wt = (s.worktrees || []).find((w) => w.branch === b && !w.current);
     const wtBadge = wt ? `<span class="badge wt" title="${esc(wt.path)} 에서 체크아웃 중 — 여기서는 체크아웃할 수 없습니다">다른 폴더</span>` : "";
-    return `<div class="br ${b === s.head ? "head" : ""}" data-checkout="${esc(b)}" title="더블클릭: checkout · 오른쪽 클릭: 메뉴">
+    return `<div class="br ${b === s.head ? "head" : ""}" data-checkout="${esc(b)}" role="button" tabindex="0" aria-label="브랜치 ${esc(b)}${b === s.head ? ", 체크아웃됨" : ""}" title="더블클릭·Enter: checkout · 오른쪽 클릭·Shift+F10: 메뉴">
       <span class="dot" style="background:${colorOf(b)}"></span>${b === s.head ? "◉ " : ""}${esc(b)}${wtBadge}${badge}</div>`;
   });
   const detached = !s.head && s.detached
@@ -39,6 +40,19 @@ export function mountSidebar(): void {
     if (!p) return;
     const b = p.dataset.pull!;
     void run({ op: "pull", args: [b, store.ui.pullMode], summary: `${b} pull (${store.ui.pullMode})` });
+  });
+  // 키보드: Enter 는 checkout, Shift+F10·메뉴 키는 할 일 메뉴
+  byId("repo-tree").addEventListener("keydown", (e) => {
+    const row = (e.target as Element).closest<HTMLElement>("[data-checkout]");
+    if (!row) return;
+    const b = row.dataset.checkout!;
+    if (e.key === "Enter" && b !== store.repo.head) { e.preventDefault(); void run({ op: "checkout", args: [b], summary: `${b} 로 전환` }); }
+    if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
+      e.preventDefault();
+      e.stopPropagation();
+      const r = row.getBoundingClientRect();
+      openContextMenu({ kind: "label", branch: b }, r.left + 20, r.bottom);
+    }
   });
   byId("repo-tree").addEventListener("dblclick", (e) => {
     const row = (e.target as Element).closest<HTMLElement>("[data-checkout]");

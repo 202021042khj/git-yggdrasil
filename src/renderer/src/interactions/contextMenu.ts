@@ -134,7 +134,9 @@ export function mountContextMenu(): void {
   // 커밋 노드에 포커스가 있을 때 키보드로 메뉴 열기 (Shift+F10 / 메뉴 키)
   document.addEventListener("keydown", (e) => {
     if (!(e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))) return;
-    const id = store.ui.selected;
+    // 키보드로 옮겨 간 커밋이 있으면 그것, 아니면 고른 커밋
+    const focused = (document.activeElement as Element | null)?.closest?.<SVGGElement>("#graph .node[data-id]")?.dataset.id;
+    const id = focused ?? store.ui.selected;
     if (!id) return;
     e.preventDefault();
     const node = document.querySelector(`#graph .node[data-id="${CSS.escape(id)}"]`);

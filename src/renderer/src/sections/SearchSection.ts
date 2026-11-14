@@ -70,6 +70,8 @@ export function mountSearch(): void {
       e.preventDefault();
       if (rows.length) { active = (active + (e.key === "ArrowDown" ? 1 : rows.length - 1)) % rows.length; draw(); }
     } else if (e.key === "Enter") { e.preventDefault(); choose(rows[active]); }
+    // 검색 칸의 Esc 는 기본으로 글자만 지우므로, 한 번에 창을 닫는다
+    else if (e.key === "Escape") { e.preventDefault(); close(); }
   });
   byId("search-list").addEventListener("click", (e) => {
     const b = (e.target as Element).closest<HTMLElement>("[data-i]");

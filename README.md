@@ -64,6 +64,7 @@ npm run dist:mac # 배포용 .dmg (docs/RELEASE.md)
 - 서브모듈(상태·받기·열기), worktree(목록·다른 폴더에 체크아웃·열기·지우기, 다른 폴더가 쓰는 브랜치 표시), Git LFS 파일 표시와 미설치 안내
 - 예전 커밋 찾기(reflog): HEAD 기록과 앱 백업을 보여 주고, 어느 브랜치에서도 닿지 않는 커밋을 표시. 새 브랜치로 살리기·현재 브랜치에 복사·그 커밋으로 되돌리기(reset --keep)
 - 설정 (⌘,): 화면 색(시스템·밝게·어둡게), 글자 크기, 외부 에디터 명령, 자동 fetch, pull 방식, 켤 때 마지막 저장소 열기
+- 키보드만으로 사용: 그래프 화살표 탐색, Enter 고르기, Space 여러 개, Shift+F10 메뉴 (docs/ARCHITECTURE.md 의 접근성 표)
 - 다른 OAuth App 으로 시험하려면 `YGG_GH_CLIENT_ID` 환경 변수로 Client ID 를 바꿀 수 있음
 
 ## 구조

@@ -109,6 +109,8 @@ export interface RenderOptions {
   minWidth?: number;
   /** 필터에 맞지 않아 흐리게 그릴 커밋 */
   dim?: Set<string>;
+  /** 키보드 초점을 둘 커밋 (없으면 선택한 커밋 → HEAD) */
+  focusId?: string | null;
   /** 함께 고른 커밋 (여러 개 선택) */
   multi?: Set<string>;
 }
@@ -166,9 +168,13 @@ export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
       ? `<rect x="-10" y="-10" width="20" height="20" transform="rotate(45)" style="stroke:${p.lane.color};fill:${fill}"/>`
       : `<circle r="11" style="stroke:${p.lane.color};fill:${fill}"/>`;
     const tip = `${short(c)} ${cm.msg}${cm.author ? `\n${cm.author} · ${relTime(cm.date)}` : ""}\n파일: ${cm.files.join(", ") || "-"}\n${isPushed ? "push 됨 (공유된 히스토리)" : "로컬 전용 (자유롭게 편집 가능)"}`;
-    out.push(`<g class="${cls}" ${opts.interactive ? `data-drag="commit" data-drop="commit" data-id="${c}" tabindex="-1"` : ""} transform="translate(${p.x},${p.y})">
+    // 화면 낭독기용 이름: 메시지 · 해시 · 줄기 · 공유 여부 · HEAD (그래프 안에서는 화살표로 이동, 하나만 Tab 으로 닿는다)
+    const where = labels[c]?.filter((r) => r.kind === "local").map((r) => r.name).join(", ");
+    const spoken = `커밋 ${cm.msg}, ${short(c)}, ${p.lane.name.startsWith("·") ? "이름 없는 줄기" : `${p.lane.name} 줄기`}${where ? `, 브랜치 ${where} 끝` : ""}${c === headTip ? ", 지금 체크아웃" : ""}, ${isPushed ? "push 됨" : "로컬 전용"}${cm.parents.length > 1 ? ", merge 커밋" : ""}`;
+    const focusable = opts.interactive && c === (opts.focusId ?? opts.selected ?? headTip);
+    out.push(`<g class="${cls}" ${opts.interactive ? `data-drag="commit" data-drop="commit" data-id="${c}" role="button" aria-label="${esc(spoken)}" aria-pressed="${opts.selected === c || !!opts.multi?.has(c)}" tabindex="${focusable ? 0 : -1}"` : ""} transform="translate(${p.x},${p.y})">
       ${c === headTip ? `<circle class="halo" r="17"/>` : ""}${shape}
-      <text class="msg" y="-22">${esc(trunc(cm.msg, 15))}</text><title>${esc(tip)}</title></g>`);
+      <text class="msg" y="-22" aria-hidden="true">${esc(trunc(cm.msg, 15))}</text><title>${esc(tip)}</title></g>`);
 
     (labels[c] || []).forEach((r, i) => {
       out.push(refLabel(s, r, p.x, p.y + 30 + i * LABEL_STEP, laneColor(r.name) || p.lane.color, !!opts.interactive));
@@ -179,7 +185,7 @@ export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
   const laneNames = L.lanes.filter((ln) => ln.kind !== "anon").map((ln) =>
     `<g class="lane-tag" transform="translate(0,${ln.y})"><rect x="4" y="-11" width="86" height="20" rx="4"/>
       <text class="lane-name ${ln.kind}" x="10" y="4" style="fill:${ln.color}">${esc(trunc(ln.name, 11))}</text><title>${esc(ln.name)}</title></g>`).join("");
-  out.push(`<g id="${opts.interactive ? "lane-names" : "lane-names-preview"}" class="lane-names">${laneNames}</g>`);
+  out.push(`<g id="${opts.interactive ? "lane-names" : "lane-names-preview"}" class="lane-names" aria-hidden="true">${laneNames}</g>`);
   return { svg: out.join(""), width: W, height: L.height, layout: L };
 }
 
@@ -207,7 +213,10 @@ function refLabel(s: RepoState, r: RefLabel, x: number, y: number, laneColor: st
     : r.kind === "tag" ? `data-drag="tag" data-tag="${esc(r.name)}"` : "";
   const title = r.kind === "tag" ? `태그 ${r.name}${s.tags?.[r.name]?.message ? `\n${s.tags[r.name].message}` : ""}`
     : `${r.name}${incoming ? `\n받을 커밋 ${incoming}개 — 로컬 이름표로 끌어 놓으면 pull` : ""}`;
-  return `<g class="ref ${r.kind} ${isHead ? "head" : ""} ${incoming ? "incoming" : ""}" ${attrs} transform="translate(${x - w / 2},${y})">
+  const spoken = r.kind === "tag" ? `태그 ${r.name}` : r.kind === "remote" ? `원격 브랜치 ${r.name}${incoming ? `, 받을 커밋 ${incoming}개` : ""}`
+    : r.kind === "detached" ? "HEAD, 브랜치 없음" : r.kind === "op" ? "진행 중인 작업" : `브랜치 ${r.name}${isHead ? ", 체크아웃됨" : ""}`;
+  const a11y = interactive ? ` role="button" aria-label="${esc(spoken)}" tabindex="-1"` : "";
+  return `<g class="ref ${r.kind} ${isHead ? "head" : ""} ${incoming ? "incoming" : ""}" ${attrs}${a11y} transform="translate(${x - w / 2},${y})">
     <rect width="${w}" height="20" rx="10" style="stroke:${color};fill:${r.kind === "remote" || r.kind === "tag" ? "var(--bg)" : color}"/>
-    <text x="${w / 2}" y="14">${esc(text)}</text><title>${esc(title)}</title></g>`;
+    <text x="${w / 2}" y="14" aria-hidden="true">${esc(text)}</text><title>${esc(title)}</title></g>`;
 }
