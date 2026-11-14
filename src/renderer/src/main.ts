@@ -18,6 +18,7 @@ import { mountReflog } from "@/sections/ReflogSection";
 import { renderOpBanner, mountOpBanner } from "@/sections/OpBannerSection";
 import { renderRemotes, mountRemotes } from "@/sections/RemotesSection";
 import { mountSearch } from "@/sections/SearchSection";
+import { loadSettings, mountSettings } from "@/sections/SettingsSection";
 import { renderSidebar, mountSidebar } from "@/sections/SidebarSection";
 import { renderTopbar, mountTopbar } from "@/sections/TopbarSection";
 import { cloneFlow, mountWelcome, showWelcome } from "@/sections/WelcomeSection";
@@ -50,6 +51,7 @@ mountDetail((id) => { if (!revealCommit(id)) toast("그래프에 아직 불러�
 mountSearch();
 mountRebaseEditor();
 mountReflog();
+mountSettings();
 mountWelcome();
 mountGithub();
 installDebug();
@@ -60,5 +62,7 @@ window.gitApi.onMenuOpen(() => void open(window.gitApi.pick()));
 window.gitApi.onMenuClone(() => void cloneFlow());
 
 showWelcome();
-const last = recent()[0];
-if (last) void open(window.gitApi.open(last));
+void loadSettings().then((s) => {
+  const last = recent()[0];
+  if (s.reopenLast && last) void open(window.gitApi.open(last));
+});

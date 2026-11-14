@@ -125,6 +125,23 @@ export interface ReflogEntry {
   source: "reflog" | "backup";
 }
 
+/** 앱 설정 (userData/settings.json) */
+export interface Settings {
+  /** 화면 색: 시스템을 따름 · 밝게 · 어둡게 */
+  theme: "system" | "light" | "dark";
+  /** 화면 확대 (0.8 ~ 1.5) */
+  zoom: number;
+  /** 충돌 파일 등을 열 에디터 명령. 비우면 OS 기본 앱 (예: "code", "/usr/local/bin/subl -w") */
+  editor: string;
+  /** 자동 fetch 간격 (분). 0 이면 끔 */
+  autoFetchMinutes: number;
+  /** 켤 때 마지막 저장소를 다시 연다 */
+  reopenLast: boolean;
+  pullMode: "merge" | "rebase";
+}
+
+export const DEFAULT_SETTINGS: Settings = { theme: "system", zoom: 1, editor: "", autoFetchMinutes: 0, reopenLast: true, pullMode: "merge" };
+
 export interface GitApi {
   pick(): Promise<RepoState | null>;
   open(dir: string): Promise<RepoState>;
@@ -143,6 +160,10 @@ export interface GitApi {
   conflictText(file: string): Promise<string | null>;
   /** HEAD reflog 와 앱 백업 (최신 순) */
   reflog(): Promise<ReflogEntry[]>;
+  getSettings(): Promise<Settings>;
+  /** 바꾼 항목만 넘긴다. 검사·정리한 전체 설정을 돌려준다 */
+  setSettings(patch: Partial<Settings>): Promise<Settings>;
+  onMenuSettings(fn: () => void): void;
   /** GitHub 밖 HTTPS 호스트의 사용자 이름·토큰을 git 자격 증명 도우미에 저장 */
   saveCredential(args: { url: string; username: string; password: string; enableHelper?: boolean }): Promise<CredentialSaveResult>;
   forgetCredential(url: string): Promise<void>;

@@ -1,11 +1,11 @@
 // 사이드바: 저장소 · 브랜치 목록 (앞섬/뒤처짐, pull 배지) · 새 브랜치 · pull 방식
 import { run } from "@/app/actions";
 import { store } from "@/app/store";
-import { PULL_MODE_KEY } from "@/constants/storage";
 import { byId } from "@/lib/dom";
 import { esc, short } from "@/lib/html";
 import { branchOrder, syncInfo } from "@/model/graph";
 import { layout } from "@/model/layout";
+import { saveSettings } from "@/sections/SettingsSection";
 import { askText } from "@/ui/dialog";
 
 export function renderSidebar(): void {
@@ -34,10 +34,6 @@ export function renderSidebar(): void {
 }
 
 export function mountSidebar(): void {
-  try {
-    const saved = localStorage.getItem(PULL_MODE_KEY);
-    if (saved === "merge" || saved === "rebase") store.update({ pullMode: saved });
-  } catch { /* 기본 merge */ }
   byId("repo-tree").addEventListener("click", (e) => {
     const p = (e.target as Element).closest<HTMLElement>("[data-pull]");
     if (!p) return;
@@ -49,9 +45,7 @@ export function mountSidebar(): void {
     if (row && row.dataset.checkout !== store.repo.head) void run({ op: "checkout", args: [row.dataset.checkout], summary: `${row.dataset.checkout} 로 전환` });
   });
   byId<HTMLSelectElement>("pull-mode").onchange = (e) => {
-    const mode = (e.target as HTMLSelectElement).value as "merge" | "rebase";
-    try { localStorage.setItem(PULL_MODE_KEY, mode); } catch { /* 이번 실행에서만 */ }
-    store.update({ pullMode: mode });
+    void saveSettings({ pullMode: (e.target as HTMLSelectElement).value as "merge" | "rebase" });
   };
   byId("new-branch").onclick = async () => {
     const s = store.repo;

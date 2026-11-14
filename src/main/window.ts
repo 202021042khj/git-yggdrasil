@@ -36,6 +36,7 @@ export function buildMenu(): void {
       submenu: [
         { role: "about" },
         { label: "업데이트 확인…", click: () => checkForUpdatesManually() },
+        { label: "설정…", accelerator: "CmdOrCtrl+,", click: () => send("menu:settings") },
         { type: "separator" },
         { role: "services" },
         { type: "separator" },

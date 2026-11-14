@@ -16,7 +16,7 @@ Electron + 바닐라 TypeScript 에 맞게 옮긴 것입니다. React/Next.js �
 src/main      Node · git CLI · 파일 감시 · GitHub API      (렌더러를 믿지 않는다)
 src/preload   contextBridge 로 gitApi · ghApi 만 노출       (sandbox, CJS)
 src/renderer  화면. Node 접근 없음, window.gitApi 로만 요청
-src/shared    양쪽이 함께 쓰는 타입만 (런타임 코드 없음)
+src/shared    양쪽이 함께 쓰는 타입과 기본값 상수 (로직 없음)
 ```
 
 - IPC 채널 이름과 인자 모양은 `src/shared/types/ipc.ts` 의 `GitApi` / `GhApi` 가 유일한 정의입니다. 채널을 더하면 여기, `src/main/ipc/*Ipc.ts`, `src/preload/index.ts` 세 곳을 함께 고칩니다.
@@ -34,6 +34,7 @@ src/shared    양쪽이 함께 쓰는 타입만 (런타임 코드 없음)
 | `repo/session.ts` | 열린 저장소 하나와 창 하나, 파일 감시 |
 | `ipc/` | IPC 핸들러 등록만 (로직 없음) |
 | `dev/smoke.ts` | 점검용 실행 (`YGG_SMOKE`) |
+| `settings.ts` | 앱 설정 저장·적용 (화면 색·확대·에디터), `userData/settings.json` |
 | `update.ts` | 자동 업데이트 (패키지 앱에서만, GitHub Releases) |
 
 **조작 추가 순서:** `OpName` 에 이름 추가 → `*Ops.ts` 에 `OpFn` 작성 → 레지스트리 등록 → `tests/main/*.test.ts` 에 임시 저장소 테스트 → (화면) `model/preview.ts` 에 미리보기, `interactions/targets.ts` 또는 `contextMenu.ts` 에 진입점.

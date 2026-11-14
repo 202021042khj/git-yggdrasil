@@ -562,3 +562,14 @@ table.split td:nth-child(3) { border-left: 1px solid var(--line); }
 .rl-id { font-size: 11px; color: var(--muted); }
 
 .ask input[type="checkbox"] { width: auto; margin: 0; }
+
+/* ---------- 설정 ---------- */
+.settings { width: min(520px, calc(100vw - 32px)); }
+.settings h2 { font-size: 15px; margin: 0 0 12px; }
+.set-grid { display: grid; grid-template-columns: 90px 1fr; gap: 12px 12px; align-items: center; }
+.set-grid > label { font-size: var(--fs-sm); font-weight: 600; }
+.set-grid select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 5px 6px; justify-self: start; }
+.set-zoom { display: inline-flex; align-items: center; gap: 8px; }
+.set-zoom input[type="range"] { width: 200px; padding: 0; border: 0; background: none; accent-color: var(--accent); }
+.set-hint { display: block; font-size: 11.5px !important; margin-top: 4px; line-height: 1.5; }
+.set-check { display: inline-flex !important; align-items: center; gap: 6px; font-weight: 400 !important; }

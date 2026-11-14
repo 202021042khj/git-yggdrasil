@@ -4,6 +4,7 @@ import { store } from "@/app/store";
 import { contextItems } from "@/interactions/contextMenu";
 import { preview } from "@/model/preview";
 import { injectPulls } from "@/sections/PullsSection";
+import { openSettings } from "@/sections/SettingsSection";
 
 export function installDebug(): void {
   window.__yggDebug = {
@@ -14,5 +15,6 @@ export function installDebug(): void {
     preview,
     contextItems,
     injectPulls,
+    openSettings,
   };
 }
