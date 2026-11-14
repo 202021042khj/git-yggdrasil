@@ -3,7 +3,8 @@
 // 각 조작은 실행한 명령 목록을 돌려준다. 실패하면 git 의 오류 메시지를 그대로 담아 던진다.
 const { git, gitRaw } = require("./git");
 
-const NET = { timeout: 120000 }; // 네트워크 명령 (fetch/pull/push)
+const NET = { timeout: 120000, net: true }; // 네트워크 명령 (fetch/pull/push): GitHub 로그인 토큰을 붙인다
+const github = require("./github");
 
 // 경로 목록 → git pathspec ("" 는 저장소 전체)
 const spec = (paths) => (paths || [""]).map((p) => (p === "" ? "." : p));
@@ -48,7 +49,11 @@ function runner(root) {
   const cmds = [];
   const note = (line) => cmds.push(line); // 내부 plumbing 대신 사람이 읽을 대응 명령을 기록
   const run = async (args, opts) => {
-    cmds.push("git " + args.map((a) => (/[\s"']/.test(a) ? JSON.stringify(a) : a)).join(" "));
+    cmds.push("git " + args.map((a) => (/[\s"']/.test(a) ? JSON.stringify(a) : a)).join(" ")); // 기록에는 토큰 설정을 넣지 않는다
+    if (opts && opts.net) {
+      const a = await github.gitAuth().catch(() => null);
+      if (a) return git(root, [...a.args, ...args], { ...opts, env: { ...(opts.env || {}), ...a.env } });
+    }
     return git(root, args, opts);
   };
   return { cmds, run, note };

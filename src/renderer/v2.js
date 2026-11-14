@@ -300,6 +300,7 @@ function pickMenu(i) {
   closeMenu();
   if (i < 0 || !items || !items[i]) return;
   const a = items[i];
+  if (a.custom) return a.custom(); // 실행이 git 조작이 아닌 항목 (예: GitHub PR 만들기)
   runAction(a.src, a.tgt, a);
 }
 function closeMenu() {

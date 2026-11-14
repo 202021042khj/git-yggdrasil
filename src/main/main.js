@@ -1,5 +1,6 @@
 // main.js — Electron 메인 프로세스: 창, 저장소 열기, 파일 변경 감지
-const { app, BrowserWindow, dialog, ipcMain, Menu } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, shell, safeStorage, clipboard } = require("electron");
+const github = require("./github");
 const fs = require("node:fs");
 const path = require("node:path");
 const { git, readRepo, repoRoot } = require("./git");
@@ -66,7 +67,8 @@ ipcMain.handle("repo:clone", async (_e, url) => {
   const dest = path.join(r.filePaths[0], name);
   if (fs.existsSync(dest)) throw new Error(`이미 같은 이름의 폴더가 있습니다: ${dest}`);
   try {
-    await git(r.filePaths[0], ["clone", "--", url, dest], { timeout: 10 * 60 * 1000 });
+    const a = await github.gitAuth().catch(() => null);
+    await git(r.filePaths[0], [...(a ? a.args : []), "clone", "--", url, dest], { timeout: 10 * 60 * 1000, env: a ? a.env : {} });
   } catch (err) {
     throw new Error(err.stderr || err.message);
   }
@@ -123,7 +125,78 @@ function smoke(repoDir) {
   });
 }
 
+// ---------- GitHub ----------
+const send = (ch, data) => win && !win.isDestroyed() && win.webContents.send(ch, data);
+
+ipcMain.handle("gh:status", () => github.status());
+ipcMain.handle("gh:login", async () => {
+  const d = await github.startLogin();
+  clipboard.writeText(d.userCode); // gh CLI 처럼 코드를 미리 복사해 둔다
+  shell.openExternal(d.verificationUri);
+  github.waitLogin(d)
+    .then((user) => send("gh:changed", { loggedIn: true, user }))
+    .catch((err) => send("gh:changed", { ...github.status(), error: err.message }));
+  return { userCode: d.userCode, verificationUri: d.verificationUri };
+});
+ipcMain.handle("gh:cancel", () => github.cancelLogin());
+ipcMain.handle("gh:logout", () => { github.logout(); return github.status(); });
+ipcMain.handle("gh:repos", () => github.listRepos());
+ipcMain.handle("gh:openUrl", (_e, url) => {
+  if (/^https:\/\/github\.com\//.test(url)) shell.openExternal(url);
+});
+
+// 지금 저장소를 새 GitHub 저장소로 만들어 올린다: 원격 추가 + 현재 브랜치 push
+ipcMain.handle("gh:createRepo", async (_e, { name, isPrivate }) => {
+  if (!current) throw new Error("열린 저장소가 없습니다.");
+  const created = await github.createRepo({ name, isPrivate });
+  const remotes = ((await git(current, ["remote"])) || "").split("\n").filter(Boolean);
+  const remoteName = remotes.includes("origin") ? "github" : "origin";
+  const add = await execute(current, "remoteAdd", [remoteName, created.cloneUrl]);
+  if (!add.ok) throw new Error(add.error);
+  const branch = ((await git(current, ["symbolic-ref", "--short", "-q", "HEAD"], { allowFail: true })) || "").trim();
+  const cmds = [...add.cmds];
+  if (branch) {
+    const push = await execute(current, "push", [branch]);
+    cmds.push(...push.cmds);
+    if (!push.ok) throw new Error(push.error);
+  }
+  return { ...created, remoteName, cmds, repo: await readRepo(current) };
+});
+
+// PR 만들기: 브랜치가 원격에 없으면 먼저 push 한다
+ipcMain.handle("gh:pr", async (_e, { head, base, title, body }) => {
+  if (!current) throw new Error("열린 저장소가 없습니다.");
+  const cmds = [];
+  let up = ((await git(current, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", `${head}@{u}`], { allowFail: true })) || "").trim();
+  if (!up) {
+    const push = await execute(current, "push", [head]);
+    cmds.push(...push.cmds);
+    if (!push.ok) throw new Error(push.error);
+    up = ((await git(current, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", `${head}@{u}`])) || "").trim();
+  }
+  const [remoteName, ...rest] = up.split("/");
+  const url = ((await git(current, ["remote", "get-url", remoteName])) || "").trim();
+  const fullName = github.parseRemote(url);
+  if (!fullName) throw new Error(`${remoteName} 은(는) GitHub 저장소가 아닙니다: ${url}`);
+  const baseBranch = base || (await github.repoInfo(fullName)).defaultBranch;
+  const pr = await github.createPull({ fullName, head: rest.join("/"), base: baseBranch, title, body });
+  shell.openExternal(pr.htmlUrl);
+  return { ...pr, base: baseBranch, cmds, repo: await readRepo(current) };
+});
+ipcMain.handle("gh:prDefaults", async (_e, head) => {
+  // PR 창에 미리 채울 기본 브랜치
+  if (!current) return null;
+  const up = ((await git(current, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", `${head}@{u}`], { allowFail: true })) || "").trim();
+  const remoteName = up ? up.split("/")[0] : "origin";
+  const url = ((await git(current, ["remote", "get-url", remoteName], { allowFail: true })) || "").trim();
+  const fullName = github.parseRemote(url);
+  if (!fullName) return { fullName: null };
+  const info = await github.repoInfo(fullName).catch(() => null);
+  return { fullName, base: info ? info.defaultBranch : "main" };
+});
+
 app.whenReady().then(() => {
+  github.init({ safeStorage, userData: app.getPath("userData") });
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { role: "appMenu" },
     { label: "파일", submenu: [

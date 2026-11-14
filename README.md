@@ -28,9 +28,16 @@ npm start
 아직 안 되는 것:
 - 충돌 해결 화면 (충돌이 나면 실행하지 않고 알려 주기만 함), 저장소가 rebase·merge 도중인 상태 처리
 - merge 커밋이 들어 있는 줄기를 다시 쓰기, 체크아웃 안 한 브랜치에 바로 커밋, 과거 커밋에 변경 합치기(fixup), 다시 실행(⇧⌘Z)
-- GitHub 계정 연동
 
 인증: 시스템의 git 자격 증명 도우미와 SSH 에이전트를 그대로 씁니다. 비밀번호 입력이 필요하면 멈추지 않고 실패로 알립니다.
+
+## GitHub 연동
+
+- 상단 **GitHub 로그인** → 브라우저에서 코드 입력·승인 (Device Flow, OAuth App `Ov23liCTALlDkudn2YA3`, 권한 `repo read:user`)
+- 토큰은 OS 키체인 기반 암호화(Electron `safeStorage`)로 앱 데이터 폴더에 저장, 만료되는 토큰이면 refresh token 으로 자동 갱신
+- 로그인하면 github.com HTTPS 원격의 fetch / pull / push / clone 에 토큰을 자동으로 씀 (명령 인자가 아니라 환경 변수로만 전달, 다른 호스트에는 주지 않음)
+- 시작 화면 **내 GitHub 저장소에서 clone**, 원격 섹션 **GitHub 에 새 저장소로 올리기**, 브랜치 이름표 오른쪽 클릭 **GitHub PR 만들기**
+- 다른 OAuth App 으로 시험하려면 `YGG_GH_CLIENT_ID` 환경 변수로 Client ID 를 바꿀 수 있음
 
 ## 구조
 
@@ -39,6 +46,8 @@ src/main/main.js      창, 저장소 열기, 파일 변경 감지, IPC
 src/main/preload.js   화면에 노출하는 API (gitApi)
 src/main/git.js       git CLI 호출과 출력 해석 (log, for-each-ref, status, ls-files, stash)
 src/main/ops.js       화면에서 고른 조작을 실제 git 명령으로 실행
+src/main/github.js    GitHub 로그인(Device Flow), 토큰 보관·갱신, API
+src/renderer/gh.js    GitHub 화면 (로그인 창, 저장소 목록, 새 저장소, PR)
 test/*.test.js        임시 저장소에서 조작을 실제로 실행해 보는 테스트 (npm test)
 src/renderer/         화면 (목업 코드 + bridge.js)
 src/renderer/bridge.js 목업 화면을 실제 저장소에 연결, 쓰기 조작 차단
@@ -57,6 +66,6 @@ YGG_SMOKE=/path/to/repo YGG_SHOT=/tmp/shot.png npx electron .
 
 2. ~~기본 쓰기~~ (완료)
 3. ~~드래그 히스토리 조작 + 되돌리기~~ (완료)
-- GitHub 연동: Device Flow 로그인, 저장소 목록·clone, 새 저장소 만들기, PR 만들기
+- ~~GitHub 연동~~ (완료)
 4. 실제 충돌과 진행 중 상태
 5. 안전장치와 대형 저장소 성능

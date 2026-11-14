@@ -225,6 +225,7 @@
     try { show(await api.read()); } catch {}
   });
 
+  window.__ygg = { show, runReal, open }; // gh.js 에서 쓴다
   renderWelcome();
   $("welcome").classList.remove("hidden");
   // 마지막으로 연 저장소를 자동으로 다시 연다

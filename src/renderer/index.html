@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://avatars.githubusercontent.com" />
   <title>Git Yggdrasil</title>
   <meta name="description" content="git 히스토리를 그래프 위에서 끌어 놓아 다루는 드래그 문법 검증용 목업" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -32,6 +32,7 @@
   <header class="topbar">
     <strong class="brand"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg>Git Yggdrasil</strong>
     <button type="button" id="open-repo" class="small" title="⌘O">저장소 열기</button>
+    <button type="button" id="gh-account" class="small gh-account" hidden></button>
     <span class="sub" id="repo-path">드래그 문법 검증용 목업, 가짜 저장소</span>
     <div class="spacer"></div>
     <div class="seg" role="group" aria-label="드래그 방식">
@@ -63,6 +64,7 @@
         <h3>원격</h3>
         <div id="remote-list"></div>
         <button type="button" id="remote-add" class="small">원격 추가</button>
+        <button type="button" id="gh-publish" class="small" hidden>GitHub 에 새 저장소로 올리기</button>
       </div>
       <h3>작업 영역</h3>
       <div id="working" class="working-card" data-drop="working">
@@ -111,6 +113,7 @@
       <p class="muted">git 저장소 폴더를 열면 커밋 그래프를 보여 줍니다. 커밋, stage, checkout, pull/push 같은 기본 조작은 실제로 실행되고, rebase·cherry-pick 같은 히스토리 조작은 아직 미리보기까지만 됩니다.</p>
       <button type="button" id="welcome-open" class="commit-btn">저장소 폴더 열기</button>
       <button type="button" id="welcome-clone" class="clone-btn">URL 로 clone</button>
+      <button type="button" id="welcome-gh" class="clone-btn">내 GitHub 저장소에서 clone</button>
       <h3>최근 저장소</h3>
       <div id="recent-list" class="recent-list"></div>
     </div>
@@ -129,6 +132,22 @@
         <button type="submit" value="cancel" formnovalidate>취소</button>
       </div>
     </form>
+  </dialog>
+  <dialog id="gh-login" class="ask gh-login">
+    <h2>GitHub 로그인</h2>
+    <p>브라우저에서 GitHub 승인 페이지가 열렸습니다. 아래 코드를 입력하고 승인하세요. 코드는 클립보드에 복사해 두었습니다.</p>
+    <output id="gh-code" class="gh-code"></output>
+    <p class="muted" id="gh-login-status">승인을 기다리는 중…</p>
+    <div class="ask-actions">
+      <button type="button" id="gh-reopen">브라우저 다시 열기</button>
+      <button type="button" id="gh-cancel">취소</button>
+    </div>
+  </dialog>
+  <dialog id="gh-repos" class="ask gh-repos">
+    <h2>내 GitHub 저장소</h2>
+    <input id="gh-filter" type="search" placeholder="이름으로 찾기" aria-label="저장소 이름으로 찾기" autocomplete="off" />
+    <div id="gh-repo-list" class="gh-repo-list" role="list"></div>
+    <div class="ask-actions"><button type="button" id="gh-repos-close">닫기</button></div>
   </dialog>
   <div id="tip" class="tip hidden"></div>
   <div id="ghost" class="ghost hidden"></div>
@@ -161,5 +180,6 @@
   <script src="v2.js"></script>
   <script src="app.js"></script>
   <script src="bridge.js"></script>
+  <script src="gh.js"></script>
 </body>
 </html>
