@@ -6,6 +6,7 @@ Electron + 바닐라 TypeScript 에 맞게 옮긴 것입니다. React/Next.js �
 ## 도구
 
 - **electron-vite + TypeScript** — main · preload · renderer 를 각각 빌드합니다. 출력은 `out/`.
+- **electron-builder** — 배포 패키지 (`electron-builder.config.cjs`, `build/` 아이콘·권한). 자세한 절차는 [RELEASE.md](RELEASE.md).
 - **Vitest** — `tests/` 아래, 임시 git 저장소에서 실제 git 을 돌려 보는 통합 테스트.
 - `npm run dev` (HMR) · `npm run build` · `npm start` (빌드 후 실행) · `npm run typecheck` · `npm test`
 
@@ -33,6 +34,7 @@ src/shared    양쪽이 함께 쓰는 타입만 (런타임 코드 없음)
 | `repo/session.ts` | 열린 저장소 하나와 창 하나, 파일 감시 |
 | `ipc/` | IPC 핸들러 등록만 (로직 없음) |
 | `dev/smoke.ts` | 점검용 실행 (`YGG_SMOKE`) |
+| `update.ts` | 자동 업데이트 (패키지 앱에서만, GitHub Releases) |
 
 **조작 추가 순서:** `OpName` 에 이름 추가 → `*Ops.ts` 에 `OpFn` 작성 → 레지스트리 등록 → `tests/main/*.test.ts` 에 임시 저장소 테스트 → (화면) `model/preview.ts` 에 미리보기, `interactions/targets.ts` 또는 `contextMenu.ts` 에 진입점.
 

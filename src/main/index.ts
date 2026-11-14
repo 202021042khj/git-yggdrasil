@@ -8,6 +8,7 @@ import { initAuth } from "@/github/auth";
 import { registerGithubIpc } from "@/ipc/githubIpc";
 import { registerQueryIpc } from "@/ipc/queryIpc";
 import { registerRepoIpc } from "@/ipc/repoIpc";
+import { initAutoUpdate } from "@/update";
 import { APP_NAME, buildMenu, createWindow } from "@/window";
 
 app.setName(APP_NAME);
@@ -24,6 +25,7 @@ void app.whenReady().then(() => {
   setOpener((file) => void shell.openPath(file)); // 충돌 파일을 기본 에디터로 연다
   buildMenu();
   const win = createWindow();
+  initAutoUpdate();
   if (process.env.YGG_SMOKE) runSmoke(win, process.env.YGG_SMOKE);
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

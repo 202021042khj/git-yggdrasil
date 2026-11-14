@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2433"/><stop offset="1" stop-color="#0d121a"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="url(#bg)"/>
+  <rect x="100" y="100" width="824" height="824" rx="184" fill="none" stroke="#2f3b4f" stroke-width="6"/>
+  <!-- 줄기와 뿌리: 위로 갈라지는 커밋 그래프 -->
+  <g fill="none" stroke-linecap="round" stroke-width="34">
+    <path d="M370 822 C430 812 480 796 512 760 C544 796 594 812 654 822" stroke="#6b9bff" stroke-opacity=".45" stroke-width="22"/>
+    <path d="M512 600 C512 500 362 480 360 380 L360 300" stroke="#e07fae"/>
+    <path d="M512 540 C512 450 666 440 668 350 L668 270" stroke="#5cc28a"/>
+    <path d="M512 760 L512 250" stroke="#6b9bff"/>
+  </g>
+  <g stroke-width="22" fill="#0d121a">
+    <circle cx="512" cy="660" r="44" stroke="#6b9bff" fill="#6b9bff"/>
+    <circle cx="512" cy="250" r="50" stroke="#6b9bff"/>
+    <circle cx="360" cy="300" r="46" stroke="#e07fae" fill="#e07fae"/>
+    <circle cx="668" cy="270" r="46" stroke="#5cc28a"/>
+    <circle cx="512" cy="430" r="40" stroke="#6b9bff" fill="#6b9bff"/>
+  </g>
+</svg>

@@ -11,6 +11,7 @@ npm run dev      # 개발 (화면 HMR)
 npm start        # 빌드 후 실행
 npm test         # 임시 저장소 통합 테스트
 npm run typecheck
+npm run dist:mac # 배포용 .dmg (docs/RELEASE.md)
 ```
 
 처음 실행하면 저장소 폴더를 고르는 화면이 뜹니다(⌘O). 마지막으로 연 저장소는 다음 실행 때 자동으로 열립니다.

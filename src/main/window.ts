@@ -1,4 +1,5 @@
 // 메인 창과 앱 메뉴
+import { checkForUpdatesManually } from "@/update";
 import path from "node:path";
 import { BrowserWindow, Menu } from "electron";
 import { send, setWindow } from "@/repo/session";
@@ -30,7 +31,19 @@ export function createWindow(): BrowserWindow {
 
 export function buildMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { role: "appMenu" },
+    {
+      role: "appMenu",
+      submenu: [
+        { role: "about" },
+        { label: "업데이트 확인…", click: () => checkForUpdatesManually() },
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" }, { role: "hideOthers" }, { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
     {
       label: "파일",
       submenu: [
