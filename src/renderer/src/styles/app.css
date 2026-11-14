@@ -532,3 +532,16 @@ table.split td:nth-child(3) { border-left: 1px solid var(--line); }
 .rebase-result { font-size: var(--fs-sm); min-height: 2.4em; }
 .rebase-result p { margin: 2px 0; }
 .rebase-result .warn { color: var(--tag); }
+
+/* ---------- 서브모듈 · worktree · LFS ---------- */
+.extras-box { margin-top: 10px; }
+.ex-row { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: var(--r-sm); }
+.ex-row:hover { background: var(--panel-2); }
+.ex-main { flex: 1; min-width: 0; display: grid; }
+.ex-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-sub { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-row button { min-height: 22px; padding: 1px 6px; font-size: 11px; }
+.ex-note { font-size: 12px; line-height: 1.5; margin: 6px 0; }
+.ex-note.warn { color: var(--tag); }
+.badge.wt { color: var(--tag); border-color: color-mix(in srgb, var(--tag) 50%, transparent); }
+.tag-mini { font-size: 9.5px; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); vertical-align: 1px; }

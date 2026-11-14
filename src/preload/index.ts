@@ -7,6 +7,7 @@ const on = (channel: string, fn: (...a: any[]) => void) => { ipcRenderer.on(chan
 const gitApi: GitApi = {
   pick: () => ipcRenderer.invoke("repo:pick"),
   open: (dir) => ipcRenderer.invoke("repo:open", dir),
+  pickDir: (title) => ipcRenderer.invoke("repo:pickDir", title),
   clone: (url, retry) => ipcRenderer.invoke("repo:clone", url, retry),
   read: () => ipcRenderer.invoke("repo:read"),
   more: () => ipcRenderer.invoke("repo:more"),

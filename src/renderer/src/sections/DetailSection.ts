@@ -55,8 +55,10 @@ function diffBody(d: FileDiff, key: string): string {
   if (d.binary) return img || `<p class="muted">바이너리 파일이라 내용을 비교해 보여 줄 수 없습니다.</p>`;
   const body = !d.text ? `<p class="muted">${diffPrefs.ignoreWhitespace ? "공백 말고는 바뀐 내용이 없습니다." : "변경 내용 없음"}</p>`
     : diffPrefs.split ? splitTable(d.text) : `<pre>${diffLines(d.text)}</pre>`;
+  const lfsNote = /git-lfs\.github\.com\/spec/.test(d.text)
+    ? `<p class="muted ex-note">Git LFS 포인터 파일입니다. 실제 내용은 LFS 서버에 있고, 여기에는 크기와 해시만 바뀐 것으로 보입니다.</p>` : "";
   const more = d.omitted ? `<button type="button" class="small more-diff" data-diff-full="${esc(key)}">${d.omitted.toLocaleString()}줄 더 보기 (전체)</button>` : "";
-  return img + body + more;
+  return img + lfsNote + body + more;
 }
 
 function diffBox(title: string, file: string, commit: string | null): string {

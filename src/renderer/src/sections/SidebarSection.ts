@@ -22,8 +22,10 @@ export function renderSidebar(): void {
         ? `<span class="badge pull" data-pull="${esc(b)}" title="클릭: pull (${store.ui.pullMode})">${text} pull</span>`
         : `<span class="badge">${text}</span>`;
     }
+    const wt = (s.worktrees || []).find((w) => w.branch === b && !w.current);
+    const wtBadge = wt ? `<span class="badge wt" title="${esc(wt.path)} 에서 체크아웃 중 — 여기서는 체크아웃할 수 없습니다">다른 폴더</span>` : "";
     return `<div class="br ${b === s.head ? "head" : ""}" data-checkout="${esc(b)}" title="더블클릭: checkout · 오른쪽 클릭: 메뉴">
-      <span class="dot" style="background:${colorOf(b)}"></span>${b === s.head ? "◉ " : ""}${esc(b)}${badge}</div>`;
+      <span class="dot" style="background:${colorOf(b)}"></span>${b === s.head ? "◉ " : ""}${esc(b)}${wtBadge}${badge}</div>`;
   });
   const detached = !s.head && s.detached
     ? `<div class="detached-note">브랜치 없이 <code>${short(s.detached)}</code> 를 보는 중입니다. 여기서 이어서 작업하려면 새 브랜치를 만드세요.</div>` : "";

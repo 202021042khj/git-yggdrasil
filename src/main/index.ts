@@ -2,6 +2,7 @@
 import { app, BrowserWindow, safeStorage, shell } from "electron";
 import { runSmoke } from "@/dev/smoke";
 import { setOpener } from "@/git/ops/conflictOps";
+import { registerExtraOps } from "@/git/ops/extraOps";
 import { registerP3Ops } from "@/git/ops/p3Ops";
 import { initAuth } from "@/github/auth";
 import { registerGithubIpc } from "@/ipc/githubIpc";
@@ -12,6 +13,7 @@ import { APP_NAME, buildMenu, createWindow } from "@/window";
 app.setName(APP_NAME);
 
 registerP3Ops();
+registerExtraOps();
 registerRepoIpc();
 registerQueryIpc();
 registerGithubIpc();

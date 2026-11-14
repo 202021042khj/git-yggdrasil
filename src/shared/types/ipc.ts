@@ -10,7 +10,7 @@ export type OpName =
   | "tagCreate" | "tagMove" | "tagDelete" | "tagPush"
   | "stashPush" | "stashPop" | "stashDrop"
   | "cherryPick" | "moveCommit" | "dropCommit" | "rebaseStem" | "squash" | "reorder" | "revertCommit" | "merge" | "splitCommit"
-  | "resolveFile" | "resolveContent" | "checkoutPull" | "rebasePlan" | "continueOp" | "skipOp" | "abortOp"
+  | "resolveFile" | "resolveContent" | "checkoutPull" | "rebasePlan" | "submoduleUpdate" | "worktreeAdd" | "worktreeRemove" | "continueOp" | "skipOp" | "abortOp"
   | "undo"
   | "redo";
 
@@ -115,6 +115,8 @@ export interface GitApi {
   open(dir: string): Promise<RepoState>;
   /** retry: 인증 실패 직후 같은 위치에 다시 받기 */
   clone(url: string, retry?: boolean): Promise<RepoState | null>;
+  /** 폴더 고르기 창 (worktree 위치 등). 취소하면 null */
+  pickDir(title: string): Promise<string | null>;
   read(): Promise<RepoState | null>;
   more(): Promise<RepoState | null>;
   diff(file: string, commit: string | null, opts?: DiffOptions): Promise<FileDiff>;

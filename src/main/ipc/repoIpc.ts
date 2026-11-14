@@ -28,6 +28,12 @@ export function registerRepoIpc(): void {
   });
 
   ipcMain.handle("repo:open", (_e, dir: string) => openRepo(dir));
+  ipcMain.handle("repo:pickDir", async (_e, title: string) => {
+    const opts = { title: String(title || "폴더 고르기"), properties: ["openDirectory", "createDirectory"] as Array<"openDirectory" | "createDirectory"> };
+    const win = getWindow();
+    const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+    return r.canceled ? null : r.filePaths[0] ?? null;
+  });
 
   // clone: 받을 위치(상위 폴더)를 고르게 한 뒤 그 안에 저장소 이름으로 받는다
   // retry: 인증 때문에 실패한 직후 다시 시도할 때는 방금 고른 폴더를 그대로 쓴다 (경로는 화면에서 받지 않는다)

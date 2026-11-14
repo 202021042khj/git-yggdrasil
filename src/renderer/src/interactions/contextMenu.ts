@@ -6,7 +6,9 @@ import { short } from "@/lib/html";
 import { isAncestor, stems } from "@/model/graph";
 import { actionMenuItem, hideInCanvas, withSelection } from "@/interactions/drag";
 import { actionsFor, candidateTargets, sourceFromElement, sourceLabel, type DragSource } from "@/interactions/targets";
+import { addWorktree } from "@/sections/ExtrasSection";
 import { openRebaseEditor } from "@/sections/RebaseEditor";
+import { open } from "@/app/repoSession";
 import { askText, confirmAction } from "@/ui/dialog";
 import { openMenu, type MenuItem } from "@/ui/menu";
 import { toast } from "@/ui/toast";
@@ -79,6 +81,9 @@ function extraItems(src: DragSource): MenuItem[] {
       const withRemote = !!up && confirmAction(`${b} 은(는) 원격 ${up} 와 연결되어 있습니다.\n원격에도 ${to} 로 올리고 옛 이름(${up})을 원격에서 지울까요?\n\n확인 = 원격까지 변경, 취소 = 로컬 이름만 변경`);
       await run({ op: "renameBranch", args: [b, to, withRemote], summary: `${b} → ${to} 이름 변경${withRemote ? " (원격 포함)" : ""}` });
     }));
+    const wt = (s.worktrees || []).find((w) => w.branch === b);
+    if (!wt) items.push(direct("다른 폴더에 체크아웃 (worktree)…", `git worktree add <폴더> ${b}`, () => void addWorktree(b)));
+    else if (!wt.current) items.push(direct(`${b} 쓰는 폴더 열기`, wt.path, () => void open(window.gitApi.open(wt.path))));
     items.push(direct("커밋 정리 (rebase -i)…", `git rebase -i  # ${b}`, () => openRebaseEditor(b)));
     const up = s.upstream?.[b];
     items.push(direct(up ? `upstream 바꾸기 (지금 ${up})…` : "upstream 연결…", `git branch --set-upstream-to=<원격 브랜치> ${b}`, async () => {

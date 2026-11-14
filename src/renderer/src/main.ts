@@ -7,6 +7,7 @@ import { mountContextMenu } from "@/interactions/contextMenu";
 import { mountDrag } from "@/interactions/drag";
 import { renderCanvas, mountCanvas, revealCommit } from "@/sections/CanvasSection";
 import { renderDetail, mountDetail } from "@/sections/DetailSection";
+import { renderExtras, mountExtras } from "@/sections/ExtrasSection";
 import { renderFilter, mountFilter } from "@/sections/FilterSection";
 import { renderFooter } from "@/sections/FooterSection";
 import { renderGithub, mountGithub } from "@/sections/GithubSection";
@@ -23,7 +24,7 @@ import { renderWorking, mountWorking } from "@/sections/WorkingSection";
 import { mountMenu } from "@/ui/menu";
 import { toast } from "@/ui/toast";
 
-const renders = [renderTopbar, renderOpBanner, renderSidebar, renderRemotes, renderPulls, renderWorking, renderFilter, renderCanvas, renderDetail, renderLog, renderFooter, renderGithub];
+const renders = [renderTopbar, renderOpBanner, renderSidebar, renderRemotes, renderExtras, renderPulls, renderWorking, renderFilter, renderCanvas, renderDetail, renderLog, renderFooter, renderGithub];
 
 function renderAll(): void {
   if (!store.hasRepo()) return;
@@ -40,6 +41,7 @@ mountOpBanner();
 mountSidebar();
 mountRemotes();
 mountPulls();
+mountExtras();
 mountWorking();
 mountCanvas();
 mountFilter();

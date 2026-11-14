@@ -35,6 +35,8 @@ export function renderWorking(): void {
   const changed = new Set([...w.staged, ...w.unstaged]);
   const conflicted = new Set(w.conflicted);
   const resolved = s.op?.resolved ?? {};
+  const lfsSet = new Set(s.lfs?.files ?? []);
+  const subSet = new Set((s.submodules ?? []).map((m) => m.path));
   const committed = new Set(s.files);
   const root = buildTree(s.repoName || "", [...new Set([...s.files, ...changed, ...conflicted])].sort());
   const rows: string[] = [];
@@ -60,7 +62,7 @@ export function renderWorking(): void {
       data-path="${esc(n.path)}" data-isfile="${n.file ? 1 : ""}" style="padding-left:${depth * 12 + 4}px" title="${esc(n.path || "저장소 루트")}">
       <span class="chev" ${n.file ? "" : `data-toggle="${esc(n.path)}"`}>${n.file ? "" : open ? "▾" : "▸"}</span>
       <input type="checkbox" data-stage="${esc(n.path)}" ${chk} aria-label="${esc(n.path || "전체")} stage" />
-      <span class="name">${icon(n.path === "" ? "box" : n.file ? "file" : "folder")}${esc(n.name)}</span>${badge}
+      <span class="name">${icon(n.path === "" ? "box" : n.file ? "file" : "folder")}${esc(n.name)}${n.file && lfsSet.has(n.path) ? ' <span class="tag-mini" title="Git LFS 로 관리하는 파일">LFS</span>' : ""}${n.file && subSet.has(n.path) ? ' <span class="tag-mini" title="서브모듈 (다른 저장소)">서브모듈</span>' : ""}</span>${badge}
       ${ch.length ? `<button type="button" class="discard" data-discard="${esc(n.path)}" title="변경 버리기 (git restore)" aria-label="${esc(n.path || "전체")} 변경 버리기">↶</button>` : ""}</div>`);
     if (!n.file && open) [...n.kids.values()].sort((a, b) => Number(a.file) - Number(b.file) || a.name.localeCompare(b.name)).forEach((k) => walk(k, depth + 1));
   };

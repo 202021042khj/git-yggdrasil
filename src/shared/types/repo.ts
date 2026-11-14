@@ -59,6 +59,37 @@ export interface OpState {
   resolved: Record<string, string>;
 }
 
+export interface SubmoduleInfo {
+  path: string;
+  /** 지금 서브모듈이 가리키는 커밋 (받지 않았으면 기록된 커밋) */
+  sha: string;
+  /** ok · modified(기록과 다른 커밋) · uninitialized(아직 안 받음) · conflict */
+  state: "ok" | "modified" | "uninitialized" | "conflict";
+  url?: string;
+  describe?: string;
+}
+
+export interface WorktreeInfo {
+  path: string;
+  head: string;
+  /** 체크아웃한 브랜치 (detached 면 null) */
+  branch: string | null;
+  /** 원래 저장소 (첫 worktree) */
+  main: boolean;
+  /** 지금 앱에서 연 곳 */
+  current: boolean;
+  locked: boolean;
+  /** 폴더가 사라져 정리할 수 있음 */
+  prunable: boolean;
+}
+
+export interface LfsInfo {
+  /** git-lfs 가 설치되어 있는지 */
+  installed: boolean;
+  /** LFS 로 관리하는 파일 */
+  files: string[];
+}
+
 export interface RepoState {
   root?: string;
   repoName?: string;
@@ -78,4 +109,7 @@ export interface RepoState {
   stash: StashEntry[];
   op: OpState | null;
   born?: Record<string, number>;
+  submodules?: SubmoduleInfo[];
+  worktrees?: WorktreeInfo[];
+  lfs?: LfsInfo;
 }

@@ -1,4 +1,5 @@
 // 저장소 상태 읽기: 커밋 그래프, ref, 작업 영역, stash, 원격, 태그, 진행 중 작업
+import { readLfs, readSubmodules, readWorktrees } from "@/git/extras";
 import path from "node:path";
 import { git, repoRoot } from "@/git/cli";
 import { readOpState } from "@/git/opState";
@@ -119,9 +120,11 @@ export async function readRepo(dir: string): Promise<RepoState> {
   ]);
   const shown = Object.keys(commits).length;
   const totalCommits = Number((totalOut || "0").trim()) || shown;
-  const [refs, headInfo, working, files, stash, remoteList, tags] = await Promise.all([
+  const [refs, headInfo, working, files, stash, remoteList, tags, submodules, worktrees] = await Promise.all([
     readRefs(root, commits), readHead(root), readStatus(root), readFiles(root), readStash(root), readRemotes(root), readTags(root, commits),
+    readSubmodules(root), readWorktrees(root),
   ]);
+  const lfs = await readLfs(root, files);
   return {
     root,
     repoName: path.basename(root),
@@ -140,5 +143,8 @@ export async function readRepo(dir: string): Promise<RepoState> {
     stash,
     op: await readOpState(root, working.conflicted, headInfo.head),
     born: {},
+    submodules,
+    worktrees,
+    lfs,
   };
 }

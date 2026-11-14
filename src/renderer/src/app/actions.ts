@@ -3,7 +3,7 @@ import { ALLOWED_DURING_OP } from "@/constants/ops";
 import { errorText } from "@/lib/html";
 import { ownerBranch, stems } from "@/model/graph";
 import { touchesPushed, type Preview } from "@/model/preview";
-import { show } from "@/app/repoSession";
+import { open, show } from "@/app/repoSession";
 import { store } from "@/app/store";
 import { askText, confirmAction, showNotice } from "@/ui/dialog";
 import { askCredential } from "@/ui/credentialDialog";
@@ -59,6 +59,14 @@ export async function runPreviewed(op: OpName, args: unknown[], res: Preview): P
 export async function run(req: RunRequest, retried = false): Promise<boolean> {
   if (store.ui.busy) { toast("이전 작업이 아직 실행 중입니다."); return false; }
   if (!retried && blocked(req.op)) return false;
+  // 다른 worktree 가 쓰는 브랜치는 git 이 체크아웃을 거절한다: 미리 알리고 그 폴더를 열지 묻는다
+  if (req.op === "checkout") {
+    const wt = store.repo.worktrees?.find((w) => w.branch === req.args[0] && !w.current);
+    if (wt) {
+      if (confirmAction(`${req.args[0]} 는 다른 폴더(worktree)에서 체크아웃되어 있어 여기서는 체크아웃할 수 없습니다.\n${wt.path}\n\n그 폴더를 열까요?`)) void open(window.gitApi.open(wt.path));
+      return false;
+    }
+  }
   const extra = { ...extraFor(req.op, req.args, store.repo), ...req.extra };
   store.update({ busy: true });
   document.body.classList.add("busy");
