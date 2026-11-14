@@ -2,7 +2,8 @@
 import { open, recent } from "@/app/repoSession";
 import { store } from "@/app/store";
 import { byId } from "@/lib/dom";
-import { esc } from "@/lib/html";
+import { errorText, esc } from "@/lib/html";
+import { askCredential } from "@/ui/credentialDialog";
 import { askText } from "@/ui/dialog";
 import { toast } from "@/ui/toast";
 
@@ -19,10 +20,24 @@ export function showWelcome(): void {
 }
 
 /** clone 하는 동안 화면을 바쁨 상태로 */
-export async function cloneInto(url: string): Promise<void> {
+export async function cloneInto(url: string, retry = false): Promise<void> {
   toast(`clone 하는 중… ${url}`);
   document.body.classList.add("busy");
-  try { await open(window.gitApi.clone(url)); } finally { document.body.classList.remove("busy"); }
+  let authUrl: string | null = null;
+  try {
+    // 인증이 필요한 GitHub 밖 호스트는 로그인 창을 띄우고 같은 위치에 다시 받는다
+    await open(window.gitApi.clone(url, retry).catch((err) => {
+      const m = /AUTH_REQUIRED (\S+)/.exec(errorText(err));
+      if (!m) throw err;
+      // 저장한 정보로도 실패: git 은 틀린 자격 증명을 도우미에서 스스로 지운다
+      if (retry) throw new Error(`${new URL(m[1]).host} 에 입력한 사용자 이름이나 토큰으로 인증하지 못했습니다. 토큰 권한(저장소 읽기)을 확인하고 다시 clone 해 보세요.`);
+      authUrl = m[1];
+      return null;
+    }));
+  } finally {
+    document.body.classList.remove("busy");
+  }
+  if (authUrl && (await askCredential(authUrl))) await cloneInto(url, true);
 }
 
 export async function cloneFlow(): Promise<void> {

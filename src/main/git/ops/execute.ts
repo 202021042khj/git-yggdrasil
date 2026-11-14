@@ -4,6 +4,7 @@ import { git } from "@/git/cli";
 import { branchOps } from "@/git/ops/branchOps";
 import { conflictOps } from "@/git/ops/conflictOps";
 import { createContext, headInfo, type OpError, type OpFn } from "@/git/ops/context";
+import { authUrlFromError } from "@/git/credential";
 import { explainRemoteError } from "@/git/remoteErrors";
 import { historyOps } from "@/git/ops/historyOps";
 import { remoteOps } from "@/git/ops/remoteOps";
@@ -129,12 +130,14 @@ export async function execute(root: string, op: OpName, args: unknown[] = [], ex
     return { ok: true, cmds, warnings, undoable: (undoStacks.get(root) || []).length, redoable: (redoStacks.get(root) || []).length };
   } catch (e) {
     const err = e as OpError;
+    const authUrl = authUrlFromError(err.stderr || err.message);
     return {
       ok: false,
       cmds,
       unsupported: !!err.unsupported,
       conflicts: err.conflicts,
-      code: err.code === "NO_REMOTE" || err.code === "NEEDS_CHECKOUT" ? err.code : undefined,
+      code: err.code === "NO_REMOTE" || err.code === "NEEDS_CHECKOUT" ? err.code : authUrl ? "AUTH_REQUIRED" : undefined,
+      authUrl: authUrl ?? undefined,
       branch: err.branch,
       error: err.stderr || String(err.message || err),
       hint: explainRemoteError(err.stderr || err.message) ?? undefined,

@@ -6,6 +6,7 @@ import { touchesPushed, type Preview } from "@/model/preview";
 import { show } from "@/app/repoSession";
 import { store } from "@/app/store";
 import { askText, confirmAction, showNotice } from "@/ui/dialog";
+import { askCredential } from "@/ui/credentialDialog";
 import { toast } from "@/ui/toast";
 import type { OpExtra, OpName } from "@shared/types/ipc";
 import type { RepoState } from "@shared/types/repo";
@@ -74,7 +75,8 @@ export async function run(req: RunRequest, retried = false): Promise<boolean> {
     } else {
       const label = r.unsupported ? "아직 지원 안 함" : r.code === "NEEDS_CHECKOUT" ? "충돌 — 체크아웃 필요" : "실패";
       store.addLog({ summary: `${label}: ${req.summary}`, cmd: [...r.cmds, r.error, ...(r.hint ? [`# ${r.hint.title}`] : [])].join("\n") });
-      if (r.hint) showNotice(r.hint.title, r.hint.fix, r.error);
+      const otherHost = r.code === "AUTH_REQUIRED" && r.authUrl && !/^https:\/\/github\.com$/.test(r.authUrl);
+      if (r.hint && !otherHost) showNotice(r.hint.title, r.hint.fix, r.error);
       else toast(r.error || "실패했습니다.");
     }
     if (r.repo) show(r.repo);
@@ -85,6 +87,11 @@ export async function run(req: RunRequest, retried = false): Promise<boolean> {
         if (!confirmAction(`${r.error}\n\n${branch} 로 체크아웃하고 다시 진행할까요? 충돌 지점에서 멈추면 오른쪽 패널에서 해결할 수 있습니다.`)) return;
         if (await run({ op: "checkout", args: [branch], summary: `${branch} 로 전환` }, true)) await run(req, true);
       };
+    }
+    // GitHub 밖 HTTPS 호스트 인증 실패: 사용자 이름·토큰을 받아 git 도우미에 저장하고 다시 시도
+    if (r.code === "AUTH_REQUIRED" && r.authUrl && !/^https:\/\/github\.com$/.test(r.authUrl) && !retried) {
+      const url = r.authUrl;
+      followUp = async () => { if (await askCredential(url)) await run(req, true); };
     }
     // 원격이 없어서 push 가 실패했으면: 주소를 받아 origin 으로 추가하고 다시 시도
     if (r.code === "NO_REMOTE" && !retried) {

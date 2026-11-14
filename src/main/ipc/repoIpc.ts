@@ -4,6 +4,7 @@ import path from "node:path";
 import { dialog, ipcMain } from "electron";
 import { git } from "@/git/cli";
 import { execute } from "@/git/ops/execute";
+import { authUrlFromError, forgetCredential, saveCredential, systemHelper } from "@/git/credential";
 import { explainRemoteError, hintText } from "@/git/remoteErrors";
 import { fileDiff } from "@/git/diff";
 import { loadMore, readRepo } from "@/git/readRepo";
@@ -29,11 +30,15 @@ export function registerRepoIpc(): void {
   ipcMain.handle("repo:open", (_e, dir: string) => openRepo(dir));
 
   // clone: 받을 위치(상위 폴더)를 고르게 한 뒤 그 안에 저장소 이름으로 받는다
-  ipcMain.handle("repo:clone", async (_e, url: string) => {
+  // retry: 인증 때문에 실패한 직후 다시 시도할 때는 방금 고른 폴더를 그대로 쓴다 (경로는 화면에서 받지 않는다)
+  let lastCloneParent: string | null = null;
+  ipcMain.handle("repo:clone", async (_e, url: string, retry = false) => {
     const opts = { title: "어느 폴더 안에 받을까요?", properties: ["openDirectory", "createDirectory"] as Array<"openDirectory" | "createDirectory"> };
     const win = getWindow();
-    const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+    const r = retry && lastCloneParent ? { canceled: false, filePaths: [lastCloneParent] }
+      : win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
     if (r.canceled || !r.filePaths[0]) return null;
+    lastCloneParent = r.filePaths[0];
     const name = url.replace(/[\\/]+$/, "").split(/[\\/:]/).pop()?.replace(/\.git$/, "") || "repo";
     const dest = path.join(r.filePaths[0], name);
     if (fs.existsSync(dest)) throw new Error(`이미 같은 이름의 폴더가 있습니다: ${dest}`);
@@ -42,11 +47,26 @@ export function registerRepoIpc(): void {
       await git(r.filePaths[0], [...(auth ? auth.args : []), "clone", "--", url, dest], { timeout: CLONE_TIMEOUT, env: auth ? auth.env : {}, net: true });
     } catch (err) {
       const e = err as { stderr?: string; message: string };
+      const authUrl = authUrlFromError(e.stderr || e.message);
+      // GitHub 밖 HTTPS 호스트: 화면이 로그인 창을 띄우고 다시 시도하도록 표시를 붙인다
+      if (authUrl && !/^https:\/\/github\.com$/.test(authUrl)) throw new Error(`AUTH_REQUIRED ${authUrl}`);
       const hint = explainRemoteError(e.stderr || e.message);
       throw new Error(hint ? `${hintText(hint)}\n\n(git: ${e.stderr || e.message})` : e.stderr || e.message);
     }
     return openRepo(dest);
   });
+
+  // 자격 증명: 저장소가 안 열려 있어도 된다 (clone 전에 로그인하는 경우)
+  // 도우미가 없으면 던지지 않고 needsHelper 로 알린다 (IPC 는 오류 코드를 넘기지 못한다)
+  ipcMain.handle("cred:save", async (_e, { url, username, password, enableHelper }: { url: string; username: string; password: string; enableHelper?: boolean }) => {
+    try {
+      return await saveCredential(currentRoot(), url, username, password, !!enableHelper);
+    } catch (err) {
+      if ((err as { code?: string }).code === "NO_HELPER") return { helpers: [], enabledHelper: null, needsHelper: systemHelper(), message: (err as Error).message };
+      throw err;
+    }
+  });
+  ipcMain.handle("cred:forget", (_e, url: string) => forgetCredential(currentRoot(), url));
 
   ipcMain.handle("repo:read", () => {
     const root = currentRoot();

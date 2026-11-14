@@ -35,7 +35,9 @@ export interface RunResult {
   hint?: { title: string; fix: string };
   unsupported?: boolean;
   conflicts?: string[];
-  code?: "NO_REMOTE" | "NEEDS_CHECKOUT";
+  code?: "NO_REMOTE" | "NEEDS_CHECKOUT" | "AUTH_REQUIRED";
+  /** AUTH_REQUIRED 일 때 인증이 필요한 https://호스트 */
+  authUrl?: string;
   branch?: string;
   undoable?: number;
   redoable?: number;
@@ -89,10 +91,21 @@ export interface FileDiff {
   untracked?: boolean;
 }
 
+export interface CredentialSaveResult {
+  /** 저장에 쓴 도우미 */
+  helpers: string[];
+  /** 이번에 git 전역 설정에 켠 도우미 */
+  enabledHelper: string | null;
+  /** 도우미가 없어 저장하지 않았을 때: 켤 수 있는 OS 기본 도우미 (없으면 null) */
+  needsHelper?: string | null;
+  message?: string;
+}
+
 export interface GitApi {
   pick(): Promise<RepoState | null>;
   open(dir: string): Promise<RepoState>;
-  clone(url: string): Promise<RepoState | null>;
+  /** retry: 인증 실패 직후 같은 위치에 다시 받기 */
+  clone(url: string, retry?: boolean): Promise<RepoState | null>;
   read(): Promise<RepoState | null>;
   more(): Promise<RepoState | null>;
   diff(file: string, commit: string | null, opts?: DiffOptions): Promise<FileDiff>;
@@ -102,6 +115,9 @@ export interface GitApi {
   blame(file: string, commit?: string | null): Promise<BlameLine[]>;
   hunks(file: string, staged: boolean): Promise<Hunk[]>;
   conflictText(file: string): Promise<string | null>;
+  /** GitHub 밖 HTTPS 호스트의 사용자 이름·토큰을 git 자격 증명 도우미에 저장 */
+  saveCredential(args: { url: string; username: string; password: string; enableHelper?: boolean }): Promise<CredentialSaveResult>;
+  forgetCredential(url: string): Promise<void>;
   onChanged(fn: () => void): void;
   onMenuOpen(fn: () => void): void;
   onMenuClone(fn: () => void): void;

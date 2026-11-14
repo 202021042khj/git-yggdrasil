@@ -143,6 +143,22 @@
       </div>
     </form>
   </dialog>
+  <dialog id="cred" class="ask cred" aria-labelledby="cred-title">
+    <form method="dialog" id="cred-form">
+      <h2 id="cred-title">로그인이 필요합니다</h2>
+      <p id="cred-host" class="muted"></p>
+      <label for="cred-user">사용자 이름</label>
+      <input id="cred-user" type="text" autocomplete="username" spellcheck="false" required />
+      <label for="cred-pass">액세스 토큰 (또는 앱 비밀번호)</label>
+      <input id="cred-pass" type="password" autocomplete="current-password" spellcheck="false" required />
+      <p id="cred-tip" class="muted cred-tip"></p>
+      <p id="cred-error" class="cred-error" role="alert"></p>
+      <div class="ask-actions">
+        <button type="submit" value="ok" class="primary">저장하고 다시 시도</button>
+        <button type="submit" value="cancel" formnovalidate>취소</button>
+      </div>
+    </form>
+  </dialog>
   <dialog id="notice" class="ask notice" aria-labelledby="notice-title">
     <form method="dialog">
       <h2 id="notice-title"></h2>

@@ -7,7 +7,7 @@ const on = (channel: string, fn: (...a: any[]) => void) => { ipcRenderer.on(chan
 const gitApi: GitApi = {
   pick: () => ipcRenderer.invoke("repo:pick"),
   open: (dir) => ipcRenderer.invoke("repo:open", dir),
-  clone: (url) => ipcRenderer.invoke("repo:clone", url),
+  clone: (url, retry) => ipcRenderer.invoke("repo:clone", url, retry),
   read: () => ipcRenderer.invoke("repo:read"),
   more: () => ipcRenderer.invoke("repo:more"),
   diff: (file, commit, opts) => ipcRenderer.invoke("repo:diff", { file, commit, opts }),
@@ -15,6 +15,8 @@ const gitApi: GitApi = {
   search: (query) => ipcRenderer.invoke("query:search", query),
   fileHistory: (file) => ipcRenderer.invoke("query:fileHistory", file),
   blame: (file, commit) => ipcRenderer.invoke("query:blame", { file, commit }),
+  saveCredential: (args) => ipcRenderer.invoke("cred:save", args),
+  forgetCredential: (url) => ipcRenderer.invoke("cred:forget", url),
   conflictText: (file) => ipcRenderer.invoke("query:conflictText", file),
   hunks: (file, staged) => ipcRenderer.invoke("query:hunks", { file, staged }),
   onChanged: (fn) => on("repo:changed", fn),
