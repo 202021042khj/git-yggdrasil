@@ -4,6 +4,7 @@ import { byId } from "@/lib/dom";
 import { errorText } from "@/lib/html";
 import { store } from "@/app/store";
 import { NO_FILTER } from "@/model/filter";
+import { showNotice } from "@/ui/dialog";
 import { toast } from "@/ui/toast";
 import type { RepoState } from "@shared/types/repo";
 
@@ -64,7 +65,14 @@ export async function open(promise: Promise<RepoState | null>): Promise<void> {
     if (repo.root) remember(repo.root);
     show(repo);
   } catch (err) {
-    toast(errorText(err));
+    // 원격 안내가 붙은 오류(여러 줄)는 알림 창으로: 첫 줄 = 원인, 나머지 = 해결 방법과 git 원문
+    const text = errorText(err);
+    const [title, ...rest] = text.split("\n");
+    if (rest.length) {
+      const body = rest.join("\n");
+      const [fix, raw] = body.split(/\n\n\(git: /);
+      showNotice(title, fix.trim(), raw ? raw.replace(/\)$/, "") : "");
+    } else toast(text);
   }
 }
 

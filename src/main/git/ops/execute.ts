@@ -4,6 +4,7 @@ import { git } from "@/git/cli";
 import { branchOps } from "@/git/ops/branchOps";
 import { conflictOps } from "@/git/ops/conflictOps";
 import { createContext, headInfo, type OpError, type OpFn } from "@/git/ops/context";
+import { explainRemoteError } from "@/git/remoteErrors";
 import { historyOps } from "@/git/ops/historyOps";
 import { remoteOps } from "@/git/ops/remoteOps";
 import { workingOps } from "@/git/ops/workingOps";
@@ -136,6 +137,7 @@ export async function execute(root: string, op: OpName, args: unknown[] = [], ex
       code: err.code === "NO_REMOTE" || err.code === "NEEDS_CHECKOUT" ? err.code : undefined,
       branch: err.branch,
       error: err.stderr || String(err.message || err),
+      hint: explainRemoteError(err.stderr || err.message) ?? undefined,
     };
   }
 }

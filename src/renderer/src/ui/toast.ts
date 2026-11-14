@@ -11,3 +11,9 @@ export function toast(msg: string): void {
   if (timer) clearTimeout(timer);
   timer = setTimeout(() => t.classList.add("hidden"), SHOW_MS);
 }
+
+/** 떠 있는 알림을 바로 닫는다 (더 자세한 알림 창을 띄울 때) */
+export function hideToast(): void {
+  if (timer) clearTimeout(timer);
+  byId("toast").classList.add("hidden");
+}

@@ -4,6 +4,7 @@ import path from "node:path";
 import { dialog, ipcMain } from "electron";
 import { git } from "@/git/cli";
 import { execute } from "@/git/ops/execute";
+import { explainRemoteError, hintText } from "@/git/remoteErrors";
 import { fileDiff } from "@/git/diff";
 import { loadMore, readRepo } from "@/git/readRepo";
 import { gitAuth } from "@/github/auth";
@@ -38,10 +39,11 @@ export function registerRepoIpc(): void {
     if (fs.existsSync(dest)) throw new Error(`이미 같은 이름의 폴더가 있습니다: ${dest}`);
     try {
       const auth = await gitAuth().catch(() => null);
-      await git(r.filePaths[0], [...(auth ? auth.args : []), "clone", "--", url, dest], { timeout: CLONE_TIMEOUT, env: auth ? auth.env : {} });
+      await git(r.filePaths[0], [...(auth ? auth.args : []), "clone", "--", url, dest], { timeout: CLONE_TIMEOUT, env: auth ? auth.env : {}, net: true });
     } catch (err) {
       const e = err as { stderr?: string; message: string };
-      throw new Error(e.stderr || e.message);
+      const hint = explainRemoteError(e.stderr || e.message);
+      throw new Error(hint ? `${hintText(hint)}\n\n(git: ${e.stderr || e.message})` : e.stderr || e.message);
     }
     return openRepo(dest);
   });

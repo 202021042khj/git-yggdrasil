@@ -31,6 +31,8 @@ export interface RunResult {
   cmds: string[];
   warnings?: string[];
   error?: string;
+  /** 원격 접속 오류일 때 원인과 해결 방법 */
+  hint?: { title: string; fix: string };
   unsupported?: boolean;
   conflicts?: string[];
   code?: "NO_REMOTE" | "NEEDS_CHECKOUT";

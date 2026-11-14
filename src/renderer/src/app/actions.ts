@@ -5,7 +5,7 @@ import { ownerBranch, stems } from "@/model/graph";
 import { touchesPushed, type Preview } from "@/model/preview";
 import { show } from "@/app/repoSession";
 import { store } from "@/app/store";
-import { askText, confirmAction } from "@/ui/dialog";
+import { askText, confirmAction, showNotice } from "@/ui/dialog";
 import { toast } from "@/ui/toast";
 import type { OpExtra, OpName } from "@shared/types/ipc";
 import type { RepoState } from "@shared/types/repo";
@@ -73,8 +73,9 @@ export async function run(req: RunRequest, retried = false): Promise<boolean> {
       toast(r.warnings?.length ? `${req.summary} — ${r.warnings.join(" ")}` : req.summary);
     } else {
       const label = r.unsupported ? "아직 지원 안 함" : r.code === "NEEDS_CHECKOUT" ? "충돌 — 체크아웃 필요" : "실패";
-      store.addLog({ summary: `${label}: ${req.summary}`, cmd: [...r.cmds, r.error].join("\n") });
-      toast(r.error || "실패했습니다.");
+      store.addLog({ summary: `${label}: ${req.summary}`, cmd: [...r.cmds, r.error, ...(r.hint ? [`# ${r.hint.title}`] : [])].join("\n") });
+      if (r.hint) showNotice(r.hint.title, r.hint.fix, r.error);
+      else toast(r.error || "실패했습니다.");
     }
     if (r.repo) show(r.repo);
     // 체크아웃하지 않은 브랜치에서 충돌: 체크아웃한 뒤 같은 조작을 다시 해서 충돌 해결 모드로 들어간다

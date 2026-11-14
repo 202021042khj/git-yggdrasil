@@ -494,3 +494,10 @@ table.split td:nth-child(3) { border-left: 1px solid var(--line); }
 .pr-badge.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
 .pr-badge.bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
 .pr-badge.wait { color: var(--tag); border-color: color-mix(in srgb, var(--tag) 50%, transparent); }
+
+/* ---------- 알림 창 (원격 오류 안내 등) ---------- */
+.notice { width: min(520px, calc(100vw - 32px)); }
+.notice h2 { font-size: 15px; margin: 0 0 8px; }
+.notice-body { white-space: pre-line; line-height: 1.6; font-size: var(--fs-sm); }
+.notice details { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.notice details pre { white-space: pre-wrap; word-break: break-all; max-height: 160px; overflow: auto; background: var(--bg); padding: 6px; border-radius: var(--r-sm); }

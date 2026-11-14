@@ -143,6 +143,14 @@
       </div>
     </form>
   </dialog>
+  <dialog id="notice" class="ask notice" aria-labelledby="notice-title">
+    <form method="dialog">
+      <h2 id="notice-title"></h2>
+      <p id="notice-body" class="notice-body"></p>
+      <details id="notice-detail"><summary>git 원문</summary><pre id="notice-detail-text"></pre></details>
+      <div class="ask-actions"><button type="submit" id="notice-ok" class="primary">확인</button></div>
+    </form>
+  </dialog>
   <dialog id="gh-login" class="ask gh-login">
     <h2>GitHub 로그인</h2>
     <p>브라우저에서 GitHub 승인 페이지가 열렸습니다. 아래 코드를 입력하고 승인하세요. 코드는 클립보드에 복사해 두었습니다.</p>
