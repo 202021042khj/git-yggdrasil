@@ -5,11 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://avatars.githubusercontent.com" />
   <title>Git Yggdrasil</title>
-  <meta name="description" content="git 히스토리를 그래프 위에서 끌어 놓아 다루는 드래그 문법 검증용 목업" />
+  <meta name="description" content="git 히스토리를 그래프 위에서 끌어 놓아 다루는 git 클라이언트" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" />
-  <link rel="stylesheet" href="style.css" />
 </head>
 <body class="v2">
   <!-- 아이콘 스프라이트 (Lucide, ISC) -->
@@ -33,20 +32,15 @@
     <strong class="brand"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg>Git Yggdrasil</strong>
     <button type="button" id="open-repo" class="small" title="⌘O">저장소 열기</button>
     <button type="button" id="gh-account" class="small gh-account" hidden></button>
-    <span class="sub" id="repo-path">드래그 문법 검증용 목업, 가짜 저장소</span>
+    <span class="sub" id="repo-path"></span>
     <div class="spacer"></div>
-    <div class="seg" role="group" aria-label="드래그 방식">
-      <button type="button" data-mode="v1" aria-pressed="false" title="v1: 수정키 문법">v1</button>
-      <button type="button" data-mode="v2" aria-pressed="true" title="v2: 동사 라벨과 메뉴">v2</button>
-    </div>
     <div class="sync" role="group" aria-label="원격과 동기화">
       <button type="button" id="tb-fetch" class="sync-btn" title="git fetch --all --prune">Fetch</button>
       <button type="button" id="tb-pull" class="sync-btn"></button>
       <button type="button" id="tb-push" class="sync-btn"></button>
     </div>
     <button type="button" id="undo" title="⌘Z"><svg class="i" aria-hidden="true"><use href="#i-undo"/></svg>되돌리기</button>
-    <button type="button" id="redo" title="⌘⇧Z"><svg class="i" aria-hidden="true"><use href="#i-redo"/></svg>다시 실행</button>
-    <button type="button" id="reset">초기화</button>
+    <button type="button" id="search-open" title="⌘K">찾기</button>
     <button type="button" id="help-toggle">도움말</button>
   </header>
   <div id="op-banner" class="op-banner hidden"></div>
@@ -57,7 +51,6 @@
       <div id="repo-tree"></div>
       <div class="repo-tools">
         <button type="button" id="new-branch" class="small" title="git switch -c">새 브랜치</button>
-        <button type="button" id="team-push" class="small" title="원격 main 에 다른 사람의 커밋이 생깁니다"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg>팀원 push</button>
         <label class="muted">pull <select id="pull-mode"><option value="merge">merge</option><option value="rebase">rebase</option></select></label>
       </div>
       <div class="remotes-box">
@@ -77,7 +70,6 @@
         </div>
         <div id="file-tree" class="file-tree"></div>
         <p class="muted hint">체크하면 stage (폴더는 하위 전체). 파일이나 폴더를 브랜치 이름표에 끌면 그 경로만 커밋합니다.</p>
-        <button type="button" id="add-change" class="small">가짜 변경 추가</button>
       </div>
     </aside>
 
@@ -105,15 +97,10 @@
     <div class="trash" data-drop="trash"><svg class="i" aria-hidden="true"><use href="#i-trash"/></svg>휴지통 <span class="muted">커밋 제거, 브랜치와 stash 삭제, 변경 버리기</span></div>
   </footer>
 
-  <div id="preview" class="preview hidden">
-    <div class="preview-title">드롭 결과 미리보기</div>
-    <svg id="preview-svg" aria-hidden="true"></svg>
-  </div>
-
   <div id="welcome" class="welcome hidden">
     <div class="welcome-card">
       <h1>Git Yggdrasil</h1>
-      <p class="muted">git 저장소 폴더를 열면 커밋 그래프를 보여 줍니다. 커밋, stage, checkout, pull/push 같은 기본 조작은 실제로 실행되고, rebase·cherry-pick 같은 히스토리 조작은 아직 미리보기까지만 됩니다.</p>
+      <p class="muted">git 저장소 폴더를 열면 커밋 그래프를 보여 줍니다. 커밋을 끌어 놓아 옮기기·합치기·rebase 하고, 놓기 전에 결과를 미리 봅니다. 모든 조작은 ⌘Z 로 되돌릴 수 있습니다.</p>
       <button type="button" id="welcome-open" class="commit-btn">저장소 폴더 열기</button>
       <button type="button" id="welcome-clone" class="clone-btn">URL 로 clone</button>
       <button type="button" id="welcome-gh" class="clone-btn">내 GitHub 저장소에서 clone</button>
@@ -152,37 +139,23 @@
     <div id="gh-repo-list" class="gh-repo-list" role="list"></div>
     <div class="ask-actions"><button type="button" id="gh-repos-close">닫기</button></div>
   </dialog>
+  <dialog id="search" class="ask search" aria-label="커밋·파일 찾기">
+    <input id="search-input" type="search" placeholder="커밋 메시지, 작성자, 해시, 파일 이름" aria-label="찾기" autocomplete="off" spellcheck="false" />
+    <div id="search-list" class="search-list" role="listbox"></div>
+  </dialog>
   <div id="tip" class="tip hidden"></div>
   <div id="ghost" class="ghost hidden"></div>
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <div id="help" class="help hidden">
-    <h3>v2: 끌면 놓을 곳이 보입니다</h3>
+    <h3>끌면 놓을 곳이 보입니다</h3>
     <p>커밋, 브랜치 이름표, 변경 묶음, 파일, stash 카드, 원격 이름표를 끌기 시작하면 놓을 수 있는 모든 곳에 무슨 일이 일어나는지 적힌 라벨이 뜹니다. 라벨에 가까이 가면 자석처럼 붙고, 결과가 캔버스에 겹쳐 보입니다.</p>
     <p>할 수 있는 일이 여러 개인 곳(예: 커밋을 다른 브랜치에 놓기 = 옮기기 또는 복사)에 놓으면 메뉴가 뜹니다. 숫자 키나 화살표와 Enter 로 고르고, <kbd>Esc</kbd> 로 취소합니다.</p>
     <p>끌지 않고도 됩니다. 아무 항목이나 <b>오른쪽 클릭</b>하면 같은 조작을 메뉴에서 고를 수 있습니다.</p>
     <p>브랜치 이름표를 끌면 그 브랜치의 커밋이 함께 움직입니다(rebase). 합치기(merge)와 포인터만 옮기기는 메뉴에 있습니다.</p>
     <h3>공통</h3>
     <p>이름표 더블클릭은 checkout, 커밋 더블클릭은 메시지 수정입니다. push 된 커밋(색이 찬 노드)을 다시 쓰는 조작은 실행 전에 확인합니다. 충돌이 나면 멈추고 오른쪽 패널에서 해결합니다. <kbd>⌘Z</kbd> 로 언제든 되돌립니다.</p>
-    <details>
-      <summary>v1 문법 (수정키 방식)</summary>
-      <table>
-        <tr><th>끄는 것</th><th>놓는 곳</th><th>결과</th></tr>
-        <tr><td>커밋</td><td>다른 브랜치 이름표</td><td>옮기기, <kbd>⌥</kbd> 복사</td></tr>
-        <tr><td>커밋</td><td>같은 줄기의 커밋 / 틈</td><td>합치기 / 순서 변경</td></tr>
-        <tr><td>줄기 핸들</td><td>커밋 / 이름표</td><td>rebase</td></tr>
-        <tr><td>이름표</td><td>커밋 / 이름표</td><td>포인터 이동, <kbd>⇧</kbd> merge</td></tr>
-        <tr><td>HEAD 이름표</td><td>과거 커밋</td><td>reset --mixed, <kbd>⇧</kbd> soft, <kbd>⌥</kbd> hard</td></tr>
-        <tr><td>공유된 히스토리 재작성</td><td></td><td><kbd>⌘</kbd> 를 누른 채 놓기</td></tr>
-      </table>
-    </details>
   </div>
-
-  <script src="model.js"></script>
-  <script src="render.js"></script>
-  <script src="v2.js"></script>
-  <script src="app.js"></script>
-  <script src="bridge.js"></script>
-  <script src="gh.js"></script>
+  <script type="module" src="./src/main.ts"></script>
 </body>
 </html>
