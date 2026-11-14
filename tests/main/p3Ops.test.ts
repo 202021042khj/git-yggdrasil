@@ -110,6 +110,27 @@ test("부분 stage: 한 파일의 변경 덩어리 중 하나만 stage → 다�
   assert.equal(sh(repo, "diff", "--cached"), "");
 });
 
+test("줄 단위 stage: 한 덩어리 안에서 고른 줄만 stage → 고른 줄만 unstage", async () => {
+  const t = lines(10, "!").split("\n");
+  const old5 = t[4];
+  t[3] = "NEW 4"; t[4] = "NEW 5"; // 붙어 있는 두 줄 변경 = 한 덩어리
+  write("app.js", t.join("\n"));
+  const [h] = await hunks(repo, "app.js", false);
+  const pick = [h.lines.indexOf("-" + old5), h.lines.indexOf("+NEW 5")];
+  assert.ok(pick.every((i) => i >= 0));
+  await run("stageHunk", ["app.js", 0, false, pick]); // 5번째 줄 변경만
+  const staged = sh(repo, "diff", "--cached");
+  assert.match(staged, /\+NEW 5/);
+  assert.doesNotMatch(staged, /NEW 4/);
+  assert.match(sh(repo, "diff"), /\+NEW 4/);
+  // stage 된 쪽에서 다시 그 줄만 unstage
+  const [sh0] = await hunks(repo, "app.js", true);
+  const idx = sh0.lines.map((l, i) => (/^[+-]/.test(l) ? i : -1)).filter((i) => i >= 0);
+  await run("stageHunk", ["app.js", 0, true, idx]);
+  assert.equal(sh(repo, "diff", "--cached"), "");
+  assert.match(sh(repo, "diff"), /\+NEW 5/, "작업 영역은 그대로");
+});
+
 test("커밋 분할: 끝 커밋은 바로 풀고, 과거 커밋은 멈춘 뒤 나눠 커밋하고 계속", async () => {
   // 끝 커밋
   await run("splitCommit", [ids.c]);

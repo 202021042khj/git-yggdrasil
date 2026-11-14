@@ -10,8 +10,9 @@ export type OpName =
   | "tagCreate" | "tagMove" | "tagDelete" | "tagPush"
   | "stashPush" | "stashPop" | "stashDrop"
   | "cherryPick" | "moveCommit" | "dropCommit" | "rebaseStem" | "squash" | "reorder" | "revertCommit" | "merge" | "splitCommit"
-  | "resolveFile" | "continueOp" | "skipOp" | "abortOp"
-  | "undo";
+  | "resolveFile" | "resolveContent" | "continueOp" | "skipOp" | "abortOp"
+  | "undo"
+  | "redo";
 
 /** 조작에 필요한 부가 정보 (화면이 그래프에서 계산해서 넘긴다) */
 export interface OpExtra {
@@ -35,6 +36,7 @@ export interface RunResult {
   code?: "NO_REMOTE" | "NEEDS_CHECKOUT";
   branch?: string;
   undoable?: number;
+  redoable?: number;
   repo?: RepoState;
 }
 
@@ -66,18 +68,38 @@ export interface Hunk {
   lines: string[];
 }
 
+export interface DiffOptions {
+  /** 공백만 바뀐 줄 무시 (git diff -w) */
+  ignoreWhitespace?: boolean;
+  /** 긴 diff 를 자르지 않고 전부 */
+  full?: boolean;
+}
+
+export interface FileDiff {
+  /** 통합(unified) diff 텍스트. 바이너리면 빈 문자열 */
+  text: string;
+  /** 잘라 낸 줄 수 (0 이면 전부) */
+  omitted: number;
+  binary: boolean;
+  /** 이미지 파일이면 전후 미리보기 (data: URL, 없으면 그쪽에 파일이 없음) */
+  image?: { before: string | null; after: string | null };
+  /** 아직 추적하지 않는 새 파일 */
+  untracked?: boolean;
+}
+
 export interface GitApi {
   pick(): Promise<RepoState | null>;
   open(dir: string): Promise<RepoState>;
   clone(url: string): Promise<RepoState | null>;
   read(): Promise<RepoState | null>;
   more(): Promise<RepoState | null>;
-  diff(file: string, commit: string | null): Promise<string>;
+  diff(file: string, commit: string | null, opts?: DiffOptions): Promise<FileDiff>;
   run(op: OpName, args: unknown[], extra?: OpExtra): Promise<RunResult>;
   search(query: string): Promise<SearchHit[]>;
   fileHistory(file: string): Promise<FileHistoryEntry[]>;
   blame(file: string, commit?: string | null): Promise<BlameLine[]>;
   hunks(file: string, staged: boolean): Promise<Hunk[]>;
+  conflictText(file: string): Promise<string | null>;
   onChanged(fn: () => void): void;
   onMenuOpen(fn: () => void): void;
   onMenuClone(fn: () => void): void;

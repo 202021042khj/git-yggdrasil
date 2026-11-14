@@ -4,18 +4,14 @@ import path from "node:path";
 import { dialog, ipcMain } from "electron";
 import { git } from "@/git/cli";
 import { execute } from "@/git/ops/execute";
+import { fileDiff } from "@/git/diff";
 import { loadMore, readRepo } from "@/git/readRepo";
 import { gitAuth } from "@/github/auth";
 import { currentRoot, getWindow, openRepo, requireRoot } from "@/repo/session";
-import type { OpExtra, OpName, RunResult } from "@shared/types/ipc";
+import type { DiffOptions, OpExtra, OpName, RunResult } from "@shared/types/ipc";
 
-const DIFF_MAX_LINES = 400;
 const CLONE_TIMEOUT = 10 * 60 * 1000;
 
-const cutLines = (t: string | null) => {
-  const l = (t || "").split("\n");
-  return l.length > DIFF_MAX_LINES ? l.slice(0, DIFF_MAX_LINES).join("\n") + `\n… (${l.length - DIFF_MAX_LINES}줄 생략)` : l.join("\n");
-};
 
 let busy = false;
 
@@ -76,17 +72,6 @@ export function registerRepoIpc(): void {
     }
   });
 
-  ipcMain.handle("repo:diff", async (_e, { file, commit }: { file: string; commit: string | null }) => {
-    const root = requireRoot();
-    if (commit) return cutLines(await git(root, ["show", "--format=", "--no-color", commit, "--", file], { allowFail: true }));
-    const d = await git(root, ["diff", "--no-color", "HEAD", "--", file], { allowFail: true });
-    if (d) return cutLines(d);
-    // 아직 추적하지 않는 새 파일: 내용 전체를 추가로 보여 준다
-    try {
-      const text = fs.readFileSync(path.join(root, file), "utf8");
-      return cutLines(`새 파일\n@@ +1,${text.split("\n").length} @@\n` + text.split("\n").map((l) => "+" + l).join("\n"));
-    } catch {
-      return "";
-    }
-  });
+  ipcMain.handle("repo:diff", (_e, { file, commit, opts }: { file: string; commit: string | null; opts?: DiffOptions }) =>
+    fileDiff(requireRoot(), file, commit, opts));
 }

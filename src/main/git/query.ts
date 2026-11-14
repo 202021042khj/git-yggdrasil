@@ -1,4 +1,6 @@
 // 읽기 전용 조회: 커밋 검색 · 파일 히스토리 · blame · 변경 덩어리(hunk)
+import fs from "node:fs";
+import path from "node:path";
 import { git } from "@/git/cli";
 import { parseDiff } from "@/git/patch";
 import type { BlameLine, FileHistoryEntry, Hunk, SearchHit } from "@shared/types/ipc";
@@ -69,6 +71,15 @@ export async function blame(root: string, file: string, commit?: string | null):
 }
 
 /** 파일의 변경 덩어리 (staged=true 면 stage 된 쪽) */
+/** 충돌 중인 파일의 지금 내용 (충돌 표시 포함). 너무 크거나 바이너리면 null */
+export function conflictText(root: string, file: string): string | null {
+  const full = path.resolve(root, file);
+  if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error(`저장소 밖의 경로입니다: ${file}`);
+  const buf = fs.readFileSync(full);
+  if (buf.length > 2_000_000 || buf.includes(0)) return null;
+  return buf.toString("utf8");
+}
+
 export async function hunks(root: string, file: string, staged: boolean): Promise<Hunk[]> {
   const out = await git(root, ["diff", "--no-color", ...(staged ? ["--cached"] : []), "--", file], { allowFail: true });
   return parseDiff(out || "").hunks;

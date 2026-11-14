@@ -12,4 +12,4 @@ export const OP_CMD: Record<OpKind, string> = {
 };
 
 /** 진행 중에는 이 조작만 실행할 수 있다 */
-export const ALLOWED_DURING_OP = new Set(["resolveFile", "continueOp", "skipOp", "abortOp", "fetch", "stageFiles", "stageHunk", "commitTo", "discard"]);
+export const ALLOWED_DURING_OP = new Set(["resolveFile", "resolveContent", "continueOp", "skipOp", "abortOp", "fetch", "stageFiles", "stageHunk", "commitTo", "discard"]);

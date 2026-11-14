@@ -74,5 +74,6 @@ dev/debug.ts     window.__yggDebug (점검용)
 
 ## 테스트
 
+- `tests/renderer/*.test.ts` — 화면의 순수 계산(`model/` 의 충돌 구간·좌우 diff·필터)을 `@renderer/…` 별칭으로 불러 시험합니다. 여기서 쓰는 파일은 `tsconfig.node.json` 의 include 에도 적어야 합니다. DOM 을 쓰는 코드는 넣지 않습니다.
 - `tests/main/*.test.ts` — 임시 폴더에 저장소를 만들고 `execute()` 로 조작을 돌린 뒤 git 으로 결과를 확인합니다. 네트워크는 로컬 bare 저장소로 대신합니다.
 - 화면은 `YGG_SMOKE=<저장소> YGG_EVAL=<시나리오.js> npm start` 로 실제 창에서 확인합니다 (`window.__yggDebug` 사용).

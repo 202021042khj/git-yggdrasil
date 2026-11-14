@@ -40,6 +40,7 @@
       <button type="button" id="tb-push" class="sync-btn"></button>
     </div>
     <button type="button" id="undo" title="⌘Z"><svg class="i" aria-hidden="true"><use href="#i-undo"/></svg>되돌리기</button>
+    <button type="button" id="redo" title="⌘⇧Z" disabled><svg class="i" aria-hidden="true"><use href="#i-redo"/></svg>다시 실행</button>
     <button type="button" id="search-open" title="⌘K">찾기</button>
     <button type="button" id="help-toggle">도움말</button>
   </header>
@@ -74,6 +75,21 @@
     </aside>
 
     <div class="canvas-area">
+      <div class="filter-bar" role="search" aria-label="그래프 필터">
+        <details id="filter-branches" class="filter-branches">
+          <summary id="filter-branches-label">브랜치: 전부</summary>
+          <div class="fb-pop">
+            <div class="fb-actions"><button type="button" class="small" data-fb-all>전부 보기</button><button type="button" class="small" data-fb-head>체크아웃한 것만</button></div>
+            <div id="filter-branch-list" class="fb-list"></div>
+          </div>
+        </details>
+        <input id="filter-author" type="search" placeholder="작성자" aria-label="작성자로 거르기" autocomplete="off" spellcheck="false" />
+        <select id="filter-since" aria-label="기간">
+          <option value="">전체 기간</option><option value="7">최근 1주</option><option value="30">최근 1달</option><option value="90">최근 3달</option><option value="365">최근 1년</option>
+        </select>
+        <span id="filter-summary" class="muted filter-summary" aria-live="polite"></span>
+        <button type="button" id="filter-clear" class="small" hidden>필터 해제</button>
+      </div>
       <section class="canvas-wrap" id="canvas-wrap">
       <svg id="graph" role="img" aria-label="커밋 그래프"></svg>
       <svg id="ghost-graph" aria-hidden="true"></svg>

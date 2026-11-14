@@ -67,6 +67,7 @@ export async function run(req: RunRequest, retried = false): Promise<boolean> {
   try {
     const r = await window.gitApi.run(req.op, req.args, extra);
     ok = r.ok;
+    if (r.ok && r.undoable !== undefined) store.update({ undoCount: r.undoable, redoCount: r.redoable ?? 0 });
     if (r.ok) {
       store.addLog({ summary: req.summary, cmd: r.cmds.join("\n") });
       toast(r.warnings?.length ? `${req.summary} — ${r.warnings.join(" ")}` : req.summary);

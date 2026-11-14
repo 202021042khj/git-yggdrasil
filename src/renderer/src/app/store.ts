@@ -1,5 +1,6 @@
 // 화면 상태 저장소 (한 곳). 섹션들은 여기서 읽기만 하고, 바꿀 때는 update() 를 거친다.
 // 바뀌면 구독한 렌더 함수가 다시 그린다.
+import { NO_FILTER, type GraphFilter } from "@/model/filter";
 import type { RepoState } from "@shared/types/repo";
 
 export interface LogEntry {
@@ -28,6 +29,11 @@ export interface UiState {
   pullMode: "merge" | "rebase";
   /** git 명령 실행 중 */
   busy: boolean;
+  /** 되돌리기 / 다시 실행 가능한 조작 수 (메인 프로세스 기록 기준) */
+  /** 그래프 필터 (브랜치 숨김 · 작성자·기간 흐리게) */
+  filter: GraphFilter;
+  undoCount: number;
+  redoCount: number;
 }
 
 const EMPTY_REPO: RepoState = {
@@ -44,6 +50,9 @@ const ui: UiState = {
   onlyChanged: false,
   pullMode: "merge",
   busy: false,
+  filter: NO_FILTER,
+  undoCount: 0,
+  redoCount: 0,
 };
 
 type Listener = () => void;

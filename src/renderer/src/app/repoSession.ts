@@ -3,6 +3,7 @@ import { RECENT_KEY, RECENT_LIMIT } from "@/constants/storage";
 import { byId } from "@/lib/dom";
 import { errorText } from "@/lib/html";
 import { store } from "@/app/store";
+import { NO_FILTER } from "@/model/filter";
 import { toast } from "@/ui/toast";
 import type { RepoState } from "@shared/types/repo";
 
@@ -24,7 +25,7 @@ export function show(repo: RepoState | null): void {
   if (!repo || holdRefresh()) return;
   const firstOpen = shownRoot !== repo.root;
   shownRoot = repo.root ?? null;
-  store.update({ repo: adapt(repo), ...(firstOpen ? { log: [], selected: null, selectedFile: null } : {}) });
+  store.update({ repo: adapt(repo), ...(firstOpen ? { log: [], selected: null, selectedFile: null, undoCount: 0, redoCount: 0, filter: NO_FILTER } : {}) });
   store.flush();
   byId("welcome").classList.add("hidden");
   if (firstOpen) {

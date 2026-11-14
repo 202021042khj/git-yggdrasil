@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    alias: { "@": resolve(import.meta.dirname, "src/main"), "@shared": resolve(import.meta.dirname, "src/shared") },
+    alias: { "@": resolve(import.meta.dirname, "src/main"), "@shared": resolve(import.meta.dirname, "src/shared"), "@renderer": resolve(import.meta.dirname, "src/renderer/src") },
   },
   test: {
     include: ["tests/**/*.test.ts"],

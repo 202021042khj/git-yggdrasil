@@ -8,6 +8,10 @@ import { toast } from "@/ui/toast";
 
 export function renderTopbar(): void {
   const s = store.repo;
+  const undoBtn = byId<HTMLButtonElement>("undo"), redoBtn = byId<HTMLButtonElement>("redo");
+  undoBtn.title = `⌘Z · 되돌릴 수 있는 조작 ${store.ui.undoCount}개`;
+  redoBtn.disabled = !store.ui.redoCount || store.ui.busy;
+  redoBtn.title = store.ui.redoCount ? `⌘⇧Z · 다시 실행할 조작 ${store.ui.redoCount}개` : "⌘⇧Z · 다시 실행할 조작이 없습니다";
   const path = byId("repo-path");
   path.textContent = s.root || "";
   path.title = s.root || "";
@@ -41,13 +45,14 @@ export function mountTopbar(): void {
     void run({ op: "push", args: [s.head], summary: remote ? `${s.head} push${force ? " (덮어쓰기)" : ""}` : `${s.head} 를 원격에 처음 publish`, extra: { force } });
   };
   byId("undo").onclick = undo;
+  byId("redo").onclick = redo;
   byId("help-toggle").onclick = () => byId("help").classList.toggle("hidden");
   // ⌘Z: 입력 중이 아닐 때만 (입력 중에는 텍스트 되돌리기)
   document.addEventListener("keydown", (e) => {
     if ((e.target as Element).closest?.("input, textarea")) return;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
       e.preventDefault();
-      if (e.shiftKey) toast("다시 실행은 아직 지원하지 않습니다. 되돌린 위치는 refs/yggdrasil/backup/ 에도 남아 있습니다.");
+      if (e.shiftKey) redo();
       else undo();
     }
   });
@@ -57,4 +62,11 @@ export function mountTopbar(): void {
 function undo(): void {
   if (!store.hasRepo()) return;
   void run({ op: "undo", args: [], summary: "되돌리기" });
+}
+
+/** 다시 실행: 되돌린 조작을 다시 적용 (새 조작을 하면 기록이 사라진다) */
+function redo(): void {
+  if (!store.hasRepo()) return;
+  if (!store.ui.redoCount) { toast("다시 실행할 작업이 없습니다."); return; }
+  void run({ op: "redo", args: [], summary: "다시 실행" });
 }

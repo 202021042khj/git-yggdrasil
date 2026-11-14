@@ -14,8 +14,9 @@
     "composite": true,
     "paths": {
       "@/*": ["./src/main/*"],
-      "@shared/*": ["./src/shared/*"]
+      "@shared/*": ["./src/shared/*"],
+      "@renderer/*": ["./src/renderer/src/*"]
     }
   },
-  "include": ["electron.vite.config.ts", "vitest.config.ts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*", "tests/**/*"]
+  "include": ["electron.vite.config.ts", "vitest.config.mts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*", "src/renderer/src/model/conflict.ts", "src/renderer/src/model/diffView.ts", "src/renderer/src/model/filter.ts", "tests/**/*"]
 }

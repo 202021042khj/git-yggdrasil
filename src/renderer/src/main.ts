@@ -7,6 +7,7 @@ import { mountContextMenu } from "@/interactions/contextMenu";
 import { mountDrag } from "@/interactions/drag";
 import { renderCanvas, mountCanvas, revealCommit } from "@/sections/CanvasSection";
 import { renderDetail, mountDetail } from "@/sections/DetailSection";
+import { renderFilter, mountFilter } from "@/sections/FilterSection";
 import { renderFooter } from "@/sections/FooterSection";
 import { renderGithub, mountGithub } from "@/sections/GithubSection";
 import { renderLog } from "@/sections/LogSection";
@@ -20,7 +21,7 @@ import { renderWorking, mountWorking } from "@/sections/WorkingSection";
 import { mountMenu } from "@/ui/menu";
 import { toast } from "@/ui/toast";
 
-const renders = [renderTopbar, renderOpBanner, renderSidebar, renderRemotes, renderWorking, renderCanvas, renderDetail, renderLog, renderFooter, renderGithub];
+const renders = [renderTopbar, renderOpBanner, renderSidebar, renderRemotes, renderWorking, renderFilter, renderCanvas, renderDetail, renderLog, renderFooter, renderGithub];
 
 function renderAll(): void {
   if (!store.hasRepo()) return;
@@ -38,6 +39,7 @@ mountSidebar();
 mountRemotes();
 mountWorking();
 mountCanvas();
+mountFilter();
 mountDetail((id) => { if (!revealCommit(id)) toast("그래프에 아직 불러오지 않은 커밋입니다."); });
 mountSearch();
 mountWelcome();

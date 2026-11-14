@@ -22,6 +22,7 @@ interface UndoEntry {
 }
 
 const undoStacks = new Map<string, UndoEntry[]>();
+const redoStacks = new Map<string, UndoEntry[]>();
 const UNDO_LIMIT = 50;
 /** 커밋류는 되돌려도 변경 내용을 Staged 로 남긴다. 나머지는 작업 영역까지 이전 상태로. */
 const SOFT_UNDO = new Set<OpName>(["commitTo", "amendInto", "reword"]);
@@ -37,36 +38,60 @@ async function snapshot(root: string): Promise<Snapshot> {
   return { heads, head: (await headInfo(root)).branch };
 }
 
+/** 브랜치 위치를 from 상태에서 to 상태로 옮긴다 (되돌리기·다시 실행 공용) */
+async function restore(ctx: Parameters<OpFn>[0], entry: UndoEntry, from: Snapshot, to: Snapshot): Promise<void> {
+  const now = await snapshot(ctx.root);
+  if (to.head && now.head !== to.head && (to.heads[to.head] && now.heads[to.head])) await ctx.run(["switch", to.head]);
+  for (const b of new Set([...Object.keys(from.heads), ...Object.keys(to.heads)])) {
+    const was = from.heads[b], want = to.heads[b];
+    if (was === want) continue;
+    const cur = await snapshot(ctx.root);
+    if (!want) { // to 상태에는 없는 브랜치 → 지운다
+      if (cur.head === b) throw new Error(`${b} 가 체크아웃되어 있어 지울 수 없습니다.`);
+      await ctx.run(["branch", "-D", b]);
+    } else if (cur.head === b) {
+      await ctx.run(["reset", SOFT_UNDO.has(entry.op) ? "--soft" : "--keep", want]);
+    } else {
+      await ctx.run(["branch", "-f", b, want]);
+    }
+  }
+  // 새로 생긴 브랜치로 체크아웃해야 하는 경우 (예: 다시 실행한 switchCreate)
+  const end = await snapshot(ctx.root);
+  if (to.head && end.head !== to.head && end.heads[to.head]) await ctx.run(["switch", to.head]);
+}
+
+const stackOf = (m: Map<string, UndoEntry[]>, root: string) => { if (!m.has(root)) m.set(root, []); return m.get(root)!; };
+
 /** 앱에서 한 조작 중 브랜치 위치를 바꾼 것을 하나씩 되돌린다 */
 const undo: OpFn = async (ctx) => {
-  const stack = undoStacks.get(ctx.root) || [];
-  const last = stack.pop();
+  const stack = stackOf(undoStacks, ctx.root);
+  const last = stack.at(-1);
   if (!last) throw new Error("되돌릴 작업이 없습니다. (브랜치 위치를 바꾼 조작만 되돌릴 수 있습니다)");
   if (last.op === "renameBranch") { // 이름 변경은 이름만 되돌린다 (원격에 반영한 것은 그대로)
     await ctx.run(["branch", "-m", String(last.args[1]), String(last.args[0])]);
     ctx.note("# 되돌림: 브랜치 이름 변경 (원격은 그대로)");
-    undoStacks.set(ctx.root, stack);
-    return;
+  } else {
+    await restore(ctx, last, last.after, last.before);
+    ctx.note(`# 되돌림: ${last.op}`);
   }
-  const now = await snapshot(ctx.root);
-  if (last.before.head && now.head !== last.before.head && last.before.heads[last.before.head]) {
-    await ctx.run(["switch", last.before.head]);
+  stack.pop();
+  stackOf(redoStacks, ctx.root).push(last);
+};
+
+/** 되돌린 조작을 다시 적용한다 (조작 때의 결과 커밋으로 브랜치를 되돌려 놓는다) */
+const redo: OpFn = async (ctx) => {
+  const stack = stackOf(redoStacks, ctx.root);
+  const next = stack.at(-1);
+  if (!next) throw new Error("다시 실행할 작업이 없습니다.");
+  if (next.op === "renameBranch") {
+    await ctx.run(["branch", "-m", String(next.args[0]), String(next.args[1])]);
+    ctx.note("# 다시 실행: 브랜치 이름 변경 (원격은 그대로)");
+  } else {
+    await restore(ctx, next, next.before, next.after);
+    ctx.note(`# 다시 실행: ${next.op}`);
   }
-  for (const b of new Set([...Object.keys(last.before.heads), ...Object.keys(last.after.heads)])) {
-    const was = last.before.heads[b], is = last.after.heads[b];
-    if (was === is) continue;
-    const cur = await snapshot(ctx.root);
-    if (!was) { // 조작으로 생긴 브랜치 → 지운다
-      if (cur.head === b) throw new Error(`${b} 가 체크아웃되어 있어 지울 수 없습니다.`);
-      await ctx.run(["branch", "-D", b]);
-    } else if (cur.head === b) {
-      await ctx.run(["reset", SOFT_UNDO.has(last.op) ? "--soft" : "--keep", was]);
-    } else {
-      await ctx.run(["branch", "-f", b, was]);
-    }
-  }
-  ctx.note(`# 되돌림: ${last.op}`);
-  undoStacks.set(ctx.root, stack);
+  stack.pop();
+  stackOf(undoStacks, ctx.root).push(next);
 };
 
 export const OPS: Partial<Record<OpName, OpFn>> = {
@@ -76,6 +101,7 @@ export const OPS: Partial<Record<OpName, OpFn>> = {
   ...historyOps,
   ...conflictOps,
   undo,
+  redo,
 };
 
 /** 나중에 추가하는 조작 (P3 등) 을 등록 */
@@ -87,7 +113,7 @@ export async function execute(root: string, op: OpName, args: unknown[] = [], ex
   const fn = OPS[op];
   if (!fn) throw new Error(`알 수 없는 조작: ${op}`);
   const { ctx, cmds, warnings } = createContext(root, extra);
-  const before = op === "undo" ? null : await snapshot(root).catch(() => null);
+  const before = op === "undo" || op === "redo" ? null : await snapshot(root).catch(() => null);
   try {
     await fn(ctx, args);
     if (before) {
@@ -96,9 +122,10 @@ export async function execute(root: string, op: OpName, args: unknown[] = [], ex
         const stack = undoStacks.get(root) || [];
         stack.push({ op, args, before, after });
         undoStacks.set(root, stack.slice(-UNDO_LIMIT));
+        redoStacks.set(root, []); // 새 조작을 하면 다시 실행 기록은 버린다
       }
     }
-    return { ok: true, cmds, warnings, undoable: (undoStacks.get(root) || []).length };
+    return { ok: true, cmds, warnings, undoable: (undoStacks.get(root) || []).length, redoable: (redoStacks.get(root) || []).length };
   } catch (e) {
     const err = e as OpError;
     return {

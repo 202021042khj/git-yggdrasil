@@ -8,6 +8,7 @@ import { byId } from "@/lib/dom";
 import { esc } from "@/lib/html";
 import { under } from "@/lib/paths";
 import { branchesAt, stems } from "@/model/graph";
+import { dimmedCommits, visibleRepo } from "@/model/filter";
 import { renderGraph } from "@/model/layout";
 import { isError, preview, touchesPushed, type Preview } from "@/model/preview";
 import { actionsFor, candidateTargets, quickLabelVerb, sourceFromElement, sourceLabel, type Action, type DragSource, type DropTarget } from "@/interactions/targets";
@@ -64,7 +65,8 @@ export function showInCanvas(res: Preview): void {
   const s = store.repo;
   const oldIds = new Set(Object.keys(s.commits));
   const newIds = new Set(Object.keys(res.state.commits).filter((c) => !oldIds.has(c)));
-  const r = renderGraph(res.state, { newIds, minWidth: byId("canvas-wrap").clientWidth });
+  const f = store.ui.filter;
+  const r = renderGraph(visibleRepo(res.state, f), { newIds, minWidth: byId("canvas-wrap").clientWidth, dim: dimmedCommits(res.state, f) });
   const svg = byId("ghost-graph") as unknown as SVGSVGElement;
   svg.setAttribute("width", String(r.width));
   svg.setAttribute("height", String(r.height));

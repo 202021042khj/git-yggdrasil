@@ -60,13 +60,14 @@ const deleteRemoteBranch: OpFn = async (ctx, [remoteBranch]: [string]) => {
 
 // ---------- 부분 stage (hunk 단위) ----------
 /** staged=false: 변경 덩어리 하나를 stage, staged=true: stage 된 덩어리 하나를 unstage */
-const stageHunk: OpFn = async (ctx, [file, index, staged]: [string, number, boolean]) => {
+/** hunk 하나, 또는 그 안의 고른 줄만 stage / unstage (lines: hunk.lines 안의 번호) */
+const stageHunk: OpFn = async (ctx, [file, index, staged, lines]: [string, number, boolean, number[]?]) => {
   const diff = await git(ctx.root, ["diff", "--no-color", ...(staged ? ["--cached"] : []), "--", file]);
-  const patch = patchFor(parseDiff(diff), index);
+  const patch = patchFor(parseDiff(diff), index, lines?.length ? lines : undefined, staged);
   const tmp = path.join(os.tmpdir(), `ygg-hunk-${process.pid}-${Date.now()}.patch`);
   fs.writeFileSync(tmp, patch);
   try {
-    await ctx.run(["apply", "--cached", ...(staged ? ["-R"] : []), "--", tmp]);
+    await ctx.run(["apply", "--cached", ...(lines?.length ? ["--recount"] : []), ...(staged ? ["-R"] : []), "--", tmp]);
   } finally {
     fs.rmSync(tmp, { force: true });
   }

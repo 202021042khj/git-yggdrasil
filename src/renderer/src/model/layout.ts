@@ -107,6 +107,8 @@ export interface RenderOptions {
   /** 미리보기에서 사라지는 커밋 */
   goingIds?: Set<string>;
   minWidth?: number;
+  /** 필터에 맞지 않아 흐리게 그릴 커밋 */
+  dim?: Set<string>;
 }
 
 export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
@@ -156,7 +158,7 @@ export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
   for (const [c, p] of Object.entries(pos)) {
     const cm = s.commits[c];
     const isPushed = pushed.has(c);
-    const cls = ["node", isPushed ? "pushed" : "local", newIds.has(c) && "new", goingIds.has(c) && "going", opts.selected === c && "selected"].filter(Boolean).join(" ");
+    const cls = ["node", isPushed ? "pushed" : "local", newIds.has(c) && "new", goingIds.has(c) && "going", opts.selected === c && "selected", opts.dim?.has(c) && "dim"].filter(Boolean).join(" ");
     const fill = isPushed ? p.lane.color : "var(--bg)";
     const shape = cm.parents.length > 1
       ? `<rect x="-10" y="-10" width="20" height="20" transform="rotate(45)" style="stroke:${p.lane.color};fill:${fill}"/>`

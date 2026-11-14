@@ -102,6 +102,8 @@ kbd { border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; backgro
 .topbar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--panel); }
 .brand { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-lg); }
 .topbar .sub { color: var(--muted); font-size: var(--fs-sm); }
+.topbar button, .topbar .brand { white-space: nowrap; flex-shrink: 0; }
+.topbar #repo-path { flex: 1 1 0; min-width: 0; }
 .spacer { flex: 1; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; }
 .seg button { border: none; border-radius: 0; background: transparent; min-width: 40px; justify-content: center; }
@@ -278,9 +280,9 @@ body.v2-dragging .v2-pill:not(.on) { opacity: 0.92; }
 .diff { margin-top: 10px; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; font: 11.5px/1.5 var(--font-code); }
 .diff .dh { padding: 4px 8px; background: var(--bg); border-bottom: 1px solid var(--line); font-weight: 600; }
 .diff pre { margin: 0; padding: 4px 0; white-space: pre; overflow-x: auto; }
-.diff .add { background: color-mix(in srgb, var(--ok) 18%, transparent); display: block; padding: 0 8px; }
-.diff .del { background: color-mix(in srgb, var(--danger) 18%, transparent); display: block; padding: 0 8px; }
-.diff .ctx { display: block; padding: 0 8px; color: var(--muted); }
+.diff pre .add, .hunk pre .add { background: color-mix(in srgb, var(--ok) 18%, transparent); display: block; padding: 0 8px; }
+.diff pre .del, .hunk pre .del { background: color-mix(in srgb, var(--danger) 18%, transparent); display: block; padding: 0 8px; }
+.diff pre .ctx, .hunk pre .ctx { display: block; padding: 0 8px; color: var(--muted); }
 
 /* ---------- 충돌 ---------- */
 .op-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 14px; background: color-mix(in srgb, var(--warn) 18%, var(--bg)); border-bottom: 1px solid var(--warn); }
@@ -366,8 +368,8 @@ body.busy .sync-btn, body.busy .commit-btn { opacity: 0.55; pointer-events: none
 .remote-only .ru { color: var(--text); font-size: var(--fs-sm); }
 
 /* ---------- 큰 저장소 ---------- */
-.canvas-area { position: relative; min-height: 0; min-width: 0; display: flex; }
-.canvas-area > .canvas-wrap { flex: 1; }
+.canvas-area { position: relative; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+.canvas-area > .canvas-wrap { flex: 1; min-height: 0; }
 .load-more { position: absolute; left: 12px; bottom: 12px; z-index: 5; box-shadow: var(--shadow); border: none; }
 .lane-tag rect { fill: var(--bg); opacity: 0.92; }
 .lane-names { pointer-events: none; }
@@ -412,3 +414,67 @@ dialog.search input { width: 100%; font-size: 15px; padding: 8px 10px; }
 
 /* hidden 속성이 display 규칙에 지지 않게 */
 [hidden] { display: none !important; }
+
+/* ---------- 충돌 편집기 ---------- */
+.ce-status { font-size: 12px; margin-bottom: 6px; }
+.ce-ctx { margin: 0; padding: 2px 6px; font-size: 12px; color: var(--muted); white-space: pre-wrap; }
+.ce-conflict { border: 1px solid var(--danger, #e5534b); border-radius: var(--r-sm); margin: 6px 0; overflow: hidden; }
+.ce-conflict.picked { border-color: var(--line); }
+.ce-head { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 4px 6px; background: var(--panel-2); }
+.ce-head b { margin-right: auto; font-size: 12px; }
+.ce-head button.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.ce-sides { display: grid; grid-template-columns: 1fr 1fr; }
+.ce-side { min-width: 0; }
+.ce-side.b { border-left: 1px solid var(--line); }
+.ce-label { font-size: 11px; color: var(--muted); padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ce-side pre { margin: 0; padding: 4px 6px; font-size: 12px; max-height: 200px; overflow: auto; }
+.ce-side.a pre { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.ce-side.b pre { background: color-mix(in srgb, var(--tag) 10%, transparent); }
+.ce-result-label { display: block; margin-top: 8px; font-size: 12px; font-weight: 600; }
+.ce-result { width: 100%; font: 12px/1.45 "JetBrains Mono", ui-monospace, monospace; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 6px; resize: vertical; }
+.ce-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+.ce-actions .primary { background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 600; }
+
+/* 줄 단위 stage: 고를 수 있는 줄 */
+.hunk pre .pick { cursor: pointer; border-left: 3px solid transparent; padding-left: 3px; }
+.hunk pre .pick:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.hunk pre .pick:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.hunk pre .pick[aria-checked="true"] { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, transparent); }
+
+/* ---------- diff 보기 도구 · 좌우 비교 · 이미지 ---------- */
+.diff .dh { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.diff .dh .dt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.diff-tools { display: inline-flex; align-items: center; gap: 8px; font-weight: 400; }
+.diff-tools .seg button { min-width: 0; padding: 1px 8px; }
+.diff-tools label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+table.split { width: 100%; border-collapse: collapse; table-layout: fixed; font: 12px/1.45 "JetBrains Mono", ui-monospace, monospace; }
+table.split col.nc { width: 3.2em; }
+table.split td { padding: 0 6px; white-space: pre-wrap; word-break: break-all; vertical-align: top; }
+table.split td.no { color: var(--muted); text-align: right; user-select: none; padding-right: 4px; }
+table.split td.add { background: color-mix(in srgb, var(--ok) 16%, transparent); }
+table.split td.del { background: color-mix(in srgb, var(--danger) 16%, transparent); }
+table.split td.empty { background: color-mix(in srgb, var(--line) 35%, transparent); }
+table.split tr.sh td { color: var(--muted); background: var(--panel-2); padding: 2px 6px; }
+table.split td:nth-child(3) { border-left: 1px solid var(--line); }
+.more-diff { margin: 6px; }
+.img-diff { display: flex; gap: 8px; flex-wrap: wrap; padding: 8px; }
+.img-diff figure { margin: 0; flex: 1 1 140px; min-width: 0; }
+.img-diff figcaption { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+.img-diff img { max-width: 100%; max-height: 260px; display: block; border: 1px solid var(--line); background: repeating-conic-gradient(var(--panel-2) 0 25%, transparent 0 50%) 0 0 / 12px 12px; }
+
+/* ---------- 그래프 필터 ---------- */
+.filter-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; }
+.filter-bar input[type="search"], .filter-bar select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 3px 6px; min-height: 26px; }
+.filter-bar input[type="search"] { width: 120px; }
+.fb-row input { margin: 0; }
+.filter-branches { position: relative; }
+.filter-branches summary { list-style: none; cursor: pointer; padding: 3px 8px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--bg); min-height: 26px; display: inline-flex; align-items: center; }
+.filter-branches summary::-webkit-details-marker { display: none; }
+.filter-branches summary::after { content: "▾"; margin-left: 6px; color: var(--muted); }
+.filter-branches.on summary { border-color: var(--accent); color: var(--accent); }
+.fb-pop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; min-width: 220px; max-height: 50vh; overflow: auto; padding: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow); }
+.fb-actions { display: flex; gap: 4px; margin-bottom: 4px; }
+.fb-row { display: flex; align-items: center; gap: 6px; padding: 3px 4px; border-radius: var(--r-sm); white-space: nowrap; }
+.fb-row:hover { background: var(--panel-2); }
+.filter-summary { margin-left: auto; }
+#graph .node.dim { opacity: 0.22; }

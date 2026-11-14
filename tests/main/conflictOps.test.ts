@@ -8,6 +8,7 @@ import { execFileSync } from "node:child_process";
 import { execute } from "@/git/ops/execute";
 import { setOpener } from "@/git/ops/conflictOps";
 import { readRepo } from "@/git/readRepo";
+import { conflictText } from "@/git/query";
 import type { OpExtra, OpName } from "@shared/types/ipc";
 
 
@@ -99,6 +100,21 @@ test("직접 편집: 충돌 표시가 남아 있으면 에디터로 열고, 정�
   assert.deepEqual((await opOf()).resolved, { "app.js": "done" });
   await run("continueOp");
   assert.equal(fs.readFileSync(path.join(repo, "app.js"), "utf8"), "main + topic\n");
+});
+
+test("앱 충돌 편집기: 표시가 남은 내용은 거부, 고른 내용으로 저장하면 해결", async () => {
+  await run("merge", ["topic", "main"]);
+  const text = conflictText(repo, "app.js")!;
+  assert.match(text, /^<<<<<<< /m);
+  const bad = await execute(repo, "resolveContent", ["app.js", text]);
+  assert.equal(bad.ok, false);
+  const outside = await execute(repo, "resolveContent", ["../evil.txt", "x\n"]);
+  assert.equal(outside.ok, false, "저장소 밖 경로는 거부");
+  assert.equal(fs.existsSync(path.join(tmp, "evil.txt")), false);
+  await run("resolveContent", ["app.js", "main\ntopic\n"]);
+  assert.deepEqual((await opOf()).resolved, { "app.js": "done" });
+  await run("continueOp");
+  assert.equal(fs.readFileSync(path.join(repo, "app.js"), "utf8"), "main\ntopic\n");
 });
 
 test("체크아웃 안 한 브랜치의 충돌은 NEEDS_CHECKOUT 으로 알리고 아무것도 바꾸지 않는다", async () => {

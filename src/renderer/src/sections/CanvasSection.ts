@@ -2,12 +2,14 @@
 import { loadMore } from "@/app/repoSession";
 import { store } from "@/app/store";
 import { byId } from "@/lib/dom";
+import { dimmedCommits, visibleRepo } from "@/model/filter";
 import { renderGraph } from "@/model/layout";
 
 export function renderCanvas(): void {
   const s = store.repo;
   const wrap = byId("canvas-wrap");
-  const r = renderGraph(s, { interactive: true, selected: store.ui.selected, minWidth: wrap.clientWidth });
+  const f = store.ui.filter;
+  const r = renderGraph(visibleRepo(s, f), { interactive: true, selected: store.ui.selected, minWidth: wrap.clientWidth, dim: dimmedCommits(s, f) });
   const svg = byId("graph") as unknown as SVGSVGElement;
   svg.setAttribute("width", String(r.width));
   svg.setAttribute("height", String(Math.max(r.height, wrap.clientHeight - 4)));

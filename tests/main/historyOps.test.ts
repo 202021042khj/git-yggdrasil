@@ -123,6 +123,42 @@ test("되돌리기: 브랜치 생성 → undo 하면 삭제", async () => {
   assert.equal(sh(repo, "branch", "--list", "tmp"), "");
 });
 
+test("다시 실행: rebase → undo → redo 하면 rebase 결과로 돌아간다", async () => {
+  await run("rebaseStem", ["feat", tip("main")], { base: ids.init });
+  const rebased = tip("feat");
+  const u = await run("undo", []);
+  assert.equal(u.redoable, 1);
+  await run("redo", []);
+  assert.equal(tip("feat"), rebased);
+  await run("undo", []);
+  assert.notEqual(tip("feat"), rebased);
+});
+
+test("다시 실행: 커밋 → undo → redo 하면 같은 커밋, 작업 영역 깨끗", async () => {
+  write("new.txt", "n\n");
+  await run("commitTo", ["main", "add new"]);
+  const made = tip("main");
+  await run("undo", []);
+  await run("redo", []);
+  assert.equal(tip("main"), made);
+  assert.equal(sh(repo, "status", "--porcelain"), "");
+});
+
+test("다시 실행: 브랜치 생성·이름 변경, 새 조작을 하면 redo 기록이 사라진다", async () => {
+  await run("createBranch", ["tmp", ids.m1]);
+  await run("renameBranch", ["tmp", "tmp2", false]);
+  await run("undo", []);
+  await run("undo", []);
+  assert.equal(sh(repo, "branch", "--list", "tmp*"), "");
+  await run("redo", []);
+  await run("redo", []);
+  assert.equal(tip("tmp2"), ids.m1);
+  await run("undo", []);
+  const r = await run("moveBranch", ["feat", ids.f1]);
+  assert.equal(r.redoable, 0);
+  assert.equal((await execute(repo, "redo", [])).ok, false);
+});
+
 test("reset --mixed 와 브랜치 포인터 옮기기", async () => {
   await run("resetHead", [ids.m1, "mixed"]);
   assert.equal(tip("main"), ids.m1);

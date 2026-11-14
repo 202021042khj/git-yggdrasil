@@ -58,6 +58,22 @@ const resolveFile: OpFn = async (ctx, [file, choice]: [string, "ours" | "theirs"
   }
 };
 
+/** 저장소 안의 파일 경로만 허용 (../ 로 밖을 가리키지 못하게) */
+export function insideRoot(root: string, file: string): string {
+  const full = path.resolve(root, file);
+  if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error(`저장소 밖의 경로입니다: ${file}`);
+  return full;
+}
+
+/** 앱의 충돌 편집기에서 고른 내용으로 파일을 쓰고 해결로 표시 */
+const resolveContent: OpFn = async (ctx, [file, text]: [string, string]) => {
+  const full = insideRoot(ctx.root, file);
+  if (/^(<{7}|>{7}) /m.test(text)) throw new Error("아직 충돌 표시(<<<<<<< / >>>>>>>)가 남아 있습니다. 모든 충돌 구간을 고른 뒤 저장하세요.");
+  fs.writeFileSync(full, text);
+  ctx.note(`# ${file} 을(를) 충돌 편집기에서 고른 내용으로 저장`);
+  await ctx.run(["add", "--", file]);
+};
+
 const continueOp: OpFn = async (ctx) => {
   const { root } = ctx;
   const left = await unmergedFiles(root);
@@ -99,4 +115,4 @@ const abortOp: OpFn = async (ctx) => {
   else throw new Error("중단할 진행 중 작업이 없습니다. 충돌 파일은 A 쪽이나 B 쪽을 골라 정리하세요.");
 };
 
-export const conflictOps = { resolveFile, continueOp, skipOp, abortOp };
+export const conflictOps = { resolveFile, resolveContent, continueOp, skipOp, abortOp };

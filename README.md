@@ -53,6 +53,7 @@ npm run typecheck
 - 로그인하면 github.com HTTPS 원격의 fetch / pull / push / clone 에 토큰을 자동으로 씀 (명령 인자가 아니라 환경 변수로만 전달, 다른 호스트에는 주지 않음)
 - 시작 화면 **내 GitHub 저장소에서 clone**, 원격 섹션 **GitHub 에 새 저장소로 올리기**, 브랜치 이름표 오른쪽 클릭 **GitHub PR 만들기**
 - P3: 태그(달기·옮기기·삭제·push), 변경 덩어리 단위 stage/unstage, 커밋 나누기, 브랜치 없이 커밋 체크아웃, upstream 연결, 원격 브랜치 삭제, ⌘K 찾기, 파일 히스토리·blame
+- 다시 실행(⌘⇧Z), 앱 안 충돌 편집기(구간별 A/B/둘 다 고르기), 줄 단위 stage, diff 좌우 비교·공백 무시·전체 보기·이미지 전후 보기, 그래프 필터(브랜치 숨김·작성자·기간)
 - 다른 OAuth App 으로 시험하려면 `YGG_GH_CLIENT_ID` 환경 변수로 Client ID 를 바꿀 수 있음
 
 ## 구조
