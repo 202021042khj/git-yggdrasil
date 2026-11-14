@@ -11,6 +11,7 @@ import { renderFilter, mountFilter } from "@/sections/FilterSection";
 import { renderFooter } from "@/sections/FooterSection";
 import { renderGithub, mountGithub } from "@/sections/GithubSection";
 import { renderLog } from "@/sections/LogSection";
+import { renderPulls, mountPulls } from "@/sections/PullsSection";
 import { renderOpBanner, mountOpBanner } from "@/sections/OpBannerSection";
 import { renderRemotes, mountRemotes } from "@/sections/RemotesSection";
 import { mountSearch } from "@/sections/SearchSection";
@@ -21,7 +22,7 @@ import { renderWorking, mountWorking } from "@/sections/WorkingSection";
 import { mountMenu } from "@/ui/menu";
 import { toast } from "@/ui/toast";
 
-const renders = [renderTopbar, renderOpBanner, renderSidebar, renderRemotes, renderWorking, renderFilter, renderCanvas, renderDetail, renderLog, renderFooter, renderGithub];
+const renders = [renderTopbar, renderOpBanner, renderSidebar, renderRemotes, renderPulls, renderWorking, renderFilter, renderCanvas, renderDetail, renderLog, renderFooter, renderGithub];
 
 function renderAll(): void {
   if (!store.hasRepo()) return;
@@ -37,6 +38,7 @@ mountTopbar();
 mountOpBanner();
 mountSidebar();
 mountRemotes();
+mountPulls();
 mountWorking();
 mountCanvas();
 mountFilter();

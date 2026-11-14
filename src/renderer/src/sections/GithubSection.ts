@@ -4,6 +4,7 @@ import { store } from "@/app/store";
 import { registerContextProvider } from "@/interactions/contextMenu";
 import { byId } from "@/lib/dom";
 import { errorText, esc } from "@/lib/html";
+import { setPullsLogin } from "@/sections/PullsSection";
 import { cloneInto } from "@/sections/WelcomeSection";
 import { askText, confirmAction } from "@/ui/dialog";
 import { toast } from "@/ui/toast";
@@ -113,7 +114,7 @@ export function mountGithub(): void {
   const gh = window.ghApi;
   byId("gh-account").onclick = async () => {
     if (!status.loggedIn) return void login();
-    if (confirmAction(`GitHub 계정 ${status.user?.login || ""} 에서 로그아웃할까요?\n이 컴퓨터에 저장된 토큰을 지웁니다.`)) status = await gh.logout();
+    if (confirmAction(`GitHub 계정 ${status.user?.login || ""} 에서 로그아웃할까요?\n이 컴퓨터에 저장된 토큰을 지웁니다.`)) { status = await gh.logout(); setPullsLogin(false); }
     renderGithub();
   };
   byId("gh-reopen").onclick = () => { if (loginInfo) void gh.openUrl(loginInfo.verificationUri); };
@@ -132,6 +133,7 @@ export function mountGithub(): void {
 
   gh.onChanged((s) => {
     status = s;
+    setPullsLogin(!!s.loggedIn);
     renderGithub();
     const dlg = byId<HTMLDialogElement>("gh-login");
     if (dlg.open) dlg.close();
@@ -146,5 +148,5 @@ export function mountGithub(): void {
     return [{ label: "GitHub PR 만들기…", cmd: "gh pr create", onPick: () => void makePR(b) }];
   });
 
-  void gh.status().then((s) => { status = s; renderGithub(); });
+  void gh.status().then((s) => { status = s; setPullsLogin(!!s.loggedIn); renderGithub(); });
 }

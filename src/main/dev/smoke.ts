@@ -20,6 +20,8 @@ export function runSmoke(win: BrowserWindow, repoDir: string): void {
           tree: document.querySelectorAll('.ft-row').length };
       })()`);
       if (process.env.YGG_EVAL) info.eval = await win.webContents.executeJavaScript(fs.readFileSync(process.env.YGG_EVAL, "utf8"));
+      // 시나리오가 바꾼 화면이 실제로 그려진 뒤에 캡처한다 (안 기다리면 이전 프레임이 찍힌다)
+      await win.webContents.executeJavaScript("new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 200))))");
       if (process.env.YGG_SHOT) fs.writeFileSync(process.env.YGG_SHOT, (await win.webContents.capturePage()).toPNG());
       console.log("SMOKE " + JSON.stringify({ ...info, errors }));
       app.quit();

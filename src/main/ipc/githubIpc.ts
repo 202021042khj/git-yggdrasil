@@ -4,7 +4,7 @@ import { git } from "@/git/cli";
 import { upstreamOf } from "@/git/ops/context";
 import { execute } from "@/git/ops/execute";
 import { readRepo } from "@/git/readRepo";
-import { createPull, createRepo, fetchUser, listRepos, parseRemote, repoInfo } from "@/github/api";
+import { createPull, createRepo, fetchUser, listPulls, listRepos, parseRemote, repoInfo } from "@/github/api";
 import { authStatus, cancelLogin, logout, startLogin, waitLogin } from "@/github/auth";
 import { requireRoot, send } from "@/repo/session";
 
@@ -67,6 +67,18 @@ export function registerGithubIpc(): void {
     const pr = await createPull({ fullName, head: rest.join("/"), base: baseBranch, title, body });
     void shell.openExternal(pr.htmlUrl);
     return { ...pr, base: baseBranch, cmds, repo: await readRepo(root) };
+  });
+
+  // 열린 PR 목록: origin(없으면 첫 GitHub 원격) 저장소 기준
+  ipcMain.handle("gh:pulls", async () => {
+    const root = requireRoot();
+    const remotes = ((await git(root, ["remote"])) || "").split("\n").filter(Boolean);
+    const order = [...remotes.filter((r) => r === "origin"), ...remotes.filter((r) => r !== "origin")];
+    for (const remote of order) {
+      const fullName = parseRemote(await remoteUrl(root, remote));
+      if (fullName) return { fullName, remote, pulls: await listPulls(fullName) };
+    }
+    return { fullName: null, remote: null, pulls: [] };
   });
 
   // PR 창에 미리 채울 기본 브랜치

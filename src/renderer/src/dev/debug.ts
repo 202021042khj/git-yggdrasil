@@ -3,6 +3,7 @@ import { run } from "@/app/actions";
 import { store } from "@/app/store";
 import { contextItems } from "@/interactions/contextMenu";
 import { preview } from "@/model/preview";
+import { injectPulls } from "@/sections/PullsSection";
 
 export function installDebug(): void {
   window.__yggDebug = {
@@ -12,5 +13,6 @@ export function installDebug(): void {
     run,
     preview,
     contextItems,
+    injectPulls,
   };
 }

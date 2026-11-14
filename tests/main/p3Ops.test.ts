@@ -131,6 +131,22 @@ test("줄 단위 stage: 한 덩어리 안에서 고른 줄만 stage → 고른 �
   assert.match(sh(repo, "diff"), /\+NEW 5/, "작업 영역은 그대로");
 });
 
+test("PR 받아 보기: pull/N/head 를 pr/N 브랜치로, 다시 받으면 앞으로 감기", async () => {
+  const prRemote = path.join(tmp, "pr-remote.git");
+  execFileSync("git", ["init", "-q", "--bare", prRemote]);
+  sh(repo, "remote", "add", "gh", prRemote);
+  sh(repo, "push", "-q", "gh", `${ids.a}:refs/pull/5/head`);
+  const r = await run("checkoutPull", [5, "gh"]);
+  assert.match(r.cmds.join("\n"), /fetch gh pull\/5\/head/);
+  assert.equal(sh(repo, "branch", "--show-current"), "pr/5");
+  assert.equal(sh(repo, "rev-parse", "HEAD"), ids.a);
+  sh(repo, "switch", "-q", "main");
+  sh(repo, "push", "-q", "-f", "gh", `${ids.b}:refs/pull/5/head`); // PR 에 새 커밋
+  await run("checkoutPull", [5, "gh"]);
+  assert.equal(sh(repo, "rev-parse", "pr/5"), ids.b);
+  assert.equal((await execute(repo, "checkoutPull", [5, "--upload-pack=x"])).ok, false, "옵션처럼 보이는 원격 이름 거부");
+});
+
 test("커밋 분할: 끝 커밋은 바로 풀고, 과거 커밋은 멈춘 뒤 나눠 커밋하고 계속", async () => {
   // 끝 커밋
   await run("splitCommit", [ids.c]);

@@ -10,7 +10,7 @@ export type OpName =
   | "tagCreate" | "tagMove" | "tagDelete" | "tagPush"
   | "stashPush" | "stashPop" | "stashDrop"
   | "cherryPick" | "moveCommit" | "dropCommit" | "rebaseStem" | "squash" | "reorder" | "revertCommit" | "merge" | "splitCommit"
-  | "resolveFile" | "resolveContent" | "continueOp" | "skipOp" | "abortOp"
+  | "resolveFile" | "resolveContent" | "checkoutPull" | "continueOp" | "skipOp" | "abortOp"
   | "undo"
   | "redo";
 
@@ -126,6 +126,34 @@ export interface GhRepo {
   description: string | null;
 }
 
+export type GhReview = "APPROVED" | "CHANGES_REQUESTED" | "REVIEW_REQUIRED" | null;
+export type GhChecks = "SUCCESS" | "FAILURE" | "ERROR" | "PENDING" | "EXPECTED" | null;
+
+export interface GhPull {
+  number: number;
+  title: string;
+  url: string;
+  draft: boolean;
+  author: string;
+  /** PR 브랜치 (다른 저장소에서 온 PR 이면 fork 쪽 이름) */
+  head: string;
+  base: string;
+  /** fork 에서 온 PR */
+  fromFork: boolean;
+  review: GhReview;
+  checks: GhChecks;
+  /** ISO 시각 */
+  updated: string;
+}
+
+export interface GhPullList {
+  /** owner/repo. GitHub 원격이 없으면 null */
+  fullName: string | null;
+  /** 그 저장소를 가리키는 원격 이름 */
+  remote: string | null;
+  pulls: GhPull[];
+}
+
 export interface GhApi {
   status(): Promise<GhStatus>;
   login(): Promise<{ userCode: string; verificationUri: string }>;
@@ -135,6 +163,8 @@ export interface GhApi {
   createRepo(name: string, isPrivate: boolean): Promise<{ fullName: string; cloneUrl: string; htmlUrl: string; remoteName: string; cmds: string[]; repo: RepoState }>;
   pr(args: { head: string; base?: string; title: string; body?: string }): Promise<{ number: number; htmlUrl: string; base: string; cmds: string[]; repo: RepoState }>;
   prDefaults(head: string): Promise<{ fullName: string | null; base?: string } | null>;
+  /** 지금 저장소의 열린 PR (리뷰·검사 상태 포함) */
+  pulls(): Promise<GhPullList>;
   openUrl(url: string): Promise<void>;
   onChanged(fn: (s: GhStatus) => void): void;
 }

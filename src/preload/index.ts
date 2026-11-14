@@ -32,6 +32,7 @@ const ghApi: GhApi = {
   createRepo: (name, isPrivate) => ipcRenderer.invoke("gh:createRepo", { name, isPrivate }),
   pr: (args) => ipcRenderer.invoke("gh:pr", args),
   prDefaults: (head) => ipcRenderer.invoke("gh:prDefaults", head),
+  pulls: () => ipcRenderer.invoke("gh:pulls"),
   openUrl: (url) => ipcRenderer.invoke("gh:openUrl", url),
   onChanged: (fn) => on("gh:changed", (s: GhStatus) => fn(s)),
 };

@@ -42,3 +42,15 @@ test("저장한 토큰은 암호화되어 파일에 남고, git 자격 증명으
   logout();
   assert.equal(fs.existsSync(path.join(dir, "github-auth.bin")), false);
 });
+
+test("PR 응답 → 화면용 (리뷰 결정 · 검사 결과 · fork 여부)", async () => {
+  const { mapPull } = await import("@/github/api");
+  const p = mapPull({
+    number: 7, title: "로그인 고치기", url: "https://github.com/o/r/pull/7", isDraft: false, updatedAt: "2026-11-14T00:00:00Z",
+    headRefName: "fix/login", baseRefName: "main", reviewDecision: "CHANGES_REQUESTED", isCrossRepository: true,
+    author: { login: "kim" }, commits: { nodes: [{ commit: { statusCheckRollup: { state: "FAILURE" } } }] },
+  });
+  assert.deepEqual([p.number, p.head, p.base, p.review, p.checks, p.fromFork, p.author], [7, "fix/login", "main", "CHANGES_REQUESTED", "FAILURE", true, "kim"]);
+  const q = mapPull({ number: 8, title: "", url: "", isDraft: true, updatedAt: "", headRefName: "a", baseRefName: "b", reviewDecision: null, isCrossRepository: false, author: null, commits: { nodes: [] } });
+  assert.deepEqual([q.review, q.checks, q.author, q.draft], [null, null, "(알 수 없음)", true]);
+});

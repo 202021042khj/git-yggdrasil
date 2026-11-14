@@ -60,6 +60,10 @@
         <button type="button" id="remote-add" class="small">원격 추가</button>
         <button type="button" id="gh-publish" class="small" hidden>GitHub 에 새 저장소로 올리기</button>
       </div>
+      <section id="pr-box" class="pr-box" hidden aria-labelledby="pr-title">
+        <div class="pr-head"><h3 id="pr-title">Pull Request</h3><button type="button" id="pr-refresh" class="small" title="GitHub 에서 다시 불러오기">새로고침</button></div>
+        <div id="pr-list" class="pr-list"></div>
+      </section>
       <h3>작업 영역</h3>
       <div id="working" class="working-card" data-drop="working">
         <textarea id="commit-msg" rows="2" aria-label="커밋 메시지" placeholder="커밋 메시지 (⌘Enter 로 커밋)"></textarea>

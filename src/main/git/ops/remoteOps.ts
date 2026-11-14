@@ -48,4 +48,28 @@ const remoteRemove: OpFn = async (ctx, [name]: [string]) => {
   await ctx.run(["remote", "remove", name]);
 };
 
-export const remoteOps = { fetch, pull, push, remoteAdd, remoteSetUrl, remoteRemove };
+/**
+ * PR 받아 보기: 원격의 pull/<번호>/head 를 받아 로컬 브랜치 pr/<번호> 로 만들고 체크아웃.
+ * 이미 있으면 새 커밋만 앞으로 감기 (로컬에서 따로 고친 게 있으면 덮어쓰지 않고 멈춘다).
+ */
+const checkoutPull: OpFn = async (ctx, [num, remote]: [number, string]) => {
+  if (!Number.isInteger(num) || num <= 0) throw new Error("PR 번호가 올바르지 않습니다.");
+  if (!/^[\w.-]+$/.test(remote)) throw new Error(`원격 이름이 올바르지 않습니다: ${remote}`);
+  const branch = `pr/${num}`;
+  await ctx.run(["fetch", remote, `pull/${num}/head`], NET);
+  const exists = (await git(ctx.root, ["rev-parse", "--verify", "-q", `refs/heads/${branch}`], { allowFail: true })) !== null;
+  const { branch: current } = await headInfo(ctx.root);
+  if (!exists) {
+    await ctx.run(["switch", "-c", branch, "FETCH_HEAD"]);
+    return;
+  }
+  if (current !== branch) await ctx.run(["switch", branch]);
+  try {
+    await ctx.run(["merge", "--ff-only", "FETCH_HEAD"]);
+  } catch {
+    throw new Error(`${branch} 에 PR 에 없는 로컬 커밋이 있어 최신 PR 로 앞으로 감을 수 없습니다. ${branch} 를 지우거나 이름을 바꾼 뒤 다시 받으세요.`);
+  }
+};
+
+export const remoteOps = {
+  checkoutPull, fetch, pull, push, remoteAdd, remoteSetUrl, remoteRemove };

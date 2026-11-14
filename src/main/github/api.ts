@@ -1,7 +1,7 @@
 // GitHub REST API: 사용자, 저장소 목록·생성, PR
 import { logout, token } from "@/github/auth";
 import { GH_API, GH_USER_AGENT } from "@/github/constants";
-import type { GhRepo, GhUser } from "@shared/types/ipc";
+import type { GhChecks, GhPull, GhRepo, GhReview, GhUser } from "@shared/types/ipc";
 
 async function api<T>(method: string, url: string, body?: unknown): Promise<T> {
   const tk = await token();
@@ -54,6 +54,53 @@ export async function repoInfo(fullName: string) {
 export async function createPull({ fullName, head, base, title, body }: { fullName: string; head: string; base: string; title: string; body?: string }) {
   const p = await api<{ number: number; html_url: string }>("POST", `/repos/${fullName}/pulls`, { head, base, title, body: body || "" });
   return { number: p.number, htmlUrl: p.html_url };
+}
+
+// ---------- PR 목록 (GraphQL: 리뷰 결정과 검사 결과를 한 번에) ----------
+const PULLS_QUERY = `query($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    pullRequests(states: OPEN, first: 50, orderBy: { field: UPDATED_AT, direction: DESC }) {
+      nodes {
+        number title url isDraft updatedAt headRefName baseRefName reviewDecision
+        author { login }
+        isCrossRepository
+        commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
+      }
+    }
+  }
+}`;
+
+export interface RawPull {
+  number: number; title: string; url: string; isDraft: boolean; updatedAt: string;
+  headRefName: string; baseRefName: string; reviewDecision: string | null; isCrossRepository: boolean;
+  author: { login: string } | null;
+  commits: { nodes: Array<{ commit: { statusCheckRollup: { state: string } | null } }> };
+}
+
+/** GraphQL 응답 한 건 → 화면용 PR */
+export function mapPull(p: RawPull): GhPull {
+  return {
+    number: p.number,
+    title: p.title,
+    url: p.url,
+    draft: p.isDraft,
+    author: p.author?.login ?? "(알 수 없음)",
+    head: p.headRefName,
+    base: p.baseRefName,
+    fromFork: p.isCrossRepository,
+    review: (p.reviewDecision as GhReview) ?? null,
+    checks: (p.commits.nodes[0]?.commit.statusCheckRollup?.state as GhChecks) ?? null,
+    updated: p.updatedAt,
+  };
+}
+
+export async function listPulls(fullName: string): Promise<GhPull[]> {
+  const [owner, name] = fullName.split("/");
+  const r = await api<{ data?: { repository: { pullRequests: { nodes: RawPull[] } } | null }; errors?: Array<{ message: string }> }>(
+    "POST", "/graphql", { query: PULLS_QUERY, variables: { owner, name } });
+  if (r.errors?.length) throw new Error(`GitHub: ${r.errors.map((e) => e.message).join(", ")}`);
+  if (!r.data?.repository) throw new Error(`GitHub 에서 ${fullName} 저장소를 찾을 수 없습니다.`);
+  return r.data.repository.pullRequests.nodes.map(mapPull);
 }
 
 /** https://github.com/owner/repo(.git) 또는 git@github.com:owner/repo(.git) → "owner/repo" */
