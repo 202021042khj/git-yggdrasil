@@ -28,10 +28,10 @@ export function renderCanvas(): void {
   more.textContent = `이전 커밋 더 불러오기 (${shown.toLocaleString()} / ${(s.totalCommits || shown).toLocaleString()})`;
 }
 
-/** 레인 이름을 가로 스크롤과 상관없이 왼쪽에 붙여 둔다 */
+/** 레인 이름과 push 띠의 안내 글자를 가로 스크롤과 상관없이 보이는 화면 왼쪽에 붙여 둔다 */
 export function pinLaneNames(): void {
   const x = byId("canvas-wrap").scrollLeft;
-  for (const id of ["lane-names", "lane-names-preview"]) document.getElementById(id)?.setAttribute("transform", `translate(${x},0)`);
+  for (const id of ["lane-names", "lane-names-preview", "remote-band-label"]) document.getElementById(id)?.setAttribute("transform", `translate(${x},0)`);
 }
 
 /** 커밋이 보이게 스크롤하고 선택 */

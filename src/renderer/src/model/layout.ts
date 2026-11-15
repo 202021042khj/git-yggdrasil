@@ -127,7 +127,7 @@ export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
   out.push(`<rect class="bg" data-drop="canvas" x="0" y="0" width="${W}" height="${L.height}"/>`);
   if (opts.interactive) {
     out.push(`<g class="remote-band" data-drop="remote"><rect x="0" y="0" width="${W}" height="44"/>
-      <text x="16" y="27">origin: 브랜치 이름표나 태그를 여기로 끌어 놓으면 push</text></g>`);
+      <text id="remote-band-label" x="16" y="27">origin: 브랜치 이름표나 태그를 여기로 끌어 놓으면 push</text></g>`);
   }
 
   // 간선
