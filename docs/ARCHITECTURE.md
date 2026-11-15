@@ -45,13 +45,18 @@ src/shared    양쪽이 함께 쓰는 타입과 기본값 상수 (로직 없음)
 ```
 main.ts          진입점: 섹션 mount 한 번, 상태가 바뀌면 render 전부
 app/             store.ts (상태 한 곳) · actions.ts (조작 실행) · repoSession.ts (열기·새로고침)
-sections/        화면 영역마다 한 파일, PascalCase + Section
+sections/        화면 영역마다 한 파일(PascalCase + Section), 자리별 폴더로 묶음
+  shell/         상단바 · 진행 중 작업 배너 · 하단(stash·휴지통) · 시작 화면
+  sidebar/       브랜치 · 원격 · 서브모듈/worktree · Pull Request · 작업 영역
+  canvas/        커밋 그래프 · 필터 바
+  detail/        상세(diff·blame) · 실행 기록 · 충돌 편집기
+  dialogs/       설정 · ⌘K 찾기 · 커밋 정리 · reflog · GitHub 로그인/저장소
 interactions/    드래그 문법(targets.ts) · 드래그(drag.ts) · 오른쪽 클릭 메뉴(contextMenu.ts)
 model/           순수 계산: 그래프(graph.ts) · 미리보기(preview.ts) · 배치와 SVG(layout.ts)
-ui/              도메인과 무관한 부품: 메뉴 · 입력 창 · 토스트
+ui/              도메인과 무관한 부품: 메뉴 · 드롭다운(모든 select 를 감쌈) · 입력 창 · 토스트
 lib/             DOM 없는 작은 순수 함수 (esc, 시간, 경로)
 constants/       상수 데이터 (배치 치수, 저장 키, 진행 중에도 되는 조작)
-styles/app.css   디자인 토큰(:root) + 모든 스타일
+styles/          index.css(레이어 순서) · tokens.css(색·글꼴 변수) · base.css(공통) · layout.css(3단 뼈대)
 dev/debug.ts     window.__yggDebug (점검용)
 ```
 
@@ -62,6 +67,8 @@ dev/debug.ts     window.__yggDebug (점검용)
 - **git 조작은 `actions.run({ op, args, summary })` 로만.** 실행 중 표시, 멈춘 작업 차단, 실행 기록, 결과 반영, 후속 질문(체크아웃 필요·원격 없음)을 여기서 처리합니다.
 - **미리보기는 `model/preview.ts` 가 계산만.** 실제 실행은 main 이 하고, 화면은 결과 저장소 상태를 다시 받아 그립니다.
 - **기능이 다른 기능의 메뉴에 끼어들 때는 등록 함수로.** 예: GitHub PR 항목은 `registerContextProvider` 로 더합니다. 다른 파일의 함수를 덮어쓰지 않습니다.
+- **섹션은 화면에서 놓이는 자리로 묶습니다.** 새 섹션은 그 자리 폴더에, 떠 있는 창(dialog)은 `dialogs/` 에 둡니다. 다른 자리의 섹션을 부를 때도 `@/sections/<자리>/Name` 처럼 전체 경로로 import 합니다.
+- **스타일은 쓰는 파일 옆에.** `sections/<자리>/FooSection.ts` 의 스타일은 같은 폴더의 `FooSection.css` 에 두고 ts 맨 위에서 `import "./FooSection.css"` 합니다. 파일마다 `@layer components { … }` 로 감싸고, 색·간격은 `styles/tokens.css` 변수만 씁니다. 여러 화면이 같이 쓰는 태그·클래스(button, select, h3, `.muted`, `.sr-only`)만 `styles/base.css` 에 둡니다. 우선순위는 레이어 순서(tokens → base → layout → components)로 정해지므로 import 순서에 기대지 않습니다. 디자인 원본은 Figma 파일 "App · Foundations / Components / Screens" 페이지입니다.
 - **`model/`, `lib/` 는 DOM 을 만지지 않습니다.** (`model/layout.ts` 는 SVG 문자열을 만들 뿐)
 
 ## 이름 · import

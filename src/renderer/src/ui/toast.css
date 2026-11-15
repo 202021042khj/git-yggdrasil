@@ -1,0 +1,16 @@
+/* toast 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .toast {
+    position: fixed;
+    left: 50%;
+    top: 60px;
+    transform: translateX(-50%);
+    z-index: 70;
+    padding: 8px 14px;
+    max-width: 70vw;
+    border-radius: 0;
+    background: var(--line-strong);
+    color: var(--bg);
+    box-shadow: none;
+  }
+}

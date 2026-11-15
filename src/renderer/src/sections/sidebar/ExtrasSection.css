@@ -1,0 +1,21 @@
+/* ExtrasSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .extras-box { margin-top: 10px; }
+  .ex-row { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: var(--r-sm); }
+  .ex-main { flex: 1; min-width: 0; display: grid; }
+  .ex-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ex-sub { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ex-row button { min-height: 22px; padding: 1px 6px; font-size: 11px; }
+  .ex-note { font-size: 12px; line-height: 1.5; margin: 6px 0; }
+  .ex-note.warn { color: var(--tag); }
+  .badge.wt { color: var(--tag); border-color: color-mix(in srgb, var(--tag) 50%, transparent); }
+  .ex-row:hover { background: var(--hover); }
+  .tag-mini {
+    font-size: 9.5px;
+    padding: 0 4px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    vertical-align: 1px;
+    border-radius: 999px;
+  }
+}

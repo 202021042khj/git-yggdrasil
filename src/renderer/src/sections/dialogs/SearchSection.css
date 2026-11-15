@@ -1,0 +1,30 @@
+/* SearchSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .sr-k { grid-row: span 2; font-size: 11px; color: var(--muted); align-self: center; }
+  .sr-t { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .sr-m { font-size: 11px; color: var(--muted); }
+  dialog.search { width: min(640px, 92vw); top: 12vh; margin-top: 0; padding: 0 0 8px; }
+  dialog.search input {
+    width: 100%;
+    font-size: 15px;
+    border: 0;
+    border-bottom: 2px solid var(--line-strong);
+    padding: 14px 16px;
+    background: transparent;
+  }
+  dialog.search input:focus-visible { outline: none; border: 0; border-bottom: 2px solid var(--accent); }
+  .search-list { max-height: 50vh; overflow: auto; margin-top: 6px; padding: 0; }
+  .sr {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 0 8px;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: none;
+    border-radius: var(--r-sm);
+    padding: 8px 16px;
+    border-left: 3px solid transparent;
+  }
+  .sr.on, .sr:hover { background: var(--accent-bg); border-left-color: var(--accent); }
+}

@@ -1,0 +1,22 @@
+/* ReflogSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .rl-row {
+    display: grid;
+    grid-template-columns: 70px 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    padding: 5px 6px;
+    border-radius: var(--r-sm);
+  }
+  .rl-row:hover, .rl-row:focus-visible { background: var(--panel-2); }
+  .rl-when { font-size: 11px; color: var(--muted); }
+  .rl-main { display: grid; min-width: 0; }
+  .rl-subject, .rl-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rl-what { font-size: 11px; }
+  .rl-id { font-size: 11px; color: var(--muted); }
+  .rl-row.lost { background: var(--danger-bg); }
+}

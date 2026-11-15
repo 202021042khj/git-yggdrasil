@@ -1,0 +1,27 @@
+/* FooterSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .trash .muted { font-size: 11px; }
+  .stash-tray { display: flex; align-items: center; gap: 8px; padding: 6px 10px; min-height: 44px; overflow-x: auto; }
+  .stash-tray.drop-hover { background: color-mix(in srgb, var(--accent) 15%, var(--chrome)); }
+  .tray-title { font-weight: 600; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+  .stash-list { display: flex; gap: 6px; }
+  .stash-card {
+    cursor: grab;
+    white-space: nowrap;
+    padding: 3px 10px;
+    border-radius: var(--r-pill);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    font-size: var(--fs-sm);
+  }
+  .stash-card:hover { border-color: var(--accent); }
+  .footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    background: var(--chrome);
+    border-top: 2px solid var(--line-strong);
+    min-height: 56px;
+  }
+  .trash { padding: 10px; display: flex; gap: 6px; align-items: center; justify-content: center; border-left: 2px solid var(--line-strong); }
+  .trash.drop-hover { color: var(--danger); background: var(--danger-bg); }
+}

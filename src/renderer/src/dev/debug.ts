@@ -4,8 +4,8 @@ import { open } from "@/app/repoSession";
 import { store } from "@/app/store";
 import { contextItems } from "@/interactions/contextMenu";
 import { preview } from "@/model/preview";
-import { injectPulls } from "@/sections/PullsSection";
-import { openSettings } from "@/sections/SettingsSection";
+import { injectPulls } from "@/sections/sidebar/PullsSection";
+import { openSettings } from "@/sections/dialogs/SettingsSection";
 
 export function installDebug(): void {
   window.__yggDebug = {

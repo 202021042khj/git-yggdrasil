@@ -1,0 +1,102 @@
+/* DetailSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .detail .kv { margin: 2px 0; }
+  .detail code { font-size: 12px; }
+  .reword { display: flex; gap: 6px; margin-bottom: 6px; }
+  .lock-note { color: var(--danger); font-size: 12px; }
+  .file-link { cursor: pointer; color: var(--accent); }
+  .file-link:hover { text-decoration: underline; }
+  .diff { margin-top: 10px; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; font: 11.5px/1.5 var(--font-code); }
+  .diff pre { margin: 0; padding: 4px 0; white-space: pre; overflow-x: auto; }
+  .diff pre .add, .hunk pre .add { background: color-mix(in srgb, var(--ok) 18%, transparent); display: block; padding: 0 8px; }
+  .diff pre .del, .hunk pre .del { background: color-mix(in srgb, var(--danger) 18%, transparent); display: block; padding: 0 8px; }
+  .diff pre .ctx, .hunk pre .ctx { display: block; padding: 0 8px; color: var(--muted); }
+  .detached-note {
+    margin: 4px 0 8px;
+    padding: 6px 8px;
+    border: 1px dashed var(--line);
+    border-radius: var(--r-sm);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .tabs { display: flex; gap: 2px; margin: 8px 0; border-bottom: 1px solid var(--line); }
+  .tabs button {
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: none;
+    padding: 4px 10px;
+    color: var(--muted);
+  }
+  .hunk { margin: 6px 0; border: 1px solid var(--line); border-radius: var(--r-sm); overflow: hidden; }
+  .hunk-head { display: flex; align-items: center; gap: 8px; justify-content: space-between; padding: 4px 6px; background: var(--panel-2); }
+  .hunk-head code { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hunk pre { margin: 0; max-height: 240px; overflow: auto; font-size: 12px; }
+  .hunk pre span, .diff pre span { display: block; white-space: pre; }
+  .hist { padding-left: 18px; margin: 4px 0; }
+  .hist li { margin-bottom: 6px; }
+  .hist .muted { display: block; font-size: 11px; }
+  .blame { font: 12px/1.5 "JetBrains Mono", ui-monospace, monospace; max-height: 60vh; overflow: auto; }
+  .bl { display: grid; grid-template-columns: 170px 36px 1fr; gap: 6px; }
+  .bl.first { border-top: 1px solid var(--line); }
+  .bl-meta { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--muted); font-size: 11px; }
+  .bl-no { text-align: right; color: var(--muted); }
+  .bl-text { white-space: pre; }
+  button.link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-align: left; }
+  button.link:hover { text-decoration: underline; }
+  .hunk pre .pick { cursor: pointer; border-left: 3px solid transparent; padding-left: 3px; }
+  .hunk pre .pick:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .hunk pre .pick:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+  .hunk pre .pick[aria-checked="true"] { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  .diff .dh {
+    padding: 4px 8px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .diff .dh .dt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .diff-tools { display: inline-flex; align-items: center; gap: 8px; font-weight: 400; }
+  .diff-tools .seg button { min-width: 0; padding: 1px 8px; }
+  .diff-tools label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+  table.split { width: 100%; border-collapse: collapse; table-layout: fixed; font: 12px/1.45 "JetBrains Mono", ui-monospace, monospace; }
+  table.split col.nc { width: 3.2em; }
+  table.split td { padding: 0 6px; white-space: pre-wrap; word-break: break-all; vertical-align: top; }
+  table.split td.no { color: var(--muted); text-align: right; user-select: none; padding-right: 4px; }
+  table.split td.add { background: color-mix(in srgb, var(--ok) 16%, transparent); }
+  table.split td.del { background: color-mix(in srgb, var(--danger) 16%, transparent); }
+  table.split td.empty { background: color-mix(in srgb, var(--line) 35%, transparent); }
+  table.split tr.sh td { color: var(--muted); background: var(--panel-2); padding: 2px 6px; }
+  table.split td:nth-child(3) { border-left: 1px solid var(--line); }
+  .more-diff { margin: 6px; }
+  .img-diff { display: flex; gap: 8px; flex-wrap: wrap; padding: 8px; }
+  .img-diff figure { margin: 0; flex: 1 1 140px; min-width: 0; }
+  .img-diff figcaption { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .img-diff img {
+    max-width: 100%;
+    max-height: 260px;
+    display: block;
+    border: 1px solid var(--line);
+    background: repeating-conic-gradient(var(--panel-2) 0 25%, transparent 0 50%) 0 0 / 12px 12px;
+  }
+  .reword input {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    font-weight: 600;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 4px 8px;
+    user-select: text;
+    background: var(--panel);
+  }
+  .reword input:focus-visible { outline-offset: 0; border-color: transparent; outline: none; border: 2px solid var(--accent); }
+  .tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); border-bottom-width: 2px; }
+  .diff, .hunk { border-color: var(--line); }
+  .diff pre .add, .hunk pre .add, table.split td.add { background: var(--accent-bg); }
+  .diff pre .del, .hunk pre .del, table.split td.del { background: var(--danger-bg); }
+}

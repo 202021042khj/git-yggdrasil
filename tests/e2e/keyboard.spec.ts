@@ -46,3 +46,29 @@ test("사이드바 브랜치: Tab 으로 닿고 Enter 로 체크아웃, Shift+F1
   await expect(page.locator("#v2-menu")).toBeHidden();
   expect(await focusedLabel(page)).toBe("브랜치 main"); // 메뉴를 닫으면 초점이 돌아온다
 });
+
+test("드롭다운: 화살표로 열고 고르면 select 값과 change 가 따라오고, Esc 는 목록만 닫는다", async () => {
+  const { page } = c;
+  const btn = page.locator("#filter-since + .dd-btn, .dd:has(#filter-since) .dd-btn");
+  await btn.focus();
+  expect(await focusedLabel(page)).toBe("기간: 전체 기간");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await expect(btn).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("listbox")).toBeHidden();
+  expect(await page.evaluate('document.getElementById("filter-since").value')).toBe("7");
+  expect(await focusedLabel(page)).toBe("기간: 최근 1주");
+  await expect(page.locator("#filter-clear")).toBeVisible(); // change 이벤트로 필터가 걸림
+
+  // 설정 창 안: Esc 는 목록만 닫고 창은 남는다
+  await page.evaluate("window.__yggDebug.openSettings()");
+  const theme = page.locator(".dd:has(#set-theme) .dd-btn");
+  await theme.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("listbox")).toBeHidden();
+  await expect(page.locator("#settings")).toBeVisible();
+});

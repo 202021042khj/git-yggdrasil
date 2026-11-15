@@ -8,7 +8,7 @@
   <meta name="description" content="git 히스토리를 그래프 위에서 끌어 놓아 다루는 git 클라이언트" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;600&family=Playfair+Display:ital@1&family=JetBrains+Mono:wght@400;600&display=swap" />
 </head>
 <body class="v2">
   <!-- 아이콘 스프라이트 (Lucide, ISC) -->
@@ -25,11 +25,12 @@
       <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
       <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
       <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+      <symbol id="logo" viewBox="0 0 240 240"><g fill="none" stroke="currentColor" stroke-linecap="round"><path d="M120 184 C82 184 58 172 58 144 L58 104 C58 80 82 72 120 72" stroke-width="8"/><path d="M58 124 C40 124 30 132 30 150" stroke-width="6"/><path d="M120 196 C150 196 178 188 204 162" stroke-width="8"/><path d="M120 152 C148 146 172 128 194 98" stroke-width="7"/><path d="M120 108 C142 100 160 80 174 52" stroke-width="6"/><path d="M162 134 C176 136 188 142 200 152 M150 88 C164 90 174 96 184 106 M178 180 C184 170 186 160 186 150" stroke-width="4"/><path d="M120 226 C136 226 148 230 160 234" stroke-width="5"/></g><path d="M113 228 L127 228 L123.5 30 L116.5 30 Z" fill="currentColor"/><path transform="translate(194 98) rotate(-50)" d="M0 0 C5 -9 17 -10 26 0 C17 10 5 9 0 0 Z" style="fill:var(--lane-1)"/><path transform="translate(174 52) rotate(-65)" d="M0 0 C5 -9 17 -10 26 0 C17 10 5 9 0 0 Z" style="fill:var(--ok)"/><path transform="translate(204 162) rotate(-25)" d="M0 0 C5 -9 17 -10 26 0 C17 10 5 9 0 0 Z" style="fill:var(--ok)"/><path transform="translate(200 152) rotate(15)" d="M0 0 C5 -9 17 -10 26 0 C17 10 5 9 0 0 Z" style="fill:var(--lane-1)"/><path transform="translate(184 106) rotate(25)" d="M0 0 C5 -9 17 -10 26 0 C17 10 5 9 0 0 Z" style="fill:var(--ok)"/><path transform="translate(186 150) rotate(-80)" d="M0 0 C5 -9 17 -10 26 0 C17 10 5 9 0 0 Z" style="fill:var(--lane-1)"/><path transform="translate(120 30) rotate(-90)" d="M0 0 C5 -9 17 -10 26 0 C17 10 5 9 0 0 Z" style="fill:var(--lane-1)"/><path transform="translate(140 118) rotate(-55)" d="M0 0 C5 -9 17 -10 26 0 C17 10 5 9 0 0 Z" style="fill:var(--ok)"/><g stroke="currentColor"><circle cx="120" cy="200" r="11" stroke-width="6" style="fill:var(--panel)"/><circle cx="120" cy="128" r="11" stroke-width="6" style="fill:var(--panel)"/><circle cx="30" cy="150" r="8" stroke-width="5" style="fill:var(--panel)"/></g><g fill="currentColor"><circle cx="58" cy="104" r="10"/><circle cx="58" cy="144" r="10"/><circle cx="120" cy="72" r="11"/></g></symbol>
     </defs>
   </svg>
 
   <header class="topbar">
-    <strong class="brand"><svg class="i" aria-hidden="true"><use href="#i-branch"/></svg>Git Yggdrasil</strong>
+    <strong class="brand"><svg class="logo" aria-hidden="true"><use href="#logo"/></svg><span class="brand-name">Yggdrasil</span></strong>
     <button type="button" id="open-repo" class="small" title="⌘O">저장소 열기</button>
     <button type="button" id="gh-account" class="small gh-account" hidden></button>
     <span class="sub" id="repo-path"></span>
@@ -123,6 +124,7 @@
 
   <div id="welcome" class="welcome hidden">
     <div class="welcome-card">
+      <svg class="logo" aria-hidden="true"><use href="#logo"/></svg>
       <h1>Git Yggdrasil</h1>
       <p class="muted">git 저장소 폴더를 열면 커밋 그래프를 보여 줍니다. 커밋을 끌어 놓아 옮기기·합치기·rebase 하고, 놓기 전에 결과를 미리 봅니다. 모든 조작은 ⌘Z 로 되돌릴 수 있습니다.</p>
       <button type="button" id="welcome-open" class="commit-btn">저장소 폴더 열기</button>

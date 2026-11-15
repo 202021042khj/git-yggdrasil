@@ -1,0 +1,25 @@
+/* PullsSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .pr-box { margin-top: 10px; }
+  .pr-list { display: grid; gap: 2px; max-height: 260px; overflow: auto; }
+  .pr-row {
+    display: grid;
+    gap: 2px;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    padding: 5px 6px;
+    border-radius: var(--r-sm);
+  }
+  .pr-line1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .pr-no { color: var(--muted); font-size: 12px; }
+  .pr-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pr-line2 { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 11px; }
+  .pr-line2 .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pr-row:hover, .pr-row:focus-visible { background: var(--hover); }
+  .pr-badge { flex: none; font-size: 10.5px; padding: 0 5px; border: 1px solid var(--line); color: var(--muted); border-radius: 999px; }
+  .pr-badge.ok { color: var(--ok); background: var(--accent-bg); border-color: transparent; }
+  .pr-badge.bad { color: var(--danger); background: var(--danger-bg); border-color: transparent; }
+  .pr-badge.wait { color: var(--tag); background: var(--tag-bg); border-color: transparent; }
+}

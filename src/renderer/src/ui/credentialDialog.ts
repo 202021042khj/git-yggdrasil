@@ -1,4 +1,5 @@
 // GitHub 밖 HTTPS 호스트 로그인 창: 사용자 이름과 토큰을 받아 git 자격 증명 도우미(키체인 등)에 저장한다
+import "./credentialDialog.css";
 import { byId } from "@/lib/dom";
 import { errorText } from "@/lib/html";
 import { confirmAction } from "@/ui/dialog";

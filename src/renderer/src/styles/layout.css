@@ -1,0 +1,7 @@
+/* 화면 뼈대: 사이드바 · 캔버스 · 상세 3단 격자와 구조 경계선 */
+@layer layout {
+  .sidebar, .detail { background: var(--chrome); padding: 10px 12px; overflow: auto; }
+  .main { flex: 1; display: grid; min-height: 0; grid-template-columns: 300px minmax(0, 1fr) 380px; }
+  .sidebar { border-right: 2px solid var(--line-strong); padding: 12px; }
+  .detail { border-left: 2px solid var(--line-strong); padding: 16px; }
+}

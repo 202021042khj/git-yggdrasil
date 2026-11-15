@@ -1,0 +1,34 @@
+/* GithubSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .gh-account { gap: 6px; }
+  .gh-account img { width: 18px; height: 18px; border-radius: 50%; }
+  .gh-repos { width: min(560px, calc(100vw - 32px)); }
+  .gh-repo-list { max-height: 50vh; overflow: auto; display: grid; gap: 4px; }
+  .gh-repo { flex-direction: column; align-items: flex-start; gap: 0; width: 100%; text-align: left; background: var(--bg); }
+  .gh-repo .n { font-weight: 600; }
+  .gh-repo .d { font-size: 11px; color: var(--muted); }
+  .gh-repos input {
+    width: 100%;
+    font: inherit;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 6px 8px;
+    margin-bottom: 8px;
+    user-select: text;
+    background: var(--panel);
+  }
+  .gh-login h2, .gh-repos h2 { margin: 0 0 8px; font-size: 20px; font-weight: 600; }
+  .gh-code {
+    display: block;
+    text-align: center;
+    font: 600 28px/1.2 var(--font-code);
+    letter-spacing: 0.08em;
+    padding: 12px;
+    margin: 8px 0;
+    background: var(--bg);
+    user-select: all;
+    border-radius: 0;
+    border: 2px solid var(--line-strong);
+  }
+}

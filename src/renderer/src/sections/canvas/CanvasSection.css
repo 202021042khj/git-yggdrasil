@@ -1,0 +1,168 @@
+/* CanvasSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .canvas-wrap { overflow: auto; position: relative; background: var(--bg); }
+  #graph { display: block; }
+  #ghost-graph { position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; transition: opacity var(--dur-short) var(--ease); }
+  .canvas-wrap.previewing #graph { opacity: 0.22; transition: opacity var(--dur-short) var(--ease); }
+  .canvas-wrap.previewing #ghost-graph { opacity: 1; }
+  #ghost-graph .bg { fill: transparent; }
+  #graph .bg { fill: var(--bg); }
+  .remote-band text { fill: var(--muted); font-size: 12px; }
+  .lane-name { font-size: 11px; font-weight: 600; }
+  .lane-name.remote { font-style: italic; }
+  .edge.going { stroke-dasharray: 5 4; opacity: 0.5; }
+  .edge.new { stroke-dasharray: 6 3; }
+  .node { cursor: grab; }
+  .node .msg { font-size: 11px; text-anchor: middle; fill: var(--text); }
+  .node.selected circle:not(.halo), .node.selected rect { stroke-width: 4; }
+  .node.multi circle:not(.halo), .node.multi rect {
+    stroke: var(--accent) !important;
+    stroke-width: 4.5;
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 70%, transparent));
+  }
+  .node.multi .msg { fill: var(--accent); font-weight: 600; }
+  .node.drop-hover circle:not(.halo), .node.drop-hover rect { stroke: var(--accent) !important; stroke-width: 5; }
+  .node.going { opacity: 0.45; }
+  .node.going .msg { text-decoration: line-through; fill: var(--danger); }
+  .node.new circle:not(.halo) { stroke: var(--ok) !important; stroke-dasharray: 4 2; }
+  .node.new .msg { fill: var(--ok); font-weight: 600; }
+  .ref { cursor: grab; }
+  .ref text { font-size: 11px; text-anchor: middle; fill: var(--on-lane); font-weight: 600; }
+  .ref.remote rect { stroke-dasharray: 3 2; }
+  .ref.remote text { fill: var(--muted); font-weight: 400; }
+  .ref.remote.incoming rect { stroke: var(--accent) !important; stroke-dasharray: none; stroke-width: 2; }
+  .ref.remote.incoming text { fill: var(--accent); font-weight: 600; }
+  .ref.drop-hover rect { stroke: var(--text) !important; stroke-width: 3; }
+  .grip { cursor: grab; }
+  .grip circle { fill: var(--bg); stroke-width: 2; }
+  .grip text { font-size: 12px; text-anchor: middle; fill: var(--muted); }
+  .gap { fill: transparent; display: none; }
+  body.drag-commit:not(.v2) .gap {
+    display: block;
+    fill: color-mix(in srgb, var(--accent) 10%, transparent);
+    stroke: var(--accent);
+    stroke-dasharray: 3 3;
+  }
+  body.drag-commit:not(.v2) .gap.drop-hover { fill: color-mix(in srgb, var(--accent) 35%, transparent); }
+  body.v2 .grip { display: none; }
+  body.dragging .grip { pointer-events: none; opacity: 0.3; }
+  body.dragging, body.dragging * { cursor: grabbing !important; }
+  .v2-layer { position: fixed; inset: 0; pointer-events: none; z-index: 45; }
+  .v2-pill .v { overflow: hidden; text-overflow: ellipsis; }
+  .v2-pill .more { font-weight: 400; color: var(--muted); }
+  .v2-pill.k-gap { min-height: 22px; padding: 1px 8px; font-weight: 400; }
+  .v2-pill.on .more { color: inherit; opacity: 0.8; }
+  body.v2-dragging .v2-pill:not(.on) { opacity: 0.92; }
+  .tip {
+    position: fixed;
+    pointer-events: none;
+    z-index: 51;
+    max-width: 380px;
+    padding: 8px 10px;
+    border-radius: var(--r-md);
+    background: var(--panel);
+    border: none;
+    box-shadow: var(--shadow);
+    transform: translate(14px, 40px);
+  }
+  .tip .sum { font-weight: 600; }
+  .tip code { display: block; white-space: pre-wrap; margin-top: 4px; color: var(--accent); font-size: 12px; }
+  .tip .warn { color: var(--warn); margin-top: 4px; }
+  .tip .lock { color: var(--danger); margin-top: 4px; }
+  .tip .hint { color: var(--muted); margin: 4px 0 0; }
+  .tip .err { color: var(--muted); }
+  .preview {
+    position: fixed;
+    right: 306px;
+    bottom: 60px;
+    z-index: 40;
+    width: 460px;
+    height: 260px;
+    background: var(--bg);
+    border: none;
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .preview-title { font-size: 11px; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  #preview-svg { width: 100%; height: calc(100% - 28px); }
+  .ref.op text { fill: var(--on-lane); }
+  .canvas-area { position: relative; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+  .canvas-area > .canvas-wrap { flex: 1; min-height: 0; }
+  .lane-names { pointer-events: none; }
+  .v2-pill.none { opacity: 0.4; box-shadow: none; }
+  .ref.tag text { fill: var(--tag); }
+  .ref.detached rect { stroke-dasharray: 3 2; }
+  .reflog { width: min(720px, calc(100vw - 32px)); }
+  .reflog .pr-head label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 400; }
+  .reflog-help { font-size: 12px !important; line-height: 1.5; }
+  .reflog-list { display: grid; gap: 2px; max-height: 60vh; overflow: auto; margin-top: 6px; }
+  #graph .node:focus { outline: none; }
+  #graph .node:focus-visible circle:not(.halo), #graph .node:focus-visible rect { stroke: var(--accent) !important; stroke-width: 5; }
+  #graph .node:focus-visible .msg { fill: var(--accent); font-weight: 600; text-decoration: underline; }
+  #graph .ref:focus-visible rect { stroke: var(--accent) !important; stroke-width: 3; }
+  .edge { fill: none; stroke-width: 3; }
+  .node circle, .node rect { stroke-width: 3; }
+  .node .halo { fill: none; stroke: var(--line-strong); stroke-dasharray: none; stroke-width: 2.5; }
+  .ref rect { rx: 10; }
+  .ref.head rect { stroke: var(--line-strong) !important; stroke-width: 2; }
+  .ref.tag rect { fill: var(--tag-bg); stroke: var(--tag); }
+  .lane-tag rect { fill: var(--bg); opacity: 0.92; rx: 0; }
+  .remote-band rect { stroke-dasharray: 4 4; fill: var(--chrome); stroke: var(--line); }
+  .remote-band.drop-hover rect { fill: var(--accent-bg); stroke: var(--accent); }
+  .v2-pill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 260px;
+    min-height: 26px;
+    padding: 3px 10px;
+    white-space: nowrap;
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    transition: background-color var(--dur-micro) var(--ease), border-color var(--dur-micro) var(--ease), opacity var(--dur-micro) var(--ease);
+    border-radius: 0;
+    background: var(--panel);
+    color: var(--accent);
+    border: 2px dashed var(--accent);
+    box-shadow: none;
+  }
+  .v2-pill::before {
+    content: "";
+    width: 0;
+    height: 0;
+    border-left: 7px solid currentColor;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    flex: none;
+  }
+  .v2-pill.on {
+    border-color: transparent;
+    background: var(--accent);
+    color: var(--on-accent);
+    border: 2px solid var(--accent);
+    box-shadow: var(--shadow);
+  }
+  .v2-pill.k-gap::before { display: none; }
+  .preview, .tip { border: 2px solid var(--line-strong); border-radius: 0; box-shadow: var(--shadow); }
+  .reflog h2 { margin: 0; font-size: 20px; font-weight: 600; }
+  .ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 50;
+    padding: 4px 10px;
+    font-weight: 600;
+    font-size: var(--fs-sm);
+    transform: translate(12px, 12px);
+    border-radius: 0;
+    background: var(--panel);
+    color: var(--text);
+    border: 2px solid var(--accent);
+    box-shadow: 3px 3px 0 var(--line-strong);
+    opacity: 1;
+  }
+  .load-more { position: absolute; left: 12px; bottom: 12px; z-index: 5; border: 1px solid var(--line); box-shadow: none; }
+}

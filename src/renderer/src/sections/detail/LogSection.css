@@ -1,0 +1,7 @@
+/* LogSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .log { padding-left: 18px; margin: 0; }
+  .log li { margin-bottom: 8px; }
+  .log code { display: block; white-space: pre-wrap; color: var(--accent); font-size: 11.5px; }
+  .log li::marker { color: var(--muted); font-family: var(--font-code); }
+}

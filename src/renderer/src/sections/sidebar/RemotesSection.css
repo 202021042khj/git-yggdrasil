@@ -1,0 +1,19 @@
+/* RemotesSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .remote-row { display: flex; align-items: center; gap: 6px; padding: 3px 6px; border-radius: var(--r-sm); }
+  .remote-row .rn { font-weight: 600; }
+  .remote-row .ru {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .remote-row button { min-height: 22px; padding: 1px 6px; font-size: 11px; }
+  .remote-empty { font-size: var(--fs-sm); margin: 2px 0 6px; }
+  .remote-only p { font-size: 11px; margin: 6px 0 2px; }
+  .remote-only .ru { color: var(--text); font-size: var(--fs-sm); }
+  .remote-row:hover { background: var(--hover); }
+}

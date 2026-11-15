@@ -1,4 +1,5 @@
 // 앱 안 입력창 (Electron 은 window.prompt 를 지원하지 않는다)
+import "./dialog.css";
 import { byId } from "@/lib/dom";
 import { hideToast } from "@/ui/toast";
 

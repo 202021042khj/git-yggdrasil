@@ -1,4 +1,5 @@
 // 떠 있는 메뉴 (드롭 메뉴 · 오른쪽 클릭 메뉴 공용). 숫자 키·화살표·Enter·Esc 로 고른다.
+import "./menu.css";
 import { esc } from "@/lib/html";
 import { byId } from "@/lib/dom";
 

@@ -1,28 +1,29 @@
 // 화면 진입점: 섹션을 한 번씩 붙이고(mount), 상태가 바뀔 때마다 다시 그린다(render)
-import "@/styles/app.css";
+import "@/styles/index.css";
 import { open, recent, refresh } from "@/app/repoSession";
 import { store } from "@/app/store";
 import { installDebug } from "@/dev/debug";
 import { mountContextMenu } from "@/interactions/contextMenu";
 import { mountDrag } from "@/interactions/drag";
-import { renderCanvas, mountCanvas, revealCommit } from "@/sections/CanvasSection";
-import { renderDetail, mountDetail } from "@/sections/DetailSection";
-import { renderExtras, mountExtras } from "@/sections/ExtrasSection";
-import { renderFilter, mountFilter } from "@/sections/FilterSection";
-import { renderFooter } from "@/sections/FooterSection";
-import { renderGithub, mountGithub } from "@/sections/GithubSection";
-import { renderLog } from "@/sections/LogSection";
-import { renderPulls, mountPulls } from "@/sections/PullsSection";
-import { mountRebaseEditor } from "@/sections/RebaseEditor";
-import { mountReflog } from "@/sections/ReflogSection";
-import { renderOpBanner, mountOpBanner } from "@/sections/OpBannerSection";
-import { renderRemotes, mountRemotes } from "@/sections/RemotesSection";
-import { mountSearch } from "@/sections/SearchSection";
-import { loadSettings, mountSettings } from "@/sections/SettingsSection";
-import { renderSidebar, mountSidebar } from "@/sections/SidebarSection";
-import { renderTopbar, mountTopbar } from "@/sections/TopbarSection";
-import { cloneFlow, mountWelcome, showWelcome } from "@/sections/WelcomeSection";
-import { renderWorking, mountWorking } from "@/sections/WorkingSection";
+import { renderCanvas, mountCanvas, revealCommit } from "@/sections/canvas/CanvasSection";
+import { renderDetail, mountDetail } from "@/sections/detail/DetailSection";
+import { renderExtras, mountExtras } from "@/sections/sidebar/ExtrasSection";
+import { renderFilter, mountFilter } from "@/sections/canvas/FilterSection";
+import { renderFooter } from "@/sections/shell/FooterSection";
+import { renderGithub, mountGithub } from "@/sections/dialogs/GithubSection";
+import { renderLog } from "@/sections/detail/LogSection";
+import { renderPulls, mountPulls } from "@/sections/sidebar/PullsSection";
+import { mountRebaseEditor } from "@/sections/dialogs/RebaseEditor";
+import { mountReflog } from "@/sections/dialogs/ReflogSection";
+import { renderOpBanner, mountOpBanner } from "@/sections/shell/OpBannerSection";
+import { renderRemotes, mountRemotes } from "@/sections/sidebar/RemotesSection";
+import { mountSearch } from "@/sections/dialogs/SearchSection";
+import { loadSettings, mountSettings } from "@/sections/dialogs/SettingsSection";
+import { renderSidebar, mountSidebar } from "@/sections/sidebar/SidebarSection";
+import { renderTopbar, mountTopbar } from "@/sections/shell/TopbarSection";
+import { cloneFlow, mountWelcome, showWelcome } from "@/sections/shell/WelcomeSection";
+import { renderWorking, mountWorking } from "@/sections/sidebar/WorkingSection";
+import { mountDropdowns } from "@/ui/dropdown";
 import { mountMenu } from "@/ui/menu";
 import { toast } from "@/ui/toast";
 
@@ -36,6 +37,7 @@ function renderAll(): void {
 }
 
 mountMenu();
+mountDropdowns();
 mountDrag();
 mountContextMenu();
 mountTopbar();

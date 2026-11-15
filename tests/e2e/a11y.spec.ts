@@ -26,6 +26,8 @@ for (const theme of ["dark", "light"] as const) {
   test(`메인 화면 (${theme})`, async () => {
     await c.page.emulateMedia({ colorScheme: theme });
     await c.page.locator(`#graph .node`).first().click();
+    // 색 모드를 바꾼 직후에는 버튼 배경 transition 이 진행 중이라, 끝난 뒤의 색으로 대비를 잰다
+    await c.page.evaluate("Promise.all(document.getAnimations().map((a) => a.finished))");
     expect(await scan(c.page)).toEqual([]);
   });
 }

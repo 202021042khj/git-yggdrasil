@@ -1,0 +1,55 @@
+/* menu 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .v2-menu .m-verb { font-weight: 600; display: flex; gap: 6px; align-items: center; }
+  .v2-menu .m-cmd {
+    font-family: var(--font-code);
+    font-size: 11px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .v2-menu .m-warn { font-size: 11px; color: var(--warn); }
+  .v2-menu .m-cancel { min-height: 32px; color: var(--muted); flex-direction: row; justify-content: space-between; }
+  .v2-menu {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 60;
+    min-width: 260px;
+    max-width: 360px;
+    max-height: 70vh;
+    overflow: auto;
+    background: var(--panel);
+    border: 2px solid var(--line-strong);
+    border-radius: 0;
+    box-shadow: var(--shadow);
+    padding: 4px 0;
+  }
+  .v2-menu .m-title {
+    font-size: 11px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    padding: 6px 12px 4px;
+  }
+  .v2-menu button {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: left;
+    min-height: 40px;
+    padding: 6px 12px;
+    border-radius: 0;
+  }
+  .v2-menu button:hover, .v2-menu button:focus-visible { outline-offset: -2px; background: var(--accent); color: var(--on-accent); }
+  .v2-menu button:hover .m-cmd, .v2-menu button:focus-visible .m-cmd { color: inherit; opacity: 0.8; }
+}

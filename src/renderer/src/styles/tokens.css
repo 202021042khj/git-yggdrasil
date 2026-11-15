@@ -1,0 +1,81 @@
+/* 디자인 토큰: 색 · 글꼴 · 간격 · 모서리 (Figma "App · Foundations"). 어둡게가 기본, 밝게는 시스템 설정을 따른다. */
+@layer tokens {
+  :root {
+    color-scheme: dark;
+    --bg: #1c1b19;
+    --panel: #31302c;
+    --chrome: #31302c; /* 상단바·사이드바·상세·하단: 그래프(bg)보다 한 톤 물러난 패널 */
+    --panel-2: #4a4742;
+    --hover: #4a4742;
+    --line: #4a4742;
+    --line-strong: #a19d95;
+    --text: #fbf7f1;
+    --muted: #a19d95;
+    --faint: #7f7b73;
+    --accent: #a2c9ab;
+    --accent-bg: #2d4a36;
+    --tag: #e4c7a3;
+    --tag-bg: #654529;
+    --on-accent: #1c1b19;
+    --ok: #84b590;
+    --danger: #eba48c;
+    --danger-bg: #5a2617;
+    --warn: #d8af80;
+    --shadow: 4px 4px 0 var(--line-strong);
+    --lane-1: #a2c9ab;
+    --lane-2: #e4c7a3;
+    --lane-3: #a9bccb;
+    --lane-4: #e09a80;
+    --lane-5: #c7a6be;
+    --lane-6: #c2cc9a;
+    --lane-remote: #7f7b73;
+    --lane-anon: #625f58;
+    --on-lane: #1c1b19;
+    --font-ui: "IBM Plex Sans", "IBM Plex Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+    --font-code: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --font-brand: "Playfair Display", Georgia, serif;
+    --fs-sm: 12px;
+    --fs-md: 13.5px;
+    --fs-lg: 15px;
+    --r-sm: 0;
+    --r-md: 0;
+    --r-pill: 999px;
+    --dur-micro: 120ms;
+    --dur-short: 180ms;
+    --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+        color-scheme: light;
+        --bg: #fbf7f1;
+        --panel: #ffffff;
+        --chrome: #f1ebe1;
+        --panel-2: #f6ede0;
+        --hover: #e8e1d5;
+        --line: #dcdad5;
+        --line-strong: #4a4742;
+        --text: #1c1b19;
+        --muted: #625f58;
+        --faint: #a19d95;
+        --accent: #3e6649;
+        --accent-bg: #dfede2;
+        --tag: #8a5f38;
+        --tag-bg: #eedcc4;
+        --on-accent: #fbf7f1;
+        --ok: #50825d;
+        --danger: #a8492f;
+        --danger-bg: #f7e1d8;
+        --warn: #ad7a49;
+        --shadow: 4px 4px 0 var(--line-strong);
+        --lane-1: #679e75;
+        --lane-2: #c99561;
+        --lane-3: #6e8597;
+        --lane-4: #c27358;
+        --lane-5: #a07f97;
+        --lane-6: #8a9a5b;
+        --lane-remote: #a19d95;
+        --lane-anon: #c2bfb8;
+        --on-lane: #1c1b19;
+      }
+  }
+}

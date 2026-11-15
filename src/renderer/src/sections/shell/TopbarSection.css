@@ -1,0 +1,54 @@
+/* TopbarSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .topbar .sub { color: var(--muted); font-size: var(--fs-sm); }
+  .topbar button, .topbar .brand { white-space: nowrap; flex-shrink: 0; }
+  .sync-btn .n { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .help p { margin: 6px 0; }
+  .help table { border-collapse: collapse; width: 100%; }
+  .help th, .help td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .help th { color: var(--muted); font-weight: 400; }
+  .help summary { cursor: pointer; margin-top: 8px; color: var(--muted); }
+  #repo-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40vw; }
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--chrome);
+    min-height: 52px;
+    padding: 8px 12px 8px 16px;
+    border-bottom: 2px solid var(--line-strong);
+  }
+  .brand { display: inline-flex; align-items: center; font-size: var(--fs-lg); gap: 8px; }
+  .brand .logo { width: 26px; height: 26px; flex: none; }
+  .brand .brand-name {
+    font-family: var(--font-brand);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .topbar #repo-path { flex: 1 1 0; min-width: 0; font-family: var(--font-code); font-size: var(--fs-sm); }
+  .sync { display: inline-flex; margin: 0 4px; gap: 0; }
+  .sync .sync-btn { border-color: var(--line-strong); }
+  .sync .sync-btn + .sync-btn { margin-left: -1px; }
+  .sync-btn.hot:not(:disabled) { font-weight: 600; background: var(--accent-bg); color: var(--accent); border-color: var(--line-strong); }
+  #undo, #redo, #help-toggle { background: transparent; border-color: transparent; }
+  #undo:hover, #redo:hover, #help-toggle:hover { background: var(--hover); border-color: transparent; }
+  #search-open { min-width: 140px; justify-content: space-between; background: var(--bg); border-color: var(--line); color: var(--muted); }
+  #search-open::after { content: "⌘K"; font-family: var(--font-code); font-size: 11px; color: var(--faint); }
+  .help {
+    position: fixed;
+    right: 20px;
+    top: 50px;
+    z-index: 46;
+    width: 540px;
+    max-height: 80vh;
+    overflow: auto;
+    background: var(--panel);
+    padding: 4px 16px 12px;
+    border: 2px solid var(--line-strong);
+    border-radius: 0;
+    box-shadow: var(--shadow);
+  }
+}

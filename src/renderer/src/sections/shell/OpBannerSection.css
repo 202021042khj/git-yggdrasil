@@ -1,0 +1,23 @@
+/* OpBannerSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .op-banner .ob-title { font-weight: 600; }
+  .op-banner .ob-step { color: var(--muted); }
+  .op-banner .spacer { flex: 1; }
+  .op-banner button.primary {
+    border-color: transparent;
+    background: var(--accent);
+    color: var(--on-accent);
+    border: 1px solid var(--accent);
+    font-weight: 600;
+  }
+  .op-banner button.danger { color: var(--danger); background: var(--danger-bg); border-color: var(--danger); }
+  .op-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 8px 14px;
+    background: var(--tag-bg);
+    border-bottom: 2px solid var(--line-strong);
+  }
+}

@@ -1,0 +1,40 @@
+/* RebaseEditor 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .rebase { width: min(720px, calc(100vw - 32px)); }
+  .rebase-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; max-height: 55vh; overflow: auto; }
+  .rb-row.dragging-row { opacity: 0.5; }
+  .rb-grip { cursor: grab; color: var(--muted); padding-top: 4px; user-select: none; }
+  .rb-move { display: inline-flex; gap: 2px; }
+  .rb-move button { min-width: 0; padding: 1px 6px; }
+  .rb-main { display: grid; gap: 2px; min-width: 0; }
+  .rb-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rb-meta { font-size: 11px; }
+  .rb-row.a-drop .rb-msg { text-decoration: line-through; color: var(--muted); }
+  .rebase-result { font-size: var(--fs-sm); min-height: 2.4em; }
+  .rebase-result p { margin: 2px 0; }
+  .rebase-result .warn { color: var(--tag); }
+  .rb-main textarea {
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 4px 6px;
+    resize: vertical;
+    background: var(--panel);
+  }
+  .rebase h2 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
+  .rb-row {
+    display: grid;
+    grid-template-columns: auto auto 190px 1fr;
+    align-items: start;
+    gap: 6px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    background: var(--bg);
+  }
+  .rb-row.drop-before { box-shadow: inset 0 3px 0 var(--accent); }
+  .rb-row.a-squash, .rb-row.a-fixup { margin-left: 24px; border-left: 3px solid var(--accent); }
+}

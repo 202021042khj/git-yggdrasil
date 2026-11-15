@@ -1,0 +1,45 @@
+/* FilterSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+    font-size: 12px;
+  }
+  .filter-bar input[type="search"] {
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 3px 6px;
+    min-height: 26px;
+  }
+  .filter-bar input[type="search"] { width: 120px; }
+  .filter-branches { position: relative; }
+  .filter-branches summary::-webkit-details-marker { display: none; }
+  .fb-actions { display: flex; gap: 4px; margin-bottom: 4px; }
+  .fb-row { display: flex; align-items: center; gap: 6px; padding: 3px 4px; border-radius: var(--r-sm); white-space: nowrap; }
+  .filter-summary { margin-left: auto; }
+  #graph .node.dim { opacity: 0.22; }
+  .fb-row:hover { background: var(--hover); }
+  .fb-row input { margin: 0; accent-color: var(--accent); }
+  .fb-pop {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 30;
+    min-width: 220px;
+    max-height: 50vh;
+    overflow: auto;
+    padding: 6px;
+    background: var(--panel);
+    border: 2px solid var(--line-strong);
+    border-radius: 0;
+    box-shadow: var(--shadow);
+  }
+}

@@ -1,0 +1,52 @@
+/* dialog 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .ask label { font-weight: 600; display: block; }
+  .ask p { margin: 4px 0 10px; font-size: var(--fs-sm); }
+  .ask p:empty { display: none; }
+  .ask-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .notice { width: min(520px, calc(100vw - 32px)); }
+  .notice h2 { font-size: 15px; margin: 0 0 8px; }
+  .notice-body { white-space: pre-line; line-height: 1.6; font-size: var(--fs-sm); }
+  .notice details { margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .notice details pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 160px;
+    overflow: auto;
+    background: var(--bg);
+    padding: 6px;
+    border-radius: var(--r-sm);
+  }
+  .ask-actions .primary {
+    order: 2;
+    border-color: transparent;
+    background: var(--accent);
+    color: var(--on-accent);
+    border: 1px solid var(--accent);
+    font-weight: 600;
+  }
+  .ask-actions .primary:hover { background: var(--accent); filter: brightness(1.08); }
+  .ask input {
+    width: 100%;
+    font: inherit;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 6px 8px;
+    user-select: text;
+    background: var(--panel);
+  }
+  .ask input:focus-visible { outline-offset: 0; border-color: transparent; outline: none; border: 2px solid var(--accent); }
+  .ask input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--accent); }
+  .ask {
+    width: min(420px, calc(100vw - 32px));
+    background: var(--panel);
+    color: var(--text);
+    border: 2px solid var(--line-strong);
+    border-radius: 0;
+    box-shadow: var(--shadow);
+    padding: 20px 24px;
+  }
+  .ask::backdrop { background: color-mix(in srgb, var(--bg) 55%, transparent); }
+  .ask h2, .notice h2 { font-size: 20px; font-weight: 600; }
+}

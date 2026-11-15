@@ -1,0 +1,55 @@
+/* ConflictEditor 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .conflict-box h4 { margin: 0 0 6px; font-size: var(--fs-sm); }
+  .cf-file { padding: 6px 0; border-top: 1px solid var(--line); }
+  .cf-file:first-of-type { border-top: none; }
+  .cf-name { font-weight: 600; cursor: pointer; }
+  .cf-name.done { color: var(--ok); }
+  .cf-actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .cf-actions button { font-size: 11px; padding: 2px 7px; min-height: 26px; }
+  .cf-actions button.on { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 18%, var(--bg)); font-weight: 600; }
+  .cf-side { font-size: 11px; color: var(--muted); }
+  .markers .ours { display: block; padding: 0 8px; background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  .markers .theirs { display: block; padding: 0 8px; background: color-mix(in srgb, var(--lane-2) 18%, transparent); }
+  .markers .mk { display: block; padding: 0 8px; color: var(--danger); font-weight: 600; }
+  .ce-status { font-size: 12px; margin-bottom: 6px; }
+  .ce-ctx { margin: 0; padding: 2px 6px; font-size: 12px; color: var(--muted); white-space: pre-wrap; }
+  .ce-conflict.picked { border-color: var(--line); }
+  .ce-head { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; padding: 4px 6px; background: var(--panel-2); }
+  .ce-head b { margin-right: auto; font-size: 12px; }
+  .ce-head button.on { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+  .ce-sides { display: grid; grid-template-columns: 1fr 1fr; }
+  .ce-side { min-width: 0; }
+  .ce-side.b { border-left: 1px solid var(--line); }
+  .ce-label { font-size: 11px; color: var(--muted); padding: 2px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ce-side pre { margin: 0; padding: 4px 6px; font-size: 12px; max-height: 200px; overflow: auto; }
+  .ce-result-label { display: block; margin-top: 8px; font-size: 12px; font-weight: 600; }
+  .ce-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+  .ce-actions .primary {
+    border-color: transparent;
+    background: var(--accent);
+    color: var(--on-accent);
+    border: 1px solid var(--accent);
+    font-weight: 600;
+  }
+  .ce-result {
+    width: 100%;
+    font: 12px/1.45 "JetBrains Mono", ui-monospace, monospace;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 6px;
+    resize: vertical;
+    background: var(--panel);
+  }
+  .conflict-box {
+    border-radius: var(--r-md);
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 2px solid var(--danger);
+    background: var(--danger-bg);
+  }
+  .ce-conflict { border: 1px solid var(--danger, #e5534b); border-radius: var(--r-sm); margin: 6px 0; overflow: hidden; border-width: 2px; }
+  .ce-side.a pre { background: var(--accent-bg); }
+  .ce-side.b pre { background: var(--tag-bg); }
+}

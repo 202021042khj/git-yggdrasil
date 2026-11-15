@@ -1,0 +1,38 @@
+/* WelcomeSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .welcome { position: fixed; inset: 0; z-index: 80; background: var(--bg); display: grid; place-items: center; }
+  .welcome-card .commit-btn { margin: 16px 0; }
+  .recent-list { display: grid; gap: 4px; }
+  .recent .r-name { font-weight: 600; }
+  .recent .r-path { font-size: 11px; color: var(--muted); }
+  .clone-btn { width: 100%; justify-content: center; margin-top: -8px; margin-bottom: 8px; }
+  #welcome-gh { margin-top: 0; }
+  .welcome-card {
+    background: var(--panel);
+    border: 2px solid var(--line-strong);
+    box-shadow: var(--shadow);
+    padding: 40px;
+    width: min(560px, calc(100vw - 32px));
+  }
+  .welcome-card .logo { width: 72px; height: 72px; display: block; margin-bottom: 12px; }
+  .welcome-card h1 {
+    margin: 0 0 8px;
+    font-family: var(--font-brand);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 40px;
+    letter-spacing: -0.015em;
+  }
+  .recent {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 8px 0;
+  }
+  .recent:hover { background: var(--hover); }
+}

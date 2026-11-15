@@ -1,3 +1,4 @@
+import "./toast.css";
 import { byId } from "@/lib/dom";
 
 const SHOW_MS = 2600;
