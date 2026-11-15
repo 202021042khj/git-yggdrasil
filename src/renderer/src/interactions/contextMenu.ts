@@ -6,12 +6,12 @@ import { short } from "@/lib/html";
 import { isAncestor, stems } from "@/model/graph";
 import { actionMenuItem, hideInCanvas, withSelection } from "@/interactions/drag";
 import { actionsFor, candidateTargets, sourceFromElement, sourceLabel, type DragSource } from "@/interactions/targets";
-import { addWorktree } from "@/sections/sidebar/ExtrasSection";
-import { openRebaseEditor } from "@/sections/dialogs/RebaseEditor";
+import { addWorktree } from "@/components/pages/main/sections/sidebar/extrasUtils";
+import { openRebaseEditor } from "@/components/pages/main/sections/dialogs/rebaseUtils";
 import { open } from "@/app/repoSession";
-import { askText, confirmAction } from "@/ui/dialog";
-import { openMenu, type MenuItem } from "@/ui/menu";
-import { toast } from "@/ui/toast";
+import { askText, confirmAction } from "@/components/ui/dialogUtils";
+import { openMenu, type MenuItem } from "@/components/ui/menuUtils";
+import { toast } from "@/components/ui/toastUtils";
 
 /** 메뉴 항목을 더하는 곳 (예: GitHub PR 만들기). 섹션이 등록한다 */
 export type ContextProvider = (src: DragSource) => MenuItem[];

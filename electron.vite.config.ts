@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
 
 // 프로세스마다 "@/" 가 자기 src 폴더를 가리킨다. 공용 타입·상수는 "@shared/".
@@ -12,6 +13,7 @@ export default defineConfig({
     resolve: { alias: shared },
   },
   renderer: {
+    plugins: [react()],
     resolve: { alias: { "@": resolve(import.meta.dirname, "src/renderer/src"), ...shared } },
   },
 });

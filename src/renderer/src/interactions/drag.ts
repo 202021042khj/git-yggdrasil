@@ -13,11 +13,11 @@ import { renderGraph } from "@/model/layout";
 import { oldestFirst, rangeOnStem, toggleIn } from "@/model/selection";
 import { isError, preview, touchesPushed, type Preview } from "@/model/preview";
 import { actionsFor, candidateTargets, quickLabelVerb, sourceFromElement, sourceLabel, type Action, type DragSource, type DropTarget } from "@/interactions/targets";
-import { pinLaneNames } from "@/sections/canvas/CanvasSection";
-import { focusMessageInput } from "@/sections/detail/DetailSection";
-import { askText } from "@/ui/dialog";
-import { closeMenu, menuKey, openMenu } from "@/ui/menu";
-import { toast } from "@/ui/toast";
+import { pinLaneNames } from "@/components/pages/main/sections/canvas/canvasUtils";
+import { focusMessageInput } from "@/components/pages/main/sections/detail/detailUtils";
+import { askText } from "@/components/ui/dialogUtils";
+import { closeMenu, menuKey, openMenu } from "@/components/ui/menuUtils";
+import { toast } from "@/components/ui/toastUtils";
 
 interface DragState {
   src: DragSource;

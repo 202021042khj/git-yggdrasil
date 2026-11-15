@@ -4,8 +4,8 @@ import { open } from "@/app/repoSession";
 import { store } from "@/app/store";
 import { contextItems } from "@/interactions/contextMenu";
 import { preview } from "@/model/preview";
-import { injectPulls } from "@/sections/sidebar/PullsSection";
-import { openSettings } from "@/sections/dialogs/SettingsSection";
+import { injectPulls } from "@/components/pages/main/sections/sidebar/pullsUtils";
+import { openSettings } from "@/components/pages/main/sections/dialogs/settingsUtils";
 
 export function installDebug(): void {
   // 배포판에서는 켜지 않는다 (상태를 읽고 조작을 실행할 수 있는 도구라서)

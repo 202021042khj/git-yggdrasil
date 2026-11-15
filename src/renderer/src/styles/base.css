@@ -1,5 +1,7 @@
 /* 공통 바탕: 초기화 · 버튼 · 입력 · select · 제목 · 초점 · 접근성 도우미 */
 @layer base {
+  /* React 루트는 상자를 만들지 않는다 (body 의 flex 배치를 그대로 쓰게) */
+  #root { display: contents; }
   html, body { margin: 0; height: 100%; overflow-x: clip; }
   body {
     background: var(--bg);

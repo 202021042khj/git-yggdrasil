@@ -1,0 +1,29 @@
+/* SidebarSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .tree .repo { font-weight: 600; margin-bottom: 4px; display: flex; gap: 6px; align-items: center; }
+  .tree .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .badge { font-size: 11px; color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+  .badge.pull { cursor: pointer; color: var(--accent); font-weight: 600; }
+  .badge.pull:hover { text-decoration: underline; }
+  .repo-tools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; font-size: var(--fs-sm); }
+  .tree-tools { display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-bottom: 4px; }
+  .tree-tools label { display: flex; gap: 3px; align-items: center; cursor: pointer; }
+  .br:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .tree .br {
+    border-radius: var(--r-sm);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px 8px 4px 16px;
+    position: relative;
+  }
+  .tree .br:hover { background: var(--hover); }
+  .tree .br.head { font-weight: 600; background: var(--accent-bg); color: var(--accent); }
+  .tree .br.head::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+  .tree-tools input { accent-color: var(--accent); }
+}
+@layer components {
+  /* pull 배지는 키보드로도 누를 수 있게 button 이다: 단추 기본 모양을 지운다 */
+  .tree button.badge.pull { background: none; border: 0; min-height: 0; padding: 0; font: inherit; font-size: 11px; }
+}

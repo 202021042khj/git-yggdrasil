@@ -5,9 +5,9 @@ import { ownerBranch, stems } from "@/model/graph";
 import { touchesPushed, type Preview } from "@/model/preview";
 import { open, show } from "@/app/repoSession";
 import { store } from "@/app/store";
-import { askText, confirmAction, showNotice } from "@/ui/dialog";
-import { askCredential } from "@/ui/credentialDialog";
-import { toast } from "@/ui/toast";
+import { askText, confirmAction, showNotice } from "@/components/ui/dialogUtils";
+import { askCredential } from "@/components/ui/credentialUtils";
+import { toast } from "@/components/ui/toastUtils";
 import type { OpExtra, OpName } from "@shared/types/ipc";
 import type { RepoState } from "@shared/types/repo";
 

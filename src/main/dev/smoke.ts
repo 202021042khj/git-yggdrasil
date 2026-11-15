@@ -16,7 +16,7 @@ export function runSmoke(win: BrowserWindow, repoDir: string): void {
         const s = window.__yggDebug?.state;
         return { repo: s?.repoName, head: s?.head, commits: s ? Object.keys(s.commits).length : 0,
           branches: s ? Object.keys(s.branches) : [], nodes: document.querySelectorAll('#graph .node').length,
-          welcome: !document.getElementById('welcome').classList.contains('hidden'),
+          welcome: !!document.getElementById('welcome'),
           tree: document.querySelectorAll('.ft-row').length };
       })()`);
       if (process.env.YGG_EVAL) info.eval = await win.webContents.executeJavaScript(fs.readFileSync(process.env.YGG_EVAL, "utf8"));

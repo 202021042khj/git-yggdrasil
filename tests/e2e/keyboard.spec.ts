@@ -47,9 +47,9 @@ test("사이드바 브랜치: Tab 으로 닿고 Enter 로 체크아웃, Shift+F1
   expect(await focusedLabel(page)).toBe("브랜치 main"); // 메뉴를 닫으면 초점이 돌아온다
 });
 
-test("드롭다운: 화살표로 열고 고르면 select 값과 change 가 따라오고, Esc 는 목록만 닫는다", async () => {
+test("드롭다운: 화살표로 열고 고르면 값이 바뀌어 필터가 걸리고, Esc 는 목록만 닫는다", async () => {
   const { page } = c;
-  const btn = page.locator("#filter-since + .dd-btn, .dd:has(#filter-since) .dd-btn");
+  const btn = page.locator("#filter-since");
   await btn.focus();
   expect(await focusedLabel(page)).toBe("기간: 전체 기간");
   await page.keyboard.press("ArrowDown");
@@ -58,13 +58,12 @@ test("드롭다운: 화살표로 열고 고르면 select 값과 change 가 따�
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("listbox")).toBeHidden();
-  expect(await page.evaluate('document.getElementById("filter-since").value')).toBe("7");
   expect(await focusedLabel(page)).toBe("기간: 최근 1주");
-  await expect(page.locator("#filter-clear")).toBeVisible(); // change 이벤트로 필터가 걸림
+  await expect(page.locator("#filter-clear")).toBeVisible(); // 고른 기간으로 필터가 걸림
 
   // 설정 창 안: Esc 는 목록만 닫고 창은 남는다
   await page.evaluate("window.__yggDebug.openSettings()");
-  const theme = page.locator(".dd:has(#set-theme) .dd-btn");
+  const theme = page.locator("#set-theme");
   await theme.focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("listbox")).toBeVisible();

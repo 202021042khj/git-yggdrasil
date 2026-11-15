@@ -9,6 +9,7 @@
     "noUnusedParameters": false,
     "skipLibCheck": true,
     "isolatedModules": true,
+    "jsx": "react-jsx",
     "composite": true,
     "types": ["node"],
     "paths": {

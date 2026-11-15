@@ -1,0 +1,80 @@
+/* WorkingSection 스타일 (Figma "App · Components" 기준). 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .working-card.drop-hover { outline: 2px dashed var(--accent); outline-offset: 2px; }
+  .working-handle:hover { border-color: var(--accent); }
+  .file-tree { font-size: var(--fs-sm); max-height: 42vh; overflow: auto; margin: 0 -4px; }
+  .ft-row.clean { color: var(--muted); cursor: default; }
+  .ft-row input:disabled { visibility: hidden; }
+  .ft-row .chev { width: 12px; text-align: center; color: var(--muted); cursor: pointer; flex: none; }
+  .ft-row .name { overflow: hidden; text-overflow: ellipsis; display: inline-flex; gap: 5px; align-items: center; }
+  .ft-row .st { margin-left: auto; font-size: 11px; font-weight: 600; padding-left: 6px; font-family: var(--font-code); }
+  .st.M { color: var(--warn); }
+  .st.S { color: var(--ok); }
+  .st.U { color: var(--ok); }
+  .st.C { color: var(--danger); }
+  .ft-row.folder .st { color: var(--muted); font-weight: 400; }
+  .ft-row.conflict .name { color: var(--danger); font-weight: 600; }
+  .ft-row.resolved .name { color: var(--ok); }
+  .ft-row .discard { visibility: hidden; border: none; background: none; min-height: 0; padding: 0 4px; color: var(--muted); }
+  .ft-row:hover .discard, .ft-row .discard:focus-visible { visibility: visible; }
+  .ft-row .discard:hover { color: var(--danger); }
+  .hint { font-size: 11px; margin: 6px 0 8px; }
+  .commit-btn {
+    width: 100%;
+    justify-content: center;
+    margin: 6px 0;
+    min-height: 34px;
+    background: var(--accent);
+    color: var(--on-accent);
+    border: 1px solid var(--accent);
+    font-weight: 600;
+  }
+  .commit-btn:hover { background: var(--accent); filter: brightness(1.08); }
+  .working-card {
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--bg);
+    border-color: var(--line-strong);
+    padding: 12px;
+  }
+  #commit-msg {
+    width: 100%;
+    resize: vertical;
+    font: inherit;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    padding: 6px 8px;
+    user-select: text;
+    background: var(--panel);
+  }
+  #commit-msg:focus-visible { outline-offset: 0; outline: none; border: 2px solid var(--accent); }
+  .working-handle {
+    cursor: grab;
+    padding: 7px;
+    border-radius: var(--r-sm);
+    border: 1px dashed var(--line);
+    text-align: center;
+    margin-bottom: 8px;
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .working-handle.empty { color: var(--muted); cursor: default; border-color: var(--line); }
+  .ft-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    white-space: nowrap;
+    cursor: grab;
+    min-height: 28px;
+  }
+  .ft-row:hover { background: var(--hover); }
+  .ft-row.active { background: var(--accent-bg); }
+  .ft-row input { margin: 0; cursor: pointer; accent-color: var(--accent); }
+}
+@layer components {
+  /* 폴더 접기 화살표는 button 이다: 단추 기본 모양을 지운다 */
+  .ft-row button.chev { background: none; border: 0; min-height: 0; padding: 0; font: inherit; }
+}

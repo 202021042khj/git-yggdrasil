@@ -44,40 +44,52 @@ src/shared    양쪽이 함께 쓰는 타입과 기본값 상수 (로직 없음)
 
 **조작 추가 순서:** `OpName` 에 이름 추가 → `*Ops.ts` 에 `OpFn` 작성 → 레지스트리 등록 → `tests/main/*.test.ts` 에 임시 저장소 테스트 → (화면) `model/preview.ts` 에 미리보기, `interactions/targets.ts` 또는 `contextMenu.ts` 에 진입점.
 
-## renderer (`src/renderer/src`)
+## renderer (`src/renderer/src`) — React 19 + TypeScript
+
+폴더와 이름은 `khj-fe-template-react` 의 규칙(docs/ARCHITECTURE.md)을 따르고, 데스크톱 앱이라 다른 점만 적습니다.
 
 ```
-main.ts          진입점: 섹션 mount 한 번, 상태가 바뀌면 render 전부
-app/             store.ts (상태 한 곳) · actions.ts (조작 실행) · repoSession.ts (열기·새로고침)
-sections/        화면 영역마다 한 파일(PascalCase + Section), 자리별 폴더로 묶음
-  shell/         상단바 · 진행 중 작업 배너 · 하단(stash·휴지통) · 시작 화면
-  sidebar/       브랜치 · 원격 · 서브모듈/worktree · Pull Request · 작업 영역
-  canvas/        커밋 그래프 · 필터 바
-  detail/        상세(diff·blame) · 실행 기록 · 충돌 편집기
-  dialogs/       설정 · ⌘K 찾기 · 커밋 정리 · reflog · GitHub 로그인/저장소
-interactions/    드래그 문법(targets.ts) · 드래그(drag.ts) · 오른쪽 클릭 메뉴(contextMenu.ts)
-model/           순수 계산: 그래프(graph.ts) · 미리보기(preview.ts) · 배치와 SVG(layout.ts)
-ui/              도메인과 무관한 부품: 메뉴 · 드롭다운(모든 select 를 감쌈) · 입력 창 · 토스트
-lib/             DOM 없는 작은 순수 함수 (esc, 시간, 경로)
-constants/       상수 데이터 (배치 치수, 저장 키, 진행 중에도 되는 조작)
-styles/          index.css(레이어 순서) · tokens.css(색·글꼴 변수) · base.css(공통) · layout.css(3단 뼈대)
-dev/debug.ts     window.__yggDebug (점검용)
+main.tsx                진입점: 메인 프로세스 이벤트 · 드래그 · 오른쪽 클릭 · GitHub 를 한 번 연결하고 React 를 띄운다
+App.tsx                 최상위: 전역 CSS · 아이콘 스프라이트 · MainPage · 함수로 여는 부품(Menu · Toast · 입력창들)
+pages/MainPage.tsx      유일한 화면. useMainLogic() 을 한 번 부르고 DesktopPageContainer 에 내려 준다
+components/
+  pages/main/
+    DesktopPageContainer.tsx   3단 배치 + 섹션 조립 (모바일 화면은 없다)
+    sections/<자리>/           화면 자리별 섹션. <Name>Section.tsx + 같은 이름 .css + 밖에서 부르는 함수 <name>Utils.ts
+      shell/   상단바 · 진행 중 작업 배너 · 하단 · 시작 화면 · 도움말
+      sidebar/ 브랜치 · 원격 · 서브모듈/worktree · Pull Request · 작업 영역
+      canvas/  커밋 그래프 · 필터 바
+      detail/  상세(diff·blame) · 실행 기록 · 충돌 편집기
+      dialogs/ 설정 · ⌘K 찾기 · 커밋 정리 · reflog · GitHub
+  ui/          도메인과 무관한 부품: Menu · Dropdown · AskDialog · NoticeDialog · CredentialDialog · Toast (+ 여는 함수 *Utils.ts)
+  common/      Icon · IconSprite · LogoMark
+hooks/         useMainLogic (store 구독) · useSmallStore · useModal (<dialog>) · useAsync · useCallbackRef
+app/           store.ts (화면 상태 한 곳) · actions.ts (조작 실행) · repoSession.ts (열기 · 새로고침)
+interactions/  드래그 문법(targets.ts) · 드래그(drag.ts) · 오른쪽 클릭 메뉴(contextMenu.ts) — DOM 이벤트로 동작
+model/         순수 계산: 그래프 · 미리보기 · 배치와 SVG 문자열
+lib/           React 없는 작은 함수 (esc · 시간 · 경로 · createStore)
+constants/     상수 데이터
+styles/        index.css(레이어 순서) · tokens.css · base.css · layout.css
+dev/debug.ts   window.__yggDebug (개발 · 테스트 실행에서만)
 ```
 
 규칙:
 
-- **상태는 `store` 한 곳.** 섹션은 `store.ui` / `store.repo` 를 읽기만 하고, 바꿀 때는 `store.update(patch)` 를 부릅니다. 다음 마이크로태스크에 모든 render 가 한 번 돕니다. DOM 위치를 바로 읽어야 하면 `store.flush()`.
-- **섹션 = `render<Name>()` + `mount<Name>()`.** mount 는 시작할 때 한 번 이벤트를 겁니다(가능하면 컨테이너에 위임). render 는 몇 번 불려도 같은 결과를 내야 합니다.
-- **git 조작은 `actions.run({ op, args, summary })` 로만.** 실행 중 표시, 멈춘 작업 차단, 실행 기록, 결과 반영, 후속 질문(체크아웃 필요·원격 없음)을 여기서 처리합니다.
+- **화면 상태는 `app/store` 한 곳.** 바꿀 때는 `store.update(patch)`. 컴포넌트는 `pages/MainPage` 가 부른 `useMainLogic()` 의 `{ ui, repo, hasRepo }` 를 props 로 받아 그립니다 (store 의 version 이 오르면 다시 그린다). DOM 위치를 바로 읽어야 하면 `store.flush()` (React 도 그 자리에서 그린다).
+- **어디서든 함수로 여는 부품**(토스트 · 메뉴 · 입력창 · 찾기 · 설정 창 등)은 `lib/createStore` 로 만든 작은 상태를 `*Utils.ts` 에 두고, 컴포넌트는 `useSmallStore` 로 구독합니다. 예: `toast("…")`, `openMenu(...)`, `askText(...)`, `openSettings()`.
+- **네이티브 `<dialog>` 는 `useModal(open, onClose)`** 로 열고 닫습니다. Esc · form · close() 어느 쪽으로 닫혀도 상태가 닫힘으로 돌아갑니다.
+- **그래프 SVG 와 드래그는 DOM 으로 둡니다.** 그래프는 `model/layout` 이 만든 문자열을 `dangerouslySetInnerHTML` 로 그리고, `interactions/` 는 `data-drag` · `data-drop` 속성으로 대상을 찾습니다. 드래그 중 미리보기(`#ghost-graph`)와 라벨(`#v2-layer` · `#tip` · `#ghost`)은 React 가 빈 칸만 그리고 drag.ts 가 채웁니다.
+- **preload 의 `on*` 구독은 해지할 수 없어 `main.tsx` 에서 한 번만** 겁니다 (StrictMode 에서 effect 가 두 번 돌아도 겹치지 않게).
+- **git 조작은 `actions.run({ op, args, summary })` 로만.** 실행 중 표시, 멈춘 작업 차단, 실행 기록, 결과 반영, 후속 질문을 여기서 처리합니다.
 - **미리보기는 `model/preview.ts` 가 계산만.** 실제 실행은 main 이 하고, 화면은 결과 저장소 상태를 다시 받아 그립니다.
-- **기능이 다른 기능의 메뉴에 끼어들 때는 등록 함수로.** 예: GitHub PR 항목은 `registerContextProvider` 로 더합니다. 다른 파일의 함수를 덮어쓰지 않습니다.
-- **섹션은 화면에서 놓이는 자리로 묶습니다.** 새 섹션은 그 자리 폴더에, 떠 있는 창(dialog)은 `dialogs/` 에 둡니다. 다른 자리의 섹션을 부를 때도 `@/sections/<자리>/Name` 처럼 전체 경로로 import 합니다.
-- **스타일은 쓰는 파일 옆에.** `sections/<자리>/FooSection.ts` 의 스타일은 같은 폴더의 `FooSection.css` 에 두고 ts 맨 위에서 `import "./FooSection.css"` 합니다. 파일마다 `@layer components { … }` 로 감싸고, 색·간격은 `styles/tokens.css` 변수만 씁니다. 여러 화면이 같이 쓰는 태그·클래스(button, select, h3, `.muted`, `.sr-only`)만 `styles/base.css` 에 둡니다. 우선순위는 레이어 순서(tokens → base → layout → components)로 정해지므로 import 순서에 기대지 않습니다. 디자인 원본은 Figma 파일 "App · Foundations / Components / Screens" 페이지입니다.
+- **기능이 다른 기능의 메뉴에 끼어들 때는 등록 함수로.** 예: GitHub PR 항목은 `registerContextProvider` 로 더합니다.
+- **스타일은 쓰는 파일 옆에.** `FooSection.tsx` 의 스타일은 같은 폴더 `FooSection.css` 에 두고 맨 위에서 import 합니다. 파일마다 `@layer components { … }`, 색·간격은 `styles/tokens.css` 변수만. 템플릿은 styled-components 를 쓰지만 이 앱은 CSS 파일을 유지합니다. 디자인 원본은 Figma "App · Foundations / Components / Screens".
 - **`model/`, `lib/` 는 DOM 을 만지지 않습니다.** (`model/layout.ts` 는 SVG 문자열을 만들 뿐)
 
 ## 이름 · import
 
-- 섹션·컴포넌트 파일은 PascalCase (`DetailSection.ts`), 나머지는 camelCase (`repoSession.ts`).
+- 컴포넌트 파일은 PascalCase (`DetailSection.tsx`), 나머지는 camelCase (`repoSession.ts`, `searchUtils.ts`). 컴포넌트는 화살표 함수 + `export default`.
+- import 순서: React → 라이브러리 → 공통(`components/ui` · `common` · `lib` · `hooks`) → 앱(`app` · `model` · `interactions`) → 화면(`components/pages`) → 타입.
 - barrel(`index.ts`) 을 만들지 않고 파일에서 직접 import 합니다. (예외: 각 프로세스 진입점 `src/main/index.ts`, `src/preload/index.ts`)
 - 항상 별칭: `@/…` (main 코드에선 `src/main`, renderer 코드에선 `src/renderer/src`), `@shared/…`. 상대 경로 `../` 는 쓰지 않습니다.
 - 화면 문구는 한국어.

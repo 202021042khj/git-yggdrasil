@@ -4,8 +4,8 @@ import { byId } from "@/lib/dom";
 import { errorText } from "@/lib/html";
 import { store } from "@/app/store";
 import { NO_FILTER } from "@/model/filter";
-import { showNotice } from "@/ui/dialog";
-import { toast } from "@/ui/toast";
+import { showNotice } from "@/components/ui/dialogUtils";
+import { toast } from "@/components/ui/toastUtils";
 import type { RepoState } from "@shared/types/repo";
 
 let shownRoot: string | null = null;
@@ -28,7 +28,6 @@ export function show(repo: RepoState | null): void {
   shownRoot = repo.root ?? null;
   store.update({ repo: adapt(repo), ...(firstOpen ? { log: [], selected: null, multi: [], selectedFile: null, undoCount: 0, redoCount: 0, filter: NO_FILTER } : {}) });
   store.flush();
-  byId("welcome").classList.add("hidden");
   if (firstOpen) {
     scrollToHead();
     if (repo.op) toast(`이 저장소는 ${repo.op.title} 도중에 멈춰 있습니다. 오른쪽 패널에서 해결하고 위 배너에서 계속하거나 중단하세요.`);

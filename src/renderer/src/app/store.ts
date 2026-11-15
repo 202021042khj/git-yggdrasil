@@ -1,5 +1,5 @@
-// 화면 상태 저장소 (한 곳). 섹션들은 여기서 읽기만 하고, 바꿀 때는 update() 를 거친다.
-// 바뀌면 구독한 렌더 함수가 다시 그린다.
+// 화면 상태 저장소 (한 곳). 컴포넌트는 hooks/useMainLogic 으로 구독해 읽기만 하고, 바꿀 때는 update() 를 거친다.
+import { flushSync } from "react-dom";
 import { NO_FILTER, type GraphFilter } from "@/model/filter";
 import type { RepoState } from "@shared/types/repo";
 
@@ -36,6 +36,8 @@ export interface UiState {
   filter: GraphFilter;
   undoCount: number;
   redoCount: number;
+  /** 도움말 패널 */
+  helpOpen: boolean;
 }
 
 const EMPTY_REPO: RepoState = {
@@ -56,15 +58,26 @@ const ui: UiState = {
   filter: NO_FILTER,
   undoCount: 0,
   redoCount: 0,
+  helpOpen: false,
 };
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
 let scheduled = false;
+/** 바뀔 때마다 1씩 오른다. React 는 이 값으로 다시 그릴지 판단한다 (useSyncExternalStore 의 snapshot) */
+let version = 0;
+
+const notify = () => {
+  version++;
+  listeners.forEach((fn) => fn());
+};
 
 export const store = {
   get ui(): Readonly<UiState> {
     return ui;
+  },
+  get version(): number {
+    return version;
   },
   /** 열린 저장소 (없으면 빈 상태 — 그리는 코드가 null 검사를 덜 하도록) */
   get repo(): RepoState {
@@ -80,15 +93,16 @@ export const store = {
     if (scheduled) return;
     scheduled = true;
     queueMicrotask(() => {
+      if (!scheduled) return; // 그 사이 flush 로 이미 그렸다
       scheduled = false;
-      listeners.forEach((fn) => fn());
+      notify();
     });
   },
 
-  /** 즉시 다시 그리기 (DOM 위치를 바로 읽어야 할 때) */
+  /** 즉시 다시 그리기 (DOM 위치를 바로 읽어야 할 때). React 도 이 자리에서 바로 그린다 */
   flush(): void {
     scheduled = false;
-    listeners.forEach((fn) => fn());
+    flushSync(notify);
   },
 
   addLog(entry: LogEntry): void {
@@ -96,7 +110,9 @@ export const store = {
     store.update({});
   },
 
-  subscribe(fn: Listener): void {
+  /** 구독. 돌려받은 함수를 부르면 해지한다 (useSyncExternalStore 규칙) */
+  subscribe(fn: Listener): () => void {
     listeners.add(fn);
+    return () => listeners.delete(fn);
   },
 };
