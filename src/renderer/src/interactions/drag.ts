@@ -194,7 +194,7 @@ function drop(e: PointerEvent): void {
   const hit = hover;
   drag = null;
   cleanup();
-  if (!hit || !hit.actions) { hideInCanvas(); return; }
+  if (!hit?.actions) { hideInCanvas(); return; }
   if (hit.actions.length === 1) {
     hideInCanvas();
     void performAction(src, hit.actions[0]);

@@ -1,7 +1,8 @@
 // 저장소 IPC: 열기 · clone · 읽기 · 더 불러오기 · diff · 조작 실행
 import fs from "node:fs";
 import path from "node:path";
-import { dialog, ipcMain } from "electron";
+import { dialog } from "electron";
+import { handle } from "@/ipc/guard";
 import { git } from "@/git/cli";
 import { execute } from "@/git/ops/execute";
 import { authUrlFromError, forgetCredential, saveCredential, systemHelper } from "@/git/credential";
@@ -18,7 +19,7 @@ const CLONE_TIMEOUT = 10 * 60 * 1000;
 let busy = false;
 
 export function registerRepoIpc(): void {
-  ipcMain.handle("repo:pick", async () => {
+  handle("repo:pick", async () => {
     const win = getWindow();
     const r = win
       ? await dialog.showOpenDialog(win, { title: "git 저장소 폴더 열기", properties: ["openDirectory"] })
@@ -27,8 +28,8 @@ export function registerRepoIpc(): void {
     return openRepo(r.filePaths[0]);
   });
 
-  ipcMain.handle("repo:open", (_e, dir: string) => openRepo(dir));
-  ipcMain.handle("repo:pickDir", async (_e, title: string) => {
+  handle("repo:open", (_e, dir: string) => openRepo(dir));
+  handle("repo:pickDir", async (_e, title: string) => {
     const opts = { title: String(title || "폴더 고르기"), properties: ["openDirectory", "createDirectory"] as Array<"openDirectory" | "createDirectory"> };
     const win = getWindow();
     const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
@@ -38,7 +39,7 @@ export function registerRepoIpc(): void {
   // clone: 받을 위치(상위 폴더)를 고르게 한 뒤 그 안에 저장소 이름으로 받는다
   // retry: 인증 때문에 실패한 직후 다시 시도할 때는 방금 고른 폴더를 그대로 쓴다 (경로는 화면에서 받지 않는다)
   let lastCloneParent: string | null = null;
-  ipcMain.handle("repo:clone", async (_e, url: string, retry = false) => {
+  handle("repo:clone", async (_e, url: string, retry = false) => {
     const opts = { title: "어느 폴더 안에 받을까요?", properties: ["openDirectory", "createDirectory"] as Array<"openDirectory" | "createDirectory"> };
     const win = getWindow();
     const r = retry && lastCloneParent ? { canceled: false, filePaths: [lastCloneParent] }
@@ -64,7 +65,7 @@ export function registerRepoIpc(): void {
 
   // 자격 증명: 저장소가 안 열려 있어도 된다 (clone 전에 로그인하는 경우)
   // 도우미가 없으면 던지지 않고 needsHelper 로 알린다 (IPC 는 오류 코드를 넘기지 못한다)
-  ipcMain.handle("cred:save", async (_e, { url, username, password, enableHelper }: { url: string; username: string; password: string; enableHelper?: boolean }) => {
+  handle("cred:save", async (_e, { url, username, password, enableHelper }: { url: string; username: string; password: string; enableHelper?: boolean }) => {
     try {
       return await saveCredential(currentRoot(), url, username, password, !!enableHelper);
     } catch (err) {
@@ -72,21 +73,21 @@ export function registerRepoIpc(): void {
       throw err;
     }
   });
-  ipcMain.handle("cred:forget", (_e, url: string) => forgetCredential(currentRoot(), url));
+  handle("cred:forget", (_e, url: string) => forgetCredential(currentRoot(), url));
 
-  ipcMain.handle("repo:read", () => {
+  handle("repo:read", () => {
     const root = currentRoot();
     return root ? readRepo(root) : null;
   });
 
-  ipcMain.handle("repo:more", () => {
+  handle("repo:more", () => {
     const root = currentRoot();
     if (!root) return null;
     loadMore(root);
     return readRepo(root);
   });
 
-  ipcMain.handle("repo:run", async (_e, { op, args, extra }: { op: OpName; args: unknown[]; extra?: OpExtra }): Promise<RunResult> => {
+  handle("repo:run", async (_e, { op, args, extra }: { op: OpName; args: unknown[]; extra?: OpExtra }): Promise<RunResult> => {
     const root = currentRoot();
     if (!root) return { ok: false, cmds: [], error: "열린 저장소가 없습니다." };
     if (busy) return { ok: false, cmds: [], error: "이전 작업이 아직 실행 중입니다." };
@@ -100,6 +101,6 @@ export function registerRepoIpc(): void {
     }
   });
 
-  ipcMain.handle("repo:diff", (_e, { file, commit, opts }: { file: string; commit: string | null; opts?: DiffOptions }) =>
+  handle("repo:diff", (_e, { file, commit, opts }: { file: string; commit: string | null; opts?: DiffOptions }) =>
     fileDiff(requireRoot(), file, commit, opts));
 }

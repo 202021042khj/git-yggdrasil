@@ -140,7 +140,6 @@
     flex: none;
   }
   .v2-pill.on {
-    border-color: transparent;
     background: var(--accent);
     color: var(--on-accent);
     border: 2px solid var(--accent);

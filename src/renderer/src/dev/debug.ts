@@ -8,6 +8,8 @@ import { injectPulls } from "@/sections/sidebar/PullsSection";
 import { openSettings } from "@/sections/dialogs/SettingsSection";
 
 export function installDebug(): void {
+  // 배포판에서는 켜지 않는다 (상태를 읽고 조작을 실행할 수 있는 도구라서)
+  if (!import.meta.env.DEV && !window.yggEnv?.debug) return;
   window.__yggDebug = {
     get state() { return store.hasRepo() ? store.repo : null; },
     get ui() { return store.ui; },

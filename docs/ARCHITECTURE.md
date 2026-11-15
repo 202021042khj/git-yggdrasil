@@ -9,7 +9,8 @@ Electron + 바닐라 TypeScript 에 맞게 옮긴 것입니다. React/Next.js �
 - **electron-builder** — 배포 패키지 (`electron-builder.config.cjs`, `build/` 아이콘·권한). 자세한 절차는 [RELEASE.md](RELEASE.md).
 - **Playwright** — E2E (`tests/e2e`, `playwright.config.ts`).
 - **Vitest** — `tests/` 아래, 임시 git 저장소에서 실제 git 을 돌려 보는 통합 테스트.
-- `npm run dev` (HMR) · `npm run build` · `npm start` (빌드 후 실행) · `npm run typecheck` · `npm test`
+- **Biome** — lint 만 (`biome.json`, `npm run lint`). 서식 자동 정리(formatter)는 꺼 두었습니다. typescript-eslint 가 아직 TypeScript 7 을 지원하지 않아 ESLint 대신 씁니다. 줄 끝·들여쓰기는 `.editorconfig`.
+- `npm run dev` (HMR) · `npm run build` · `npm start` (빌드 후 실행) · `npm run typecheck` · `npm run lint` · `npm test`
 
 ## 프로세스 경계
 
@@ -20,6 +21,9 @@ src/renderer  화면. Node 접근 없음, window.gitApi 로만 요청
 src/shared    양쪽이 함께 쓰는 타입과 기본값 상수 (로직 없음)
 ```
 
+- **창 보안** (Electron 보안 체크리스트): `contextIsolation` · `sandbox` 켜고 `nodeIntegration` 끔. 새 창 열기와 다른 페이지로의 이동은 `window.ts` 의 `guardNavigation` 이 막고, https 링크는 OS 브라우저로 넘깁니다. `<webview>` 는 붙일 수 없습니다.
+- **IPC 는 `ipcMain.handle` 대신 `src/main/ipc/guard.ts` 의 `handle`** 로 등록합니다. 맨 위 프레임이고 우리 화면 주소(개발 서버 또는 `out/renderer/index.html`)에서 온 요청만 실행합니다.
+- **점검 도구 `window.__yggDebug`** 는 개발 서버이거나 패키지 전 실행(E2E·`YGG_SMOKE`)일 때만 켜집니다. main 이 `--ygg-debug` 를 넘기면 preload 가 `window.yggEnv.debug` 로 알려 줍니다. 배포판에는 없습니다.
 - IPC 채널 이름과 인자 모양은 `src/shared/types/ipc.ts` 의 `GitApi` / `GhApi` 가 유일한 정의입니다. 채널을 더하면 여기, `src/main/ipc/*Ipc.ts`, `src/preload/index.ts` 세 곳을 함께 고칩니다.
 - 토큰은 main 밖으로 나가지 않습니다. git 에는 `YGG_GH_TOKEN` 환경 변수로만, github.com 원격에만 줍니다.
 

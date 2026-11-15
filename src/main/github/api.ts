@@ -24,7 +24,7 @@ async function api<T>(method: string, url: string, body?: unknown): Promise<T> {
   }
   if (!res.ok) {
     const detail = data && (data.errors || []).map((e: { message?: string; code?: string }) => e.message || e.code).filter(Boolean).join(", ");
-    throw new Error(`GitHub: ${(data && data.message) || res.statusText}${detail ? ` (${detail})` : ""}`);
+    throw new Error(`GitHub: ${(data?.message) || res.statusText}${detail ? ` (${detail})` : ""}`);
   }
   return data as T;
 }

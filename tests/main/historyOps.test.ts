@@ -18,7 +18,7 @@ const msgs = (ref: string, n = 10) => sh(repo, "log", `-n${n}`, "--format=%s", r
 const tip = (ref: string) => sh(repo, "rev-parse", ref);
 
 // main: init ─ m1 ─ m2        feat: (from init) f1 ─ f2 ─ f3        fix: (from m1) x1 (app.js 수정)
-let ids: Record<string, string> = {};
+const ids: Record<string, string> = {};
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ygg-hist-"));
   repo = path.join(tmp, "repo");
@@ -153,7 +153,7 @@ test("되돌리기: 커밋 → undo 하면 변경은 Staged 로 남는다", asyn
   await run("commitTo", ["main", "add new"]);
   await run("undo", []);
   assert.equal(msgs("main", 1)[0], "m2");
-  assert.match(sh(repo, "status", "--porcelain"), /^A  new\.txt/m);
+  assert.match(sh(repo, "status", "--porcelain"), /^A {2}new\.txt/m);
 });
 
 test("되돌리기: 브랜치 생성 → undo 하면 삭제", async () => {

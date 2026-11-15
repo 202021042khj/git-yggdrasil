@@ -4,7 +4,6 @@
   .op-banner .ob-step { color: var(--muted); }
   .op-banner .spacer { flex: 1; }
   .op-banner button.primary {
-    border-color: transparent;
     background: var(--accent);
     color: var(--on-accent);
     border: 1px solid var(--accent);

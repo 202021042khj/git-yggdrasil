@@ -6,7 +6,7 @@ import { app, BrowserWindow, safeStorage } from "electron";
 import { runSmoke } from "@/dev/smoke";
 import { setOpener } from "@/git/ops/conflictOps";
 import { registerExtraOps } from "@/git/ops/extraOps";
-import { registerP3Ops } from "@/git/ops/p3Ops";
+import { registerAdvancedOps } from "@/git/ops/advancedOps";
 import { initAuth } from "@/github/auth";
 import { registerGithubIpc } from "@/ipc/githubIpc";
 import { registerQueryIpc } from "@/ipc/queryIpc";
@@ -25,7 +25,7 @@ if (isolated) {
   app.setPath("userData", profile);
 }
 
-registerP3Ops();
+registerAdvancedOps();
 registerExtraOps();
 registerRepoIpc();
 registerQueryIpc();

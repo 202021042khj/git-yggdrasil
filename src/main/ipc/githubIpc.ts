@@ -1,5 +1,6 @@
 // GitHub IPC: 로그인 · 저장소 목록 · 새 저장소로 올리기 · PR
-import { clipboard, ipcMain, shell } from "electron";
+import { clipboard, shell } from "electron";
+import { handle } from "@/ipc/guard";
 import { git } from "@/git/cli";
 import { upstreamOf } from "@/git/ops/context";
 import { execute } from "@/git/ops/execute";
@@ -11,9 +12,9 @@ import { requireRoot, send } from "@/repo/session";
 const remoteUrl = async (root: string, name: string) => ((await git(root, ["remote", "get-url", name], { allowFail: true })) || "").trim();
 
 export function registerGithubIpc(): void {
-  ipcMain.handle("gh:status", () => authStatus());
+  handle("gh:status", () => authStatus());
 
-  ipcMain.handle("gh:login", async () => {
+  handle("gh:login", async () => {
     const d = await startLogin();
     clipboard.writeText(d.userCode); // gh CLI 처럼 코드를 미리 복사해 둔다
     void shell.openExternal(d.verificationUri);
@@ -23,15 +24,15 @@ export function registerGithubIpc(): void {
     return { userCode: d.userCode, verificationUri: d.verificationUri };
   });
 
-  ipcMain.handle("gh:cancel", () => cancelLogin());
-  ipcMain.handle("gh:logout", () => { logout(); return authStatus(); });
-  ipcMain.handle("gh:repos", () => listRepos());
-  ipcMain.handle("gh:openUrl", (_e, url: string) => {
+  handle("gh:cancel", () => cancelLogin());
+  handle("gh:logout", () => { logout(); return authStatus(); });
+  handle("gh:repos", () => listRepos());
+  handle("gh:openUrl", (_e, url: string) => {
     if (/^https:\/\/github\.com\//.test(url)) void shell.openExternal(url);
   });
 
   // 지금 저장소를 새 GitHub 저장소로 만들어 올린다: 원격 추가 + 현재 브랜치 push
-  ipcMain.handle("gh:createRepo", async (_e, { name, isPrivate }: { name: string; isPrivate: boolean }) => {
+  handle("gh:createRepo", async (_e, { name, isPrivate }: { name: string; isPrivate: boolean }) => {
     const root = requireRoot();
     const created = await createRepo({ name, isPrivate });
     const remotes = ((await git(root, ["remote"])) || "").split("\n").filter(Boolean);
@@ -49,7 +50,7 @@ export function registerGithubIpc(): void {
   });
 
   // PR 만들기: 브랜치가 원격에 없으면 먼저 push 한다
-  ipcMain.handle("gh:pr", async (_e, { head, base, title, body }: { head: string; base?: string; title: string; body?: string }) => {
+  handle("gh:pr", async (_e, { head, base, title, body }: { head: string; base?: string; title: string; body?: string }) => {
     const root = requireRoot();
     const cmds: string[] = [];
     let up = await upstreamOf(root, head);
@@ -70,7 +71,7 @@ export function registerGithubIpc(): void {
   });
 
   // 열린 PR 목록: origin(없으면 첫 GitHub 원격) 저장소 기준
-  ipcMain.handle("gh:pulls", async () => {
+  handle("gh:pulls", async () => {
     const root = requireRoot();
     const remotes = ((await git(root, ["remote"])) || "").split("\n").filter(Boolean);
     const order = [...remotes.filter((r) => r === "origin"), ...remotes.filter((r) => r !== "origin")];
@@ -82,7 +83,7 @@ export function registerGithubIpc(): void {
   });
 
   // PR 창에 미리 채울 기본 브랜치
-  ipcMain.handle("gh:prDefaults", async (_e, head: string) => {
+  handle("gh:prDefaults", async (_e, head: string) => {
     const root = requireRoot();
     const up = await upstreamOf(root, head);
     const fullName = parseRemote(await remoteUrl(root, up ? up.split("/")[0] : "origin"));

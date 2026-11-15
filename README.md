@@ -12,6 +12,7 @@ npm start        # 빌드 후 실행
 npm test         # 단위·통합 테스트 (main·renderer)
 npm run e2e      # 실제 앱 화면 E2E (Playwright)
 npm run typecheck
+npm run lint     # Biome
 npm run dist:mac # 배포용 .dmg (docs/RELEASE.md)
 ```
 

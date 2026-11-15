@@ -19,7 +19,6 @@
   }
   .ask-actions .primary {
     order: 2;
-    border-color: transparent;
     background: var(--accent);
     color: var(--on-accent);
     border: 1px solid var(--accent);
@@ -36,7 +35,7 @@
     user-select: text;
     background: var(--panel);
   }
-  .ask input:focus-visible { outline-offset: 0; border-color: transparent; outline: none; border: 2px solid var(--accent); }
+  .ask input:focus-visible { outline-offset: 0; outline: none; border: 2px solid var(--accent); }
   .ask input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--accent); }
   .ask {
     width: min(420px, calc(100vw - 32px));

@@ -26,7 +26,6 @@
   .ce-result-label { display: block; margin-top: 8px; font-size: 12px; font-weight: 600; }
   .ce-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
   .ce-actions .primary {
-    border-color: transparent;
     background: var(--accent);
     color: var(--on-accent);
     border: 1px solid var(--accent);

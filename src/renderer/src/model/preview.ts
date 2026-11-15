@@ -205,7 +205,7 @@ export const previews: Partial<Record<OpName, PreviewFn>> = {
 
   rebaseStem(s0, branch: string, onto: string) {
     const st = stems(s0).stems[branch];
-    if (!st || !st.ids.length) return fail("옮길 커밋이 없습니다.");
+    if (!st?.ids.length) return fail("옮길 커밋이 없습니다.");
     if (!st.base) return fail(`${branch} 는 첫 커밋부터 시작하는 줄기라 다른 커밋 위로 올릴 수 없습니다.`);
     if (st.base === onto) return fail("이미 그 커밋 위에 있습니다.");
     if (st.ids.includes(onto)) return fail("자기 자신 위로는 옮길 수 없습니다.");

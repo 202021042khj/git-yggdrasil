@@ -2,7 +2,8 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { BrowserWindow, ipcMain, nativeTheme, shell } from "electron";
+import { BrowserWindow, nativeTheme, shell } from "electron";
+import { handle } from "@/ipc/guard";
 import { DEFAULT_SETTINGS, type Settings } from "@shared/types/ipc";
 
 let file = "";
@@ -56,8 +57,8 @@ export function initSettings(userData: string): void {
   file = path.join(userData, "settings.json");
   try { current = sanitize(JSON.parse(fs.readFileSync(file, "utf8"))); } catch { current = { ...DEFAULT_SETTINGS }; }
   apply();
-  ipcMain.handle("settings:get", () => current);
-  ipcMain.handle("settings:set", (_e, patch: Partial<Settings>) => {
+  handle("settings:get", () => current);
+  handle("settings:set", (_e, patch: Partial<Settings>) => {
     current = sanitize({ ...current, ...patch });
     try { fs.writeFileSync(file, JSON.stringify(current, null, 2)); } catch { /* 저장 못 해도 이번 실행에는 적용 */ }
     apply();

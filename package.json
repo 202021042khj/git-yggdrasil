@@ -10,6 +10,7 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "lint": "biome lint",
     "test": "vitest run",
     "dist": "electron-vite build && electron-builder --config electron-builder.config.cjs --publish never",
     "dist:mac": "electron-vite build && electron-builder --config electron-builder.config.cjs --mac --publish never",
@@ -17,6 +18,7 @@
     "e2e": "electron-vite build && playwright test"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.7",
     "@playwright/test": "^1.64.1",
     "@types/node": "^24.19.2",
     "axe-core": "^4.11.0",

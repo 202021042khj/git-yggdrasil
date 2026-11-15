@@ -94,7 +94,7 @@
     user-select: text;
     background: var(--panel);
   }
-  .reword input:focus-visible { outline-offset: 0; border-color: transparent; outline: none; border: 2px solid var(--accent); }
+  .reword input:focus-visible { outline-offset: 0; outline: none; border: 2px solid var(--accent); }
   .tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); border-bottom-width: 2px; }
   .diff, .hunk { border-color: var(--line); }
   .diff pre .add, .hunk pre .add, table.split td.add { background: var(--accent-bg); }

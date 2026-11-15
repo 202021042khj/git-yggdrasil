@@ -106,7 +106,7 @@ export const OPS: Partial<Record<OpName, OpFn>> = {
   redo,
 };
 
-/** 나중에 추가하는 조작 (P3 등) 을 등록 */
+/** 나중에 추가하는 조작 (태그·부분 stage 등) 을 등록 */
 export function registerOps(ops: Partial<Record<OpName, OpFn>>): void {
   Object.assign(OPS, ops);
 }

@@ -1,4 +1,4 @@
-// P3: 태그 · 과거 커밋 체크아웃 · upstream · 원격 브랜치 삭제 · 부분 stage · 커밋 분할 · 검색 · 파일 히스토리 · blame
+// 태그 · 과거 커밋 체크아웃 · upstream · 원격 브랜치 삭제 · 부분 stage · 커밋 분할 · 검색 · 파일 히스토리 · blame
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeAll, beforeEach, test } from "vitest";
 import { execute } from "@/git/ops/execute";
-import { registerP3Ops } from "@/git/ops/p3Ops";
+import { registerAdvancedOps } from "@/git/ops/advancedOps";
 import { readRepo } from "@/git/readRepo";
 import { blame, fileHistory, hunks, searchCommits } from "@/git/query";
 import type { OpExtra, OpName } from "@shared/types/ipc";
@@ -29,9 +29,9 @@ const lines = (n: number, tag = "") => Array.from({ length: n }, (_, i) => `line
 
 let ids: Record<string, string>;
 
-beforeAll(() => registerP3Ops());
+beforeAll(() => registerAdvancedOps());
 beforeEach(() => {
-  tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ygg-p3-"));
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ygg-advanced-"));
   repo = path.join(tmp, "repo");
   bare = path.join(tmp, "remote.git");
   sh(tmp, "init", "-q", "--bare", "-b", "main", bare);
@@ -159,7 +159,7 @@ test("커밋 분할: 끝 커밋은 바로 풀고, 과거 커밋은 멈춘 뒤 �
   commit("after", { "z.txt": "z\n" });
   const r = await run("splitCommit", [two]);
   assert.match(r.warnings![0], /멈췄습니다/);
-  let op = (await readRepo(repo)).op!;
+  const op = (await readRepo(repo)).op!;
   assert.equal(op.kind, "split");
   assert.deepEqual(op.current?.files?.sort(), ["x.txt", "y.txt"]);
   const blocked = await execute(repo, "continueOp", []);

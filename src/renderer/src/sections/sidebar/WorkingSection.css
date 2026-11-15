@@ -23,7 +23,6 @@
     width: 100%;
     justify-content: center;
     margin: 6px 0;
-    border-color: transparent;
     min-height: 34px;
     background: var(--accent);
     color: var(--on-accent);
@@ -49,7 +48,7 @@
     user-select: text;
     background: var(--panel);
   }
-  #commit-msg:focus-visible { outline-offset: 0; border-color: transparent; outline: none; border: 2px solid var(--accent); }
+  #commit-msg:focus-visible { outline-offset: 0; outline: none; border: 2px solid var(--accent); }
   .working-handle {
     cursor: grab;
     padding: 7px;

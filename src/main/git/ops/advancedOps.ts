@@ -104,6 +104,6 @@ const splitCommit: OpFn = async (ctx, [id]: [string]) => {
   ctx.warn(`"${marker.msg}" 에서 멈췄습니다. 변경을 골라 여러 번에 나눠 커밋한 뒤 위 배너의 계속을 누르면 뒤 커밋을 다시 올립니다.`);
 };
 
-export function registerP3Ops(): void {
+export function registerAdvancedOps(): void {
   registerOps({ tagCreate, tagMove, tagDelete, tagPush, checkoutCommit, setUpstream, deleteRemoteBranch, stageHunk, splitCommit });
 }

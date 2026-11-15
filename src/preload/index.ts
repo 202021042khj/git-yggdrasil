@@ -46,3 +46,5 @@ const ghApi: GhApi = {
 
 contextBridge.exposeInMainWorld("gitApi", gitApi);
 contextBridge.exposeInMainWorld("ghApi", ghApi);
+// 개발·테스트 실행일 때만 main 이 --ygg-debug 를 넘긴다 (renderer 의 점검 도구 켜기)
+contextBridge.exposeInMainWorld("yggEnv", { debug: process.argv.includes("--ygg-debug") });

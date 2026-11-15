@@ -46,7 +46,7 @@ const file = () => path.join(userDataDir, "github-auth.bin");
 function load(): AuthData | null {
   try {
     const raw = fs.readFileSync(file());
-    const text = store && store.isEncryptionAvailable() ? store.decryptString(raw) : null;
+    const text = store?.isEncryptionAvailable() ? store.decryptString(raw) : null;
     return text ? (JSON.parse(text) as AuthData) : null;
   } catch {
     return null;
@@ -56,7 +56,7 @@ function load(): AuthData | null {
 function save(): void {
   try {
     if (!auth) { fs.rmSync(file(), { force: true }); return; }
-    if (!store || !store.isEncryptionAvailable()) throw new Error("이 시스템에서는 토큰을 안전하게 저장할 수 없습니다.");
+    if (!store?.isEncryptionAvailable()) throw new Error("이 시스템에서는 토큰을 안전하게 저장할 수 없습니다.");
     fs.mkdirSync(userDataDir, { recursive: true });
     fs.writeFileSync(file(), store.encryptString(JSON.stringify(auth)), { mode: 0o600 });
   } catch (err) {
@@ -148,11 +148,11 @@ export function logout(): void {
   save();
 }
 
-export const authStatus = (): GhStatus => (auth && auth.token ? { loggedIn: true, user: auth.user } : { loggedIn: false });
+export const authStatus = (): GhStatus => (auth?.token ? { loggedIn: true, user: auth.user } : { loggedIn: false });
 
 /** 만료가 가까우면 refresh token 으로 새로 받는다. 실패하면 로그아웃 상태로 돌린다. */
 export async function token(): Promise<string | null> {
-  if (!auth || !auth.token) return null;
+  if (!auth?.token) return null;
   if (auth.expiresAt && Date.now() > auth.expiresAt - 5 * 60 * 1000) {
     if (!auth.refresh || (auth.refreshExpiresAt && Date.now() > auth.refreshExpiresAt)) { logout(); return null; }
     const t = await postForm("https://github.com/login/oauth/access_token", {
