@@ -18,7 +18,7 @@ Electron + 바닐라 TypeScript 에 맞게 옮긴 것입니다. React/Next.js �
 src/main      Node · git CLI · 파일 감시 · GitHub API      (렌더러를 믿지 않는다)
 src/preload   contextBridge 로 gitApi · ghApi 만 노출       (sandbox, CJS)
 src/renderer  화면. Node 접근 없음, window.gitApi 로만 요청
-src/shared    양쪽이 함께 쓰는 타입과 기본값 상수 (로직 없음)
+src/shared    양쪽이 함께 쓰는 타입과 기본값 상수, 화면 문구 사전(i18n) — 부수 효과 없는 작은 함수만
 ```
 
 - **창 보안** (Electron 보안 체크리스트): `contextIsolation` · `sandbox` 켜고 `nodeIntegration` 끔. 새 창 열기와 다른 페이지로의 이동은 `window.ts` 의 `guardNavigation` 이 막고, https 링크는 OS 브라우저로 넘깁니다. `<webview>` 는 붙일 수 없습니다.
@@ -39,7 +39,7 @@ src/shared    양쪽이 함께 쓰는 타입과 기본값 상수 (로직 없음)
 | `repo/session.ts` | 열린 저장소 하나와 창 하나, 파일 감시 |
 | `ipc/` | IPC 핸들러 등록만 (로직 없음) |
 | `dev/smoke.ts` | 점검용 실행 (`YGG_SMOKE`) |
-| `settings.ts` | 앱 설정 저장·적용 (화면 색·확대·에디터), `userData/settings.json` |
+| `settings.ts` | 앱 설정 저장·적용 (화면 색·확대·에디터·언어), `userData/settings.json` |
 | `update.ts` | 자동 업데이트 (패키지 앱에서만, GitHub Releases) |
 
 **조작 추가 순서:** `OpName` 에 이름 추가 → `*Ops.ts` 에 `OpFn` 작성 → 레지스트리 등록 → `tests/main/*.test.ts` 에 임시 저장소 테스트 → (화면) `model/preview.ts` 에 미리보기, `interactions/targets.ts` 또는 `contextMenu.ts` 에 진입점.
@@ -92,7 +92,35 @@ dev/debug.ts   window.__yggDebug (개발 · 테스트 실행에서만)
 - import 순서: React → 라이브러리 → 공통(`components/ui` · `common` · `lib` · `hooks`) → 앱(`app` · `model` · `interactions`) → 화면(`components/pages`) → 타입.
 - barrel(`index.ts`) 을 만들지 않고 파일에서 직접 import 합니다. (예외: 각 프로세스 진입점 `src/main/index.ts`, `src/preload/index.ts`)
 - 항상 별칭: `@/…` (main 코드에선 `src/main`, renderer 코드에선 `src/renderer/src`), `@shared/…`. 상대 경로 `../` 는 쓰지 않습니다.
-- 화면 문구는 한국어.
+- 화면 문구는 코드에 직접 쓰지 않고 `t("키")` 로 (아래 "화면 문구 (i18n)").
+
+## 화면 문구 (i18n)
+
+한국어(ko)와 영어(en)를 지원합니다. 라이브러리 없이 타입이 있는 사전 두 개로 합니다.
+
+```
+src/shared/i18n/ko.ts     기준 사전. 키 → 문자열 또는 (params) => 문자열
+src/shared/i18n/en.ts     영어. 타입이 ko 에서 나오므로 키가 빠지거나 남거나 인자 모양이 다르면 타입 오류
+src/shared/i18n/i18n.ts   t(key, params) · setLocale · getLocale · resolveLocale · dateLocale
+src/shared/i18n/plural.ts 영어 복수형 도우미 count(3, "commit") → "3 commits" (en.ts 에서만)
+```
+
+- **언어 정하기:** 설정 `language` 는 `"system" | "ko" | "en"` (기본 system). main 이 `resolveLocale(설정, app.getLocale())` 로 정하고 (ko* → ko, 그 밖은 en), renderer 는 `gitApi.getLocale()` 로 같은 값을 받아 씁니다 (`app/locale.ts`). 렌더러가 스스로 navigator.language 를 보지 않으므로 두 프로세스는 항상 같은 언어입니다.
+- **바꿀 때:** 설정 창의 "언어 / Language" → `settings:set` → main 은 `setLocale` 후 `onLocaleChange` 로 앱 메뉴를 다시 만들고, renderer 는 `syncLocale()` 로 받아 `localeStore` 를 바꿉니다. `App` 이 이것을 구독하므로 화면 전체가 다시 그려지고, `store.update({})` 로 그래프 SVG 도, `refresh()` 로 main 이 만든 문구(멈춘 작업 제목 등)도 새 언어가 됩니다. `<html lang>` 도 맞춥니다.
+- **점검 실행:** `YGG_LANG=ko|en` (YGG_SMOKE · YGG_PROFILE 실행에서만) 으로 언어를 정할 수 있습니다. E2E 는 임시 프로필의 settings.json 에 언어를 적어 띄웁니다 (`launch("en")`, 기본 ko).
+
+**문구 더하기:**
+1. `ko.ts` 에 키를 더합니다. 이름은 `영역.뜻` (예: `pv.` 미리보기, `verb.` 끌어 놓기 동사, `ctx.` 오른쪽 클릭, `m.` main 오류, `menu.` 앱 메뉴). 값이 바뀌는 문구는 `` (p: { branch: string; n: number }) => `…` `` 처럼 인자 타입을 적은 함수로.
+2. `en.ts` 에 같은 키를 더합니다 (인자 타입은 ko 에서 옵니다: `` (p) => `…` ``). 수가 들어가면 `count(p.n, "commit")`.
+3. 코드에서는 `t("키")` · `t("키", { … })`. 모듈 맨 위 상수에 문구를 넣지 말고(언어가 바뀌어도 그대로 남는다) 그릴 때 부르는 함수 안에서 `t()` 를 부릅니다. 목록은 `() => [...]` 함수로, 표에는 키(`MessageKey`)를 두고 그릴 때 `t(key)`.
+
+**규칙:**
+- **문장을 이어 붙이지 않습니다.** "`feature` 를 `main` 위로 옮기기" 처럼 낱말 순서·조사가 언어마다 다른 문장은 조각(`${a} 를 ` + `${b} 위로`)으로 만들지 말고 문장 전체를 템플릿 하나로 (`t("verb.rebaseOnto", { branch })`). 조건에 따라 달라지는 부분도 사전의 함수 안에서 고릅니다.
+- **두 사전에 같은 키.** 타입 검사(`npm run typecheck`)와 `tests/main/i18n.test.ts`(키 · 모양이 같은지, 영어에 한글이 없는지)가 확인합니다.
+- **git 명령 문자열은 번역하지 않습니다.** 실행 기록의 `git …` 은 그대로 두고, 뒤의 `# 설명` 과 `<이름>` 같은 자리 표시만 사전에서.
+- 굵게·키 표시가 필요한 문장은 사전에 `<b>` · `<kbd>` · `<code>` 만 쓰고 `components/common/RichText` 로 그립니다 (innerHTML 을 쓰지 않음).
+- 언어 목록의 "한국어" · "English" 는 그 언어로 적습니다 (지금 언어를 못 읽어도 고를 수 있게).
+- 사용자 데이터(커밋 메시지·브랜치 이름)와 git 이 만드는 메시지(`Merge … into …`, `Revert "…"`, `WIP on …`)는 번역하지 않습니다.
 
 ## 스타일
 
@@ -119,5 +147,5 @@ dev/debug.ts   window.__yggDebug (개발 · 테스트 실행에서만)
 
 - `tests/renderer/*.test.ts` — 화면의 순수 계산(`model/`)을 시험합니다. Vitest 를 main·renderer 두 프로젝트로 나눠 `@/` 가 각 프로세스 폴더를 가리키게 했고, 타입 검사는 `tsconfig.web.json` 이 맡습니다. DOM 을 쓰는 코드는 넣지 않습니다.
 - `tests/main/*.test.ts` — 임시 폴더에 저장소를 만들고 `execute()` 로 조작을 돌린 뒤 git 으로 결과를 확인합니다. 네트워크는 로컬 bare 저장소로 대신합니다.
-- `tests/e2e/*.spec.ts` — Playwright 로 빌드한 Electron 앱을 띄워 사용자가 하듯 조작합니다 (`npm run e2e`). 임시 저장소와 `YGG_PROFILE` 임시 프로필을 써서 실제 설정·로그인을 건드리지 않습니다. 끌어 놓기는 `dragTo` 도우미로 실제 마우스를 움직입니다.
+- `tests/e2e/*.spec.ts` — Playwright 로 빌드한 Electron 앱을 띄워 사용자가 하듯 조작합니다 (`npm run e2e`). 임시 저장소와 `YGG_PROFILE` 임시 프로필을 써서 실제 설정·로그인을 건드리지 않습니다. 기존 시험은 한국어 문구로 찾으므로 프로필에 `language: "ko"` 를 적어 띄우고, `i18n.spec.ts` 는 영어로 띄워 문구 · 남은 한글 · axe 를 봅니다. 끌어 놓기는 `dragTo` 도우미로 실제 마우스를 움직입니다.
 - 빠른 확인은 `YGG_SMOKE=<저장소> YGG_EVAL=<시나리오.js> npm start` 로 창을 띄워 오류와 캡처만 봅니다 (`window.__yggDebug` 사용).

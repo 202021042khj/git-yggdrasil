@@ -1,5 +1,5 @@
 // 커밋 그래프 조회 (순수 함수): 조상, 세대, 브랜치 줄기(레인)
-import { OP_REF } from "@/constants/layout";
+import { opRef } from "@/constants/layout";
 import type { RepoState } from "@shared/types/repo";
 
 export type StemKind = "local" | "remote" | "op" | "anon";
@@ -98,7 +98,7 @@ export function stems(s: RepoState): Stems {
   const refs: Array<[string, string, StemKind]> = [
     ...laneOrder(s).map((b): [string, string, StemKind] => [b, s.branches[b], "local"]),
     ...Object.keys(s.remotes).sort().map((r): [string, string, StemKind] => [r, s.remotes[r], "remote"]),
-    ...(s.op?.tip && s.commits[s.op.tip] ? [[OP_REF, s.op.tip, "op"] as [string, string, StemKind]] : []),
+    ...(s.op?.tip && s.commits[s.op.tip] ? [[opRef(), s.op.tip, "op"] as [string, string, StemKind]] : []),
   ];
   const claim = (name: string, tip: string, kind: StemKind) => {
     const ids: string[] = [];

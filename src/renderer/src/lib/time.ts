@@ -1,11 +1,12 @@
-const UNITS: Array<[string, number]> = [["년", 31536000], ["개월", 2592000], ["주", 604800], ["일", 86400], ["시간", 3600], ["분", 60]];
+import { dateLocale, t } from "@shared/i18n/i18n";
+const UNITS = [["year", 31536000], ["month", 2592000], ["week", 604800], ["day", 86400], ["hour", 3600], ["minute", 60]] as const;
 
 /** "3시간 전" 같은 상대 시간 */
-export function relTime(t?: number): string {
-  if (!t) return "";
-  const sec = Math.round((Date.now() - t) / 1000);
-  for (const [u, n] of UNITS) if (sec >= n) return `${Math.floor(sec / n)}${u} 전`;
-  return "방금";
+export function relTime(ms?: number): string {
+  if (!ms) return "";
+  const sec = Math.round((Date.now() - ms) / 1000);
+  for (const [u, n] of UNITS) if (sec >= n) return t(`time.${u}`, { n: Math.floor(sec / n) });
+  return t("time.now");
 }
 
-export const fullTime = (t: number) => new Date(t).toLocaleString("ko-KR", { dateStyle: "medium", timeStyle: "short" });
+export const fullTime = (ms: number) => new Date(ms).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" });

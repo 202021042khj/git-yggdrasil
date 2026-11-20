@@ -1,6 +1,7 @@
 // 브랜치 조작: checkout · 만들기 · 이름 변경 · 원격에서 가져오기 · 삭제 · 포인터 이동 · reset
 import { git } from "@/git/cli";
 import { NET, backup, headInfo, rev, upstreamOf, type OpFn } from "@/git/ops/context";
+import { t } from "@shared/i18n/i18n";
 
 const checkout: OpFn = async (ctx, [name]: [string]) => {
   await ctx.run(["switch", name]);
@@ -26,7 +27,7 @@ const renameBranch: OpFn = async (ctx, [from, to, withRemote]: [string, string, 
   } catch (err) {
     // 원격의 기본 브랜치는 지울 수 없다 (GitHub 포함). 새 이름은 이미 올렸으니 실패로 치지 않는다.
     if (/refusing to delete the current branch|default branch/i.test((err as { stderr?: string }).stderr || "")) {
-      ctx.warn(`${up} 는 원격의 기본 브랜치라 지우지 못했습니다. GitHub 저장소 설정에서 기본 브랜치를 ${to} 로 바꾼 뒤 ${up} 를 지우세요.`);
+      ctx.warn(t("m.renameDefault", { upstream: up, to }));
     } else throw err;
   }
 };
@@ -35,7 +36,7 @@ const renameBranch: OpFn = async (ctx, [from, to, withRemote]: [string, string, 
 const checkoutRemote: OpFn = async (ctx, [remoteBranch]: [string]) => {
   const name = remoteBranch.split("/").slice(1).join("/");
   const exists = await git(ctx.root, ["rev-parse", "--verify", "-q", `refs/heads/${name}`], { allowFail: true });
-  if (exists) throw new Error(`로컬에 이미 ${name} 브랜치가 있습니다. 그 브랜치로 checkout 하세요.`);
+  if (exists) throw new Error(t("m.localExists", { name }));
   await ctx.run(["switch", "--track", "-c", name, remoteBranch]);
 };
 

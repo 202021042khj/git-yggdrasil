@@ -1,4 +1,5 @@
 // 메인 ↔ 화면 사이의 API (preload 가 window.gitApi / window.ghApi 로 노출)
+import type { LanguagePref, Locale } from "@shared/i18n/i18n";
 import type { RepoState } from "@shared/types/repo";
 
 /** 화면이 실행을 요청하는 조작 이름 (메인의 git/ops 등록부와 1:1) */
@@ -138,9 +139,11 @@ export interface Settings {
   /** 켤 때 마지막 저장소를 다시 연다 */
   reopenLast: boolean;
   pullMode: "merge" | "rebase";
+  /** 화면 언어: system 이면 OS 언어 (ko* → 한국어, 그 밖은 영어) */
+  language: LanguagePref;
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: "system", zoom: 1, editor: "", autoFetchMinutes: 0, reopenLast: true, pullMode: "merge" };
+export const DEFAULT_SETTINGS: Settings = { theme: "system", zoom: 1, editor: "", autoFetchMinutes: 0, reopenLast: true, pullMode: "merge", language: "system" };
 
 export interface GitApi {
   pick(): Promise<RepoState | null>;
@@ -150,6 +153,8 @@ export interface GitApi {
   /** 폴더 고르기 창 (worktree 위치 등). 취소하면 null */
   pickDir(title: string): Promise<string | null>;
   read(): Promise<RepoState | null>;
+  /** 지금 연 폴더(git 저장소가 아닌)에 git init */
+  init(): Promise<RepoState>;
   more(): Promise<RepoState | null>;
   diff(file: string, commit: string | null, opts?: DiffOptions): Promise<FileDiff>;
   run(op: OpName, args: unknown[], extra?: OpExtra): Promise<RunResult>;
@@ -163,6 +168,8 @@ export interface GitApi {
   getSettings(): Promise<Settings>;
   /** 바꾼 항목만 넘긴다. 검사·정리한 전체 설정을 돌려준다 */
   setSettings(patch: Partial<Settings>): Promise<Settings>;
+  /** main 이 정한 실제 화면 언어 (설정 + OS 언어). renderer 는 이것만 따른다 */
+  getLocale(): Promise<Locale>;
   onMenuSettings(fn: () => void): void;
   /** GitHub 밖 HTTPS 호스트의 사용자 이름·토큰을 git 자격 증명 도우미에 저장 */
   saveCredential(args: { url: string; username: string; password: string; enableHelper?: boolean }): Promise<CredentialSaveResult>;

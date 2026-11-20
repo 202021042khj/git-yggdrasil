@@ -1,4 +1,5 @@
 // diff 를 hunk 단위로 나누고, 고른 hunk 만 담은 patch 를 만든다 (부분 stage 용)
+import { t } from "@shared/i18n/i18n";
 import type { Hunk } from "@shared/types/ipc";
 
 export interface ParsedDiff {
@@ -31,10 +32,10 @@ export function parseDiff(text: string): ParsedDiff {
  */
 export function patchFor(diff: ParsedDiff, index: number, lines?: number[], reverse = false): string {
   const h = diff.hunks[index];
-  if (!h) throw new Error("그 변경 덩어리(hunk)를 찾을 수 없습니다. 파일이 바뀌었으면 다시 열어 주세요.");
+  if (!h) throw new Error(t("m.hunkMissing"));
   if (!lines) return [...diff.header, h.header, ...h.lines].join("\n") + "\n";
   const keep = new Set(lines);
-  if (![...keep].some((i) => /^[+-]/.test(h.lines[i] ?? ""))) throw new Error("고른 줄에 변경(+/-)이 없습니다.");
+  if (![...keep].some((i) => /^[+-]/.test(h.lines[i] ?? ""))) throw new Error(t("m.noChangedLines"));
   const out: string[] = [];
   let dropped = false;
   h.lines.forEach((l, i) => {

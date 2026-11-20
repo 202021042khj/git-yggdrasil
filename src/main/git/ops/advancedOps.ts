@@ -8,6 +8,7 @@ import { registerOps } from "@/git/ops/execute";
 import { commitInfo } from "@/git/ops/historyOps";
 import { NET, backup, headInfo, short, type OpFn } from "@/git/ops/context";
 import { parseDiff, patchFor } from "@/git/patch";
+import { t } from "@shared/i18n/i18n";
 
 // ---------- 태그 ----------
 const tagCreate: OpFn = async (ctx, [name, id, message]: [string, string, string | undefined]) => {
@@ -37,7 +38,7 @@ const tagPush: OpFn = async (ctx, [name, remote]: [string, string | undefined]) 
 // ---------- 과거 커밋 체크아웃 (detached HEAD) ----------
 const checkoutCommit: OpFn = async (ctx, [id]: [string]) => {
   await ctx.run(["switch", "--detach", id]);
-  ctx.warn(`${short(id)} 를 임시로 체크아웃했습니다 (어느 브랜치에도 속하지 않은 상태). 여기서 커밋하려면 먼저 새 브랜치를 만드세요.`);
+  ctx.warn(t("m.detached", { id: short(id) }));
 };
 
 // ---------- upstream · 원격 브랜치 ----------
@@ -52,7 +53,7 @@ const deleteRemoteBranch: OpFn = async (ctx, [remoteBranch]: [string]) => {
     await ctx.run(["push", remote, "--delete", rest.join("/")], NET);
   } catch (err) {
     if (/refusing to delete the current branch|default branch/i.test((err as { stderr?: string }).stderr || "")) {
-      throw new Error(`${remoteBranch} 는 원격의 기본 브랜치라 지울 수 없습니다. GitHub 저장소 설정에서 기본 브랜치를 바꾼 뒤 지우세요.`);
+      throw new Error(t("m.deleteDefault", { branch: remoteBranch }));
     }
     throw err;
   }
@@ -78,12 +79,12 @@ const stageHunk: OpFn = async (ctx, [file, index, staged, lines]: [string, numbe
 const splitCommit: OpFn = async (ctx, [id]: [string]) => {
   const { root } = ctx;
   const { branch, tip } = await headInfo(root);
-  if (!branch) throw new Error("브랜치를 체크아웃한 상태에서만 커밋을 나눌 수 있습니다.");
-  if ((await git(root, ["status", "--porcelain"])).trim()) throw new Error("작업 영역에 변경이 있습니다. 먼저 커밋하거나 stash 한 뒤 나누세요.");
+  if (!branch) throw new Error(t("m.splitNeedsBranch"));
+  if ((await git(root, ["status", "--porcelain"])).trim()) throw new Error(t("ctx.splitDirty"));
   const isAnc = await git(root, ["merge-base", "--is-ancestor", id, "HEAD"], { allowFail: true });
-  if (isAnc === null) throw new Error(`현재 브랜치(${branch})에 있는 커밋만 나눌 수 있습니다.`);
+  if (isAnc === null) throw new Error(t("m.splitOnlyHead", { branch }));
   const c = await commitInfo(root, id);
-  if (c.parents.length !== 1) throw new Error("merge 커밋이나 첫 커밋은 나눌 수 없습니다.");
+  if (c.parents.length !== 1) throw new Error(t("m.splitMerge"));
   const files = ((await git(root, ["show", "--format=", "--name-only", id])) || "").split("\n").filter(Boolean);
   await backup(root, `split-${branch}`, tip);
   const marker = { msg: c.msg.split("\n")[0], files };
@@ -91,17 +92,17 @@ const splitCommit: OpFn = async (ctx, [id]: [string]) => {
   if (id === tip) {
     // 끝 커밋: rebase 없이 풀어 놓기만 하면 된다 (진행 중 상태가 아니므로 바로 나눠 커밋하면 끝)
     await ctx.run(["reset", "--mixed", "HEAD~1"]);
-    ctx.warn(`"${marker.msg}" 의 변경을 작업 영역으로 풀었습니다. 파일이나 변경 덩어리를 골라 여러 번에 나눠 커밋하세요.`);
+    ctx.warn(t("m.splitUnpacked", { msg: marker.msg }));
     return;
   }
   // 과거 커밋: 그 커밋에서 멈추는 rebase (pick → edit) 를 시작한 뒤 커밋을 풀어 놓는다
   const s7 = short(id);
   const editor = `sed -i.ygg -e 's/^pick ${s7}/edit ${s7}/'`;
   await ctx.run(["rebase", "-i", `${id}~1`], { env: { GIT_SEQUENCE_EDITOR: editor } });
-  if (readOpKind(root) !== "rebase") throw new Error("커밋 분할을 시작하지 못했습니다.");
+  if (readOpKind(root) !== "rebase") throw new Error(t("m.splitFailed"));
   await ctx.run(["reset", "--mixed", "HEAD~1"]);
   fs.writeFileSync(path.join(await gitDir(root), SPLIT_FILE), JSON.stringify(marker));
-  ctx.warn(`"${marker.msg}" 에서 멈췄습니다. 변경을 골라 여러 번에 나눠 커밋한 뒤 위 배너의 계속을 누르면 뒤 커밋을 다시 올립니다.`);
+  ctx.warn(t("m.splitStopped", { msg: marker.msg }));
 };
 
 export function registerAdvancedOps(): void {

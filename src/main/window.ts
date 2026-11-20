@@ -4,8 +4,17 @@ import path from "node:path";
 import { app, BrowserWindow, Menu, shell } from "electron";
 import { isAppUrl } from "@/ipc/guard";
 import { send, setWindow } from "@/repo/session";
+import { t } from "@shared/i18n/i18n";
 
 export const APP_NAME = "Git Yggdrasil";
+
+/** 개발 실행(npm run dev)에서도 우리 아이콘을 쓴다. 패키지 앱은 electron-builder 가 build/icon.png 로 아이콘을 넣는다 */
+const DEV_ICON = app.isPackaged ? undefined : path.join(app.getAppPath(), "build/icon.png");
+
+/** macOS Dock 아이콘 (개발 실행에서만: 패키지 앱은 앱 묶음의 icon.icns 를 쓴다) */
+export function applyDevDockIcon(): void {
+  if (DEV_ICON && process.platform === "darwin") app.dock?.setIcon(DEV_ICON);
+}
 
 export function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -15,6 +24,7 @@ export function createWindow(): BrowserWindow {
     minHeight: 640,
     backgroundColor: "#0f141c",
     title: APP_NAME,
+    icon: DEV_ICON, // Windows · Linux 창/작업 표시줄 아이콘 (macOS 는 무시)
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,
@@ -54,8 +64,8 @@ export function buildMenu(): void {
       role: "appMenu",
       submenu: [
         { role: "about" },
-        { label: "업데이트 확인…", click: () => checkForUpdatesManually() },
-        { label: "설정…", accelerator: "CmdOrCtrl+,", click: () => send("menu:settings") },
+        { label: t("menu.checkUpdates"), click: () => checkForUpdatesManually() },
+        { label: t("menu.settings"), accelerator: "CmdOrCtrl+,", click: () => send("menu:settings") },
         { type: "separator" },
         { role: "services" },
         { type: "separator" },
@@ -65,18 +75,18 @@ export function buildMenu(): void {
       ],
     },
     {
-      label: "파일",
+      label: t("menu.file"),
       submenu: [
-        { label: "저장소 열기…", accelerator: "CmdOrCtrl+O", click: () => send("menu:open") },
-        { label: "URL 로 clone…", accelerator: "CmdOrCtrl+Shift+O", click: () => send("menu:clone") },
+        { label: t("menu.open"), accelerator: "CmdOrCtrl+O", click: () => send("menu:open") },
+        { label: t("menu.clone"), accelerator: "CmdOrCtrl+Shift+O", click: () => send("menu:clone") },
         { type: "separator" },
         { role: "close" },
       ],
     },
     { role: "editMenu" },
     {
-      label: "찾기",
-      submenu: [{ label: "커밋·파일 찾기…", accelerator: "CmdOrCtrl+K", click: () => send("menu:search") }],
+      label: t("menu.find"),
+      submenu: [{ label: t("menu.search"), accelerator: "CmdOrCtrl+K", click: () => send("menu:search") }],
     },
     { role: "viewMenu" },
     { role: "windowMenu" },

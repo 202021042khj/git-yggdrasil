@@ -3,6 +3,7 @@ import { git } from "@/git/cli";
 import { readOpKind } from "@/git/opState";
 import { statusRows } from "@/git/status";
 import { backup, headInfo, spec, under, unsupported, type OpContext, type OpFn } from "@/git/ops/context";
+import { t } from "@shared/i18n/i18n";
 
 const hasStaged = async (root: string) => (await statusRows(root)).some((r) => r.x !== " " && r.x !== "?");
 
@@ -26,7 +27,7 @@ const commitTo: OpFn = async (ctx, [branch, msg, paths]: [string, string, string
   const { branch: cur } = await headInfo(ctx.root);
   // 브랜치 없이(detached) 커밋하는 경우: 커밋 분할 등 rebase 도중이거나 과거 커밋을 임시로 체크아웃한 상태
   const detachedOk = !cur && (branch === "HEAD" || readOpKind(ctx.root) === "rebase");
-  if (branch !== cur && !detachedOk) unsupported("체크아웃하지 않은 브랜치에 바로 커밋하기");
+  if (branch !== cur && !detachedOk) unsupported(t("m.u.commitOther"));
   if (paths) {
     await ctx.run(["add", "-A", "--", ...spec(paths)]);
     await ctx.run(["commit", "-m", msg, "--", ...spec(paths)]);
@@ -38,7 +39,7 @@ const commitTo: OpFn = async (ctx, [branch, msg, paths]: [string, string, string
 
 const amendInto: OpFn = async (ctx, [id, _msg, paths]: [string, string, string[] | undefined]) => {
   const { tip } = await headInfo(ctx.root);
-  if (id !== tip) unsupported("과거 커밋에 변경 합치기(fixup)");
+  if (id !== tip) unsupported(t("m.u.fixup"));
   await backup(ctx.root, "amend", tip);
   if (paths) await ctx.run(["add", "-A", "--", ...spec(paths)]);
   else if (!(await hasStaged(ctx.root))) await ctx.run(["add", "-A"]);
@@ -49,14 +50,14 @@ const amendInto: OpFn = async (ctx, [id, _msg, paths]: [string, string, string[]
 const reword: OpFn = async (ctx: OpContext, [id, msg]: [string, string]) => {
   const { root } = ctx;
   const { branch, tip } = await headInfo(root);
-  if (!branch) throw new Error("브랜치를 체크아웃한 상태에서만 메시지를 바꿀 수 있습니다.");
+  if (!branch) throw new Error(t("m.rewordNeedsBranch"));
   if (id === tip) {
     await backup(root, `reword-${branch}`, tip);
     await ctx.run(["commit", "--amend", "--only", "-m", msg]);
     return;
   }
   const isAnc = await git(root, ["merge-base", "--is-ancestor", id, "HEAD"], { allowFail: true });
-  if (isAnc === null) throw new Error(`현재 브랜치(${branch})에 있는 커밋만 메시지를 바꿀 수 있습니다. 먼저 그 브랜치로 checkout 하세요.`);
+  if (isAnc === null) throw new Error(t("m.rewordOnlyHead", { branch }));
   await backup(root, `reword-${branch}`, tip);
   const [tree, parents, an, ae, ad] = (await git(root, ["show", "-s", "--format=%T%x1f%P%x1f%an%x1f%ae%x1f%aI", id])).trim().split("\x1f");
   const env = { GIT_AUTHOR_NAME: an, GIT_AUTHOR_EMAIL: ae, GIT_AUTHOR_DATE: ad };

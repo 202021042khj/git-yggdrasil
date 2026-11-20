@@ -11,9 +11,9 @@ import { initAuth } from "@/github/auth";
 import { registerGithubIpc } from "@/ipc/githubIpc";
 import { registerQueryIpc } from "@/ipc/queryIpc";
 import { registerRepoIpc } from "@/ipc/repoIpc";
-import { applyToWindow, initSettings, openInEditor } from "@/settings";
+import { applyToWindow, initSettings, onLocaleChange, openInEditor } from "@/settings";
 import { initAutoUpdate } from "@/update";
-import { APP_NAME, buildMenu, createWindow } from "@/window";
+import { APP_NAME, applyDevDockIcon, buildMenu, createWindow } from "@/window";
 
 app.setName(APP_NAME);
 // 점검 실행(YGG_SMOKE)·E2E 테스트(YGG_PROFILE)는 따로 된 프로필을 쓴다
@@ -33,9 +33,13 @@ registerGithubIpc();
 
 void app.whenReady().then(() => {
   if (!isolated) initAuth({ safeStorage, userData: app.getPath("userData") });
-  initSettings(app.getPath("userData"));
+  // 점검·테스트 실행은 YGG_LANG=ko|en 으로 화면 언어를 정할 수 있다 (프로필이 매번 지워지는 YGG_SMOKE 용)
+  const lang = process.env.YGG_LANG;
+  initSettings(app.getPath("userData"), isolated && (lang === "ko" || lang === "en" || lang === "system") ? { language: lang } : {});
+  onLocaleChange(buildMenu); // 설정에서 언어를 바꾸면 앱 메뉴도 그 언어로
   setOpener(openInEditor); // 충돌 파일을 설정한 에디터(없으면 기본 앱)로 연다
   buildMenu();
+  applyDevDockIcon();
   const win = createWindow();
   applyToWindow(win);
   if (!isolated) initAutoUpdate();

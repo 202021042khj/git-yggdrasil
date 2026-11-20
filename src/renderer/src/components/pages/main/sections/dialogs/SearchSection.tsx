@@ -10,6 +10,7 @@ import { relTime } from "@/lib/time";
 import { store } from "@/app/store";
 import { revealCommit } from "@/components/pages/main/sections/canvas/canvasUtils";
 import { openSearch, searchOpenStore } from "@/components/pages/main/sections/dialogs/searchUtils";
+import { t } from "@shared/i18n/i18n";
 import type { SearchHit } from "@shared/types/ipc";
 
 type Row = { kind: "commit"; hit: SearchHit } | { kind: "file"; path: string };
@@ -67,7 +68,7 @@ const SearchSection = () => {
     if (!r) return;
     close();
     if (r.kind === "file") { store.update({ selected: null, selectedFile: { path: r.path, commit: null }, detailTab: "history" }); return; }
-    if (!revealCommit(r.hit.id)) toast("그래프에 아직 불러오지 않은 오래된 커밋입니다. 아래 '이전 커밋 더 불러오기' 로 더 불러온 뒤 다시 찾으세요.");
+    if (!revealCommit(r.hit.id)) toast(t("search.notLoaded"));
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -81,18 +82,18 @@ const SearchSection = () => {
 
   return (
     // biome-ignore lint/a11y/useKeyWithClickEvents: 바깥(배경) 클릭으로 닫기. 키보드는 Esc 로 닫는다
-    <dialog id="search" ref={ref} className="ask search" aria-label="커밋·파일 찾기" onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
-      <input id="search-input" ref={inputRef} type="search" placeholder="커밋 메시지, 작성자, 해시, 파일 이름" aria-label="찾기" autoComplete="off" spellCheck={false} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={handleKeyDown} />
-      <div id="search-list" ref={listRef} className="search-list" role="listbox" aria-label="찾은 커밋과 파일">
+    <dialog id="search" ref={ref} className="ask search" aria-label={t("search.aria")} onClick={(e) => { if (e.target === e.currentTarget) close(); }}>
+      <input id="search-input" ref={inputRef} type="search" placeholder={t("search.placeholder")} aria-label={t("top.search")} autoComplete="off" spellCheck={false} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={handleKeyDown} />
+      <div id="search-list" ref={listRef} className="search-list" role="listbox" aria-label={t("search.results")}>
         {rows.length
           ? rows.map((r, i) => (
             <button key={r.kind === "commit" ? r.hit.id : `f:${r.path}`} type="button" role="option" className={`sr${i === active ? " on" : ""}`} aria-selected={i === active} onClick={() => choose(r)}>
               {r.kind === "commit"
-                ? <><span className="sr-k">커밋</span><span className="sr-t">{r.hit.msg}</span><span className="sr-m">{short(r.hit.id)} · {r.hit.author || ""} · {relTime(r.hit.date)}</span></>
-                : <><span className="sr-k">파일</span><span className="sr-t">{r.path}</span><span className="sr-m">히스토리 보기</span></>}
+                ? <><span className="sr-k">{t("search.commit")}</span><span className="sr-t">{r.hit.msg}</span><span className="sr-m">{short(r.hit.id)} · {r.hit.author || ""} · {relTime(r.hit.date)}</span></>
+                : <><span className="sr-k">{t("search.file")}</span><span className="sr-t">{r.path}</span><span className="sr-m">{t("search.history")}</span></>}
             </button>
           ))
-          : <p className="muted">{q.trim() ? "찾는 결과가 없습니다." : "커밋 메시지, 작성자, 해시, 파일 이름을 입력하세요."}</p>}
+          : <p className="muted">{q.trim() ? t("search.none") : t("search.prompt")}</p>}
       </div>
     </dialog>
   );

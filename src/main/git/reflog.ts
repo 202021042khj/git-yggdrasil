@@ -1,6 +1,7 @@
 // reflog: HEAD 가 거쳐 간 커밋 기록과 앱이 남긴 백업. 어느 브랜치·태그에서도 닿지 않는 "잃어버린" 커밋을 표시한다.
 import { execFile } from "node:child_process";
 import { git } from "@/git/cli";
+import { t, type MessageKey } from "@shared/i18n/i18n";
 import type { ReflogEntry } from "@shared/types/ipc";
 
 const US = "\x1f";
@@ -19,14 +20,14 @@ export function describeAction(gs: string): { action: string; detail: string } {
   const raw = i < 0 ? gs : gs.slice(0, i);
   const detail = i < 0 ? "" : gs.slice(i + 2);
   const kind = raw.split(" ")[0];
-  const NAMES: Record<string, string> = {
-    commit: "커밋", checkout: "체크아웃", reset: "되돌리기(reset)", rebase: "rebase", merge: "merge", pull: "pull",
-    "cherry-pick": "cherry-pick", revert: "revert", branch: "브랜치", clone: "clone", am: "patch 적용", switch: "체크아웃",
+  const NAMES: Record<string, MessageKey> = {
+    commit: "rf.commit", checkout: "rf.checkout", reset: "rf.reset", branch: "rf.branch", am: "rf.am", switch: "rf.checkout",
   };
-  let action = NAMES[kind] ?? raw;
-  if (/\(amend\)/.test(raw)) action = "커밋 수정(amend)";
-  else if (/\(initial\)/.test(raw)) action = "첫 커밋";
-  else if (/\(merge\)/.test(raw)) action = "merge 커밋";
+  // rebase · merge · pull · cherry-pick · revert · clone 은 git 낱말 그대로
+  let action = NAMES[kind] ? t(NAMES[kind]) : raw;
+  if (/\(amend\)/.test(raw)) action = t("rf.amend");
+  else if (/\(initial\)/.test(raw)) action = t("rf.initial");
+  else if (/\(merge\)/.test(raw)) action = t("rf.mergeCommit");
   else if (kind === "rebase") {
     const step = /\((finish|start|pick|continue|abort|reword|fixup|squash)\)/.exec(raw)?.[1];
     if (step) action = `rebase ${step}`;
@@ -44,12 +45,12 @@ export async function readReflog(root: string, limit = REFLOG_LIMIT): Promise<Re
   const entries: ReflogEntry[] = [];
   for (const line of (log || "").split("\n").filter(Boolean)) {
     const [id, gd, gs] = line.split(US);
-    const t = Number(/@\{(\d+)\}/.exec(gd)?.[1] ?? 0) * 1000;
-    entries.push({ id, ...describeAction(gs || ""), date: t, subject: "", lost: false, source: "reflog" });
+    const date = Number(/@\{(\d+)\}/.exec(gd)?.[1] ?? 0) * 1000;
+    entries.push({ id, ...describeAction(gs || ""), date, subject: "", lost: false, source: "reflog" });
   }
   for (const line of (backups || "").split("\n").filter(Boolean)) {
-    const [id, ref, t] = line.split(US);
-    entries.push({ id, action: "앱 백업", detail: ref.replace("refs/yggdrasil/backup/", ""), date: Number(t) * 1000, subject: "", lost: false, source: "backup" });
+    const [id, ref, when] = line.split(US);
+    entries.push({ id, action: t("rf.backup"), detail: ref.replace("refs/yggdrasil/backup/", ""), date: Number(when) * 1000, subject: "", lost: false, source: "backup" });
   }
   const ids = [...new Set(entries.map((e) => e.id))];
   if (!ids.length) return entries;
@@ -61,6 +62,6 @@ export async function readReflog(root: string, limit = REFLOG_LIMIT): Promise<Re
   const lost = new Set(lostOut.split("\n").filter(Boolean));
   const subject = new Map(subjOut.split("\n").filter(Boolean).map((l) => l.split(US) as [string, string]));
   return entries
-    .map((e) => ({ ...e, lost: lost.has(e.id), subject: subject.get(e.id) ?? "(지워진 커밋)" }))
+    .map((e) => ({ ...e, lost: lost.has(e.id), subject: subject.get(e.id) ?? t("rf.gone") }))
     .sort((a, b) => b.date - a.date);
 }

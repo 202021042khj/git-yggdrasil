@@ -5,15 +5,16 @@ import { useEffect, useRef, useState } from "react";
 import Dropdown from "@/components/ui/Dropdown";
 import { store } from "@/app/store";
 import { dimmedCommits, isFiltering, NO_FILTER, visibleRepo, type GraphFilter } from "@/model/filter";
+import { t } from "@shared/i18n/i18n";
 import type { UseMainLogicResult } from "@/hooks/useMainLogic";
 
 const DAY = 24 * 60 * 60 * 1000;
-const SINCE_OPTIONS = [
-  { value: "", label: "전체 기간" },
-  { value: "7", label: "최근 1주" },
-  { value: "30", label: "최근 1달" },
-  { value: "90", label: "최근 3달" },
-  { value: "365", label: "최근 1년" },
+const sinceOptions = () => [
+  { value: "", label: t("filter.since.all") },
+  { value: "7", label: t("filter.since.7") },
+  { value: "30", label: t("filter.since.30") },
+  { value: "90", label: t("filter.since.90") },
+  { value: "365", label: t("filter.since.365") },
 ];
 
 const setFilter = (patch: Partial<GraphFilter>) => store.update({ filter: { ...store.ui.filter, ...patch } });
@@ -69,35 +70,35 @@ const FilterSection = ({ ui, repo }: UseMainLogicResult) => {
     const total = Object.keys(vis.commits).length;
     const dim = dimmedCommits(vis, f).size;
     const hidden = Object.keys(repo.commits).length - total;
-    summary = [hidden && `${hidden.toLocaleString()}개 숨김`, (f.author.trim() || f.since !== null) && `${(total - dim).toLocaleString()}개 해당`].filter(Boolean).join(" · ");
+    summary = [hidden && t("filter.hidden", { n: hidden }), (f.author.trim() || f.since !== null) && t("filter.matching", { n: total - dim })].filter(Boolean).join(" · ");
   }
 
   return (
-    <div className="filter-bar" role="search" aria-label="그래프 필터">
+    <div className="filter-bar" role="search" aria-label={t("filter.aria")}>
       <details id="filter-branches" ref={detailsRef} className={`filter-branches${chosen ? " on" : ""}`}>
-        <summary id="filter-branches-label">{chosen ? `브랜치: ${shownBranches} / ${all.length}` : "브랜치: 전부"}</summary>
+        <summary id="filter-branches-label">{chosen ? t("filter.branches", { shown: shownBranches, total: all.length }) : t("filter.branchesAll")}</summary>
         <div className="fb-pop">
           <div className="fb-actions">
-            <button type="button" className="small" onClick={() => setFilter({ branches: null })}>전부 보기</button>
-            <button type="button" className="small" onClick={() => setFilter({ branches: [] })}>체크아웃한 것만</button>
+            <button type="button" className="small" onClick={() => setFilter({ branches: null })}>{t("filter.showAll")}</button>
+            <button type="button" className="small" onClick={() => setFilter({ branches: [] })}>{t("filter.onlyHead")}</button>
           </div>
           <div id="filter-branch-list" className="fb-list">
             {all.map((b) => {
               const isHead = b === repo.head;
               return (
                 <label key={b} className="fb-row">
-                  <input type="checkbox" checked={!chosen || chosen.has(b) || isHead} disabled={isHead} title={isHead ? "체크아웃한 브랜치는 항상 보입니다" : undefined} onChange={(e) => toggleBranch(b, e.target.checked)} /> {b}
-                  {isHead && <> <span className="muted">(현재)</span></>}
+                  <input type="checkbox" checked={!chosen || chosen.has(b) || isHead} disabled={isHead} title={isHead ? t("filter.headAlways") : undefined} onChange={(e) => toggleBranch(b, e.target.checked)} /> {b}
+                  {isHead && <> <span className="muted">{t("filter.current")}</span></>}
                 </label>
               );
             })}
           </div>
         </div>
       </details>
-      <input id="filter-author" type="search" placeholder="작성자" aria-label="작성자로 거르기" autoComplete="off" spellCheck={false} value={author} onChange={(e) => setAuthor(e.target.value)} />
-      <Dropdown id="filter-since" label="기간" value={sinceDays} options={SINCE_OPTIONS} onChange={handleSince} />
+      <input id="filter-author" type="search" placeholder={t("filter.author")} aria-label={t("filter.authorAria")} autoComplete="off" spellCheck={false} value={author} onChange={(e) => setAuthor(e.target.value)} />
+      <Dropdown id="filter-since" label={t("filter.since")} value={sinceDays} options={sinceOptions()} onChange={handleSince} />
       <span id="filter-summary" className="muted filter-summary" aria-live="polite">{summary}</span>
-      <button type="button" id="filter-clear" className="small" hidden={!filtering} onClick={() => store.update({ filter: NO_FILTER })}>필터 해제</button>
+      <button type="button" id="filter-clear" className="small" hidden={!filtering} onClick={() => store.update({ filter: NO_FILTER })}>{t("filter.clear")}</button>
     </div>
   );
 };

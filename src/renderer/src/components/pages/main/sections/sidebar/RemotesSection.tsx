@@ -3,6 +3,7 @@ import "./RemotesSection.css";
 import { askText, confirmAction } from "@/components/ui/dialogUtils";
 import { run } from "@/app/actions";
 import GithubPublishButton from "@/components/pages/main/sections/dialogs/GithubPublishButton";
+import { t } from "@shared/i18n/i18n";
 import type { RepoState } from "@shared/types/repo";
 
 interface RemotesSectionProps {
@@ -17,48 +18,48 @@ const RemotesSection = ({ repo, hasRepo }: RemotesSectionProps) => {
 
   const handleEdit = async (name: string) => {
     const cur = list.find((r) => r.name === name)?.url || "";
-    const url = await askText(`${name} 주소 바꾸기`, cur);
-    if (url && url !== cur) await run({ op: "remoteSetUrl", args: [name, url], summary: `원격 ${name} 주소 변경` });
+    const url = await askText(t("rm.editUrl", { name }), cur);
+    if (url && url !== cur) await run({ op: "remoteSetUrl", args: [name, url], summary: t("rm.editSummary", { name }) });
   };
 
   const handleDelete = async (name: string) => {
-    if (!confirmAction(`원격 ${name} 연결을 지울까요?\n원격 저장소 자체는 지워지지 않고, 이 폴더와의 연결과 원격 브랜치 정보만 사라집니다.`)) return;
-    await run({ op: "remoteRemove", args: [name], summary: `원격 ${name} 연결 삭제` });
+    if (!confirmAction(t("rm.confirmRemove", { name }))) return;
+    await run({ op: "remoteRemove", args: [name], summary: t("rm.removeSummary", { name }) });
   };
 
   const handleAdd = async () => {
-    const url = await askText("원격 저장소 주소", "", "예: https://github.com/아이디/저장소.git");
+    const url = await askText(t("act.remoteUrl"), "", t("rm.urlHint"));
     if (!url) return;
-    const name = await askText("원격 이름", list.some((r) => r.name === "origin") ? "upstream" : "origin");
-    if (name) await run({ op: "remoteAdd", args: [name, url], summary: `원격 ${name} 추가` });
+    const name = await askText(t("rm.name"), list.some((r) => r.name === "origin") ? "upstream" : "origin");
+    if (name) await run({ op: "remoteAdd", args: [name, url], summary: t("rm.addSummary", { name }) });
   };
 
   return (
     <div className="remotes-box">
-      <h3>원격</h3>
+      <h3>{t("rm.title")}</h3>
       <div id="remote-list">
         {list.length
           ? list.map((r) => (
             <div key={r.name} className="remote-row" title={r.url}>
               <span className="rn">{r.name}</span><span className="ru">{r.url}</span>
-              <button type="button" onClick={() => void handleEdit(r.name)}>주소</button>
-              <button type="button" aria-label={`${r.name} 삭제`} onClick={() => void handleDelete(r.name)}>삭제</button>
+              <button type="button" onClick={() => void handleEdit(r.name)}>{t("rm.url")}</button>
+              <button type="button" aria-label={t("rm.removeAria", { name: r.name })} onClick={() => void handleDelete(r.name)}>{t("rm.remove")}</button>
             </div>
           ))
-          : <p className="muted remote-empty">연결된 원격이 없습니다.</p>}
+          : <p className="muted remote-empty">{t("pv.noRemote")}</p>}
         {!!onlyRemote.length && (
           <div className="remote-only">
-            <p className="muted">원격에만 있는 브랜치</p>
+            <p className="muted">{t("rm.remoteOnly")}</p>
             {onlyRemote.map((r) => (
               <div key={r} className="remote-row">
                 <span className="ru">{r}</span>
-                <button type="button" onClick={() => void run({ op: "checkoutRemote", args: [r], summary: `${r} 를 로컬 브랜치로 가져오기` })}>가져오기</button>
+                <button type="button" onClick={() => void run({ op: "checkoutRemote", args: [r], summary: t("ctx.trackSummary", { remote: r }) })}>{t("rm.track")}</button>
               </div>
             ))}
           </div>
         )}
       </div>
-      <button type="button" id="remote-add" className="small" onClick={() => void handleAdd()}>원격 추가</button>
+      <button type="button" id="remote-add" className="small" onClick={() => void handleAdd()}>{t("rm.add")}</button>
       <GithubPublishButton repo={repo} hasRepo={hasRepo} />
     </div>
   );

@@ -6,6 +6,7 @@ import { store } from "@/app/store";
 import { NO_FILTER } from "@/model/filter";
 import { showNotice } from "@/components/ui/dialogUtils";
 import { toast } from "@/components/ui/toastUtils";
+import { t } from "@shared/i18n/i18n";
 import type { RepoState } from "@shared/types/repo";
 
 let shownRoot: string | null = null;
@@ -30,7 +31,7 @@ export function show(repo: RepoState | null): void {
   store.flush();
   if (firstOpen) {
     scrollToHead();
-    if (repo.op) toast(`이 저장소는 ${repo.op.title} 도중에 멈춰 있습니다. 오른쪽 패널에서 해결하고 위 배너에서 계속하거나 중단하세요.`);
+    if (repo.op) toast(t("session.paused", { title: repo.op.title }));
   }
 }
 

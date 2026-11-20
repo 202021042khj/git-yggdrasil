@@ -8,6 +8,7 @@ import { gitDir } from "@/git/opState";
 import type { RebaseStep } from "@shared/types/ipc";
 import { runOrStop } from "@/git/ops/conflictOps";
 import { backup, headInfo, rev, short, type OpContext, type OpError, type OpFn } from "@/git/ops/context";
+import { t } from "@shared/i18n/i18n";
 
 interface CommitInfo {
   id: string;
@@ -26,7 +27,7 @@ export async function commitInfo(root: string, id: string): Promise<CommitInfo> 
 }
 
 function conflictError(files: string[], what: string): OpError {
-  const e: OpError = new Error(`충돌: ${files.join(", ")} — "${what}" 을(를) 적용하다 충돌이 나서 아무것도 바꾸지 않았습니다.`);
+  const e: OpError = new Error(t("m.conflict", { files: files.join(", "), what }));
   e.conflicts = files;
   return e;
 }
@@ -35,7 +36,7 @@ function conflictError(files: string[], what: string): OpError {
 function needsCheckout(err: OpError, branch: string): OpError {
   err.code = "NEEDS_CHECKOUT";
   err.branch = branch;
-  err.message += ` ${branch} 로 체크아웃하면 충돌을 해결하며 진행할 수 있습니다.`;
+  err.message += ` ${t("m.checkoutToResolve", { branch })}`;
   return err;
 }
 
@@ -46,12 +47,12 @@ async function commitTree(root: string, tree: string, parents: string[], c: Comm
 
 /** c 의 변경(부모→c)을 tip 위에 적용한 tree */
 async function applyTree(root: string, tip: string, c: CommitInfo): Promise<string> {
-  if (c.parents.length > 1) throw new Error(`merge 커밋 ${short(c.id)} 은 아직 옮기거나 다시 쓸 수 없습니다.`);
-  if (!c.parents.length) throw new Error(`첫 커밋 ${short(c.id)} 은 옮길 수 없습니다.`);
+  if (c.parents.length > 1) throw new Error(t("m.mergeCommit", { id: short(c.id) }));
+  if (!c.parents.length) throw new Error(t("m.rootCommit", { id: short(c.id) }));
   const r = await gitRaw(root, ["merge-tree", "--write-tree", "--name-only", "--no-messages", `--merge-base=${c.parents[0]}`, tip, c.id]);
   const lines = r.stdout.split("\n");
   if (r.code === 1) throw conflictError(lines.slice(1).filter(Boolean), c.msg.split("\n")[0]);
-  if (r.code !== 0) throw new Error(r.stderr.trim() || "merge-tree 실패");
+  if (r.code !== 0) throw new Error(r.stderr.trim() || t("m.mergeTree"));
   return lines[0].trim();
 }
 
@@ -111,38 +112,38 @@ const cherryPick: OpFn = async (ctx, [ids, branch]: [string[], string]) => {
     await runOrStop(ctx, ["cherry-pick", ...ids]);
     return;
   }
-  ctx.note(`git cherry-pick ${ids.map(short).join(" ")}  # ${branch} 에, 체크아웃 없이`);
+  ctx.note(`git cherry-pick ${ids.map(short).join(" ")}  # ${t("m.n.onto", { branch })}`);
   await setBranch(ctx, branch, next, tip);
 };
 
 const moveCommit: OpFn = async (ctx, [id, branch]: [string, string]) => {
   const from = ctx.extra.from;
-  if (!from) throw new Error("커밋이 속한 브랜치를 알 수 없습니다.");
+  if (!from) throw new Error(t("m.unknownBranch"));
   const c = await commitInfo(ctx.root, id);
   const dstTip = await rev(ctx.root, branch), srcTip = await rev(ctx.root, from);
   const moved = await chain(ctx.root, dstTip, [{ id }]);
   const rest = await firstParentRange(ctx.root, id, srcTip);
   const left = await chain(ctx.root, c.parents[0], rest.map((x) => ({ id: x })));
   ctx.note(`git cherry-pick ${short(id)}  # → ${branch}`);
-  ctx.note(`git rebase --onto ${short(id)}~1 ${short(id)} ${from}  # ${from} 에서 빼기`);
+  ctx.note(`git rebase --onto ${short(id)}~1 ${short(id)} ${from}  # ${t("m.n.removeFrom", { branch: from })}`);
   await setBranch(ctx, branch, moved, dstTip);
   await setBranch(ctx, from, left, srcTip);
 };
 
 const dropCommit: OpFn = async (ctx, [id]: [string]) => {
   const from = ctx.extra.from;
-  if (!from) throw new Error("커밋이 속한 브랜치를 알 수 없습니다.");
+  if (!from) throw new Error(t("m.unknownBranch"));
   const c = await commitInfo(ctx.root, id);
   const tip = await rev(ctx.root, from);
   const rest = await firstParentRange(ctx.root, id, tip);
   const next = await chain(ctx.root, c.parents[0], rest.map((x) => ({ id: x })));
-  ctx.note(`git rebase --onto ${short(id)}~1 ${short(id)} ${from}  # ${short(id)} 제거`);
+  ctx.note(`git rebase --onto ${short(id)}~1 ${short(id)} ${from}  # ${t("m.n.drop", { id: short(id) })}`);
   await setBranch(ctx, from, next, tip);
 };
 
 const rebaseStem: OpFn = async (ctx, [branch, onto]: [string, string]) => {
   const base = ctx.extra.base;
-  if (!base) throw new Error("이 브랜치의 시작점을 알 수 없습니다.");
+  if (!base) throw new Error(t("m.unknownBase"));
   const tip = await rev(ctx.root, branch);
   const list = await firstParentRange(ctx.root, base, tip);
   let next: string;
@@ -161,7 +162,7 @@ const rebaseStem: OpFn = async (ctx, [branch, onto]: [string, string]) => {
 
 const squash: OpFn = async (ctx, [src, dst]: [string, string]) => {
   const from = ctx.extra.from;
-  if (!from) throw new Error("커밋이 속한 브랜치를 알 수 없습니다.");
+  if (!from) throw new Error(t("m.unknownBranch"));
   const tip = await rev(ctx.root, from);
   const srcFirst = (await gitRaw(ctx.root, ["merge-base", "--is-ancestor", src, dst])).code === 0;
   const base = (await commitInfo(ctx.root, srcFirst ? src : dst)).parents[0];
@@ -172,19 +173,19 @@ const squash: OpFn = async (ctx, [src, dst]: [string, string]) => {
     if (id === dst) items.push({ id: src, fixup: true });
   }
   const next = await chain(ctx.root, base, items);
-  ctx.note(`git rebase -i ${short(base)}  # ${short(src)} 을 ${short(dst)} 에 fixup`);
+  ctx.note(`git rebase -i ${short(base)}  # ${t("m.n.fixup", { src: short(src), dst: short(dst) })}`);
   await setBranch(ctx, from, next, tip);
 };
 
 const reorder: OpFn = async (ctx, [id, branch, index]: [string, string, number]) => {
   const { stem, base } = ctx.extra;
-  if (!stem || !base) throw new Error("줄기 정보를 알 수 없습니다.");
+  if (!stem || !base) throw new Error(t("m.unknownStem"));
   const from = stem.indexOf(id);
   const order = stem.filter((c) => c !== id);
   order.splice(index > from ? index - 1 : index, 0, id);
   const tip = await rev(ctx.root, branch);
   const next = await chain(ctx.root, base, order.map((c) => ({ id: c })));
-  ctx.note(`git rebase -i ${short(base)}  # ${short(id)} 순서 변경`);
+  ctx.note(`git rebase -i ${short(base)}  # ${t("m.n.reorder", { id: short(id) })}`);
   await setBranch(ctx, branch, next, tip);
 };
 
@@ -200,7 +201,7 @@ const merge: OpFn = async (ctx, [src, dst]: [string, string]) => {
   }
   const a = await rev(ctx.root, dst), b = await rev(ctx.root, src);
   if ((await gitRaw(ctx.root, ["merge-base", "--is-ancestor", a, b])).code === 0) {
-    ctx.note(`git fetch . ${src}:${dst}  # fast-forward, 체크아웃 없이`);
+    ctx.note(`git fetch . ${src}:${dst}  # ${t("m.n.ff")}`);
     await setBranch(ctx, dst, b, a);
     return;
   }
@@ -209,7 +210,7 @@ const merge: OpFn = async (ctx, [src, dst]: [string, string]) => {
   if (r.code === 1) throw needsCheckout(conflictError(lines.slice(1).filter(Boolean), `merge ${src} → ${dst}`), dst);
   if (r.code !== 0) throw new Error(r.stderr.trim());
   const id = (await git(ctx.root, ["commit-tree", lines[0].trim(), "-p", a, "-p", b, "-m", `Merge branch '${src}' into ${dst}`])).trim();
-  ctx.note(`git merge ${src}  # ${dst} 에, 체크아웃 없이`);
+  ctx.note(`git merge ${src}  # ${t("m.n.onto", { branch: dst })}`);
   await setBranch(ctx, dst, id, a);
 };
 
@@ -217,13 +218,13 @@ const merge: OpFn = async (ctx, [src, dst]: [string, string]) => {
 export function checkPlan(stem: string[], steps: RebaseStep[]): void {
   const ids = steps.map((s) => s.id);
   if (ids.length !== stem.length || new Set(ids).size !== ids.length || !ids.every((id) => stem.includes(id))) {
-    throw new Error("계획이 지금 브랜치의 커밋과 맞지 않습니다. 저장소가 바뀌었으면 창을 다시 여세요.");
+    throw new Error(t("m.planMismatch"));
   }
   const kept = steps.filter((s) => s.action !== "drop");
-  if (!kept.length) throw new Error("커밋을 모두 빼면 브랜치가 시작점으로 돌아갑니다. 그렇게 하려면 브랜치를 시작점으로 되돌리기(reset)를 쓰세요.");
-  if (kept[0].action === "squash" || kept[0].action === "fixup") throw new Error("맨 위(가장 오래된) 커밋은 앞에 합칠 커밋이 없습니다. pick 이나 reword 로 바꾸세요.");
+  if (!kept.length) throw new Error(t("m.planDropAll"));
+  if (kept[0].action === "squash" || kept[0].action === "fixup") throw new Error(t("m.planFirstSquash"));
   for (const s of steps) {
-    if ((s.action === "reword" || s.action === "squash") && s.msg !== undefined && !s.msg.trim()) throw new Error("메시지가 비어 있는 줄이 있습니다.");
+    if ((s.action === "reword" || s.action === "squash") && s.msg !== undefined && !s.msg.trim()) throw new Error(t("pv.planEmptyMsg"));
   }
 }
 
@@ -242,7 +243,7 @@ export function todoFor(steps: RebaseStep[], msgFile: (i: number) => string): st
 /** 커밋 정리: 순서·합치기·메시지·빼기를 한 번에. ctx.extra.base = 줄기 시작점 */
 const rebasePlan: OpFn = async (ctx, [branch, steps]: [string, RebaseStep[]]) => {
   const base = ctx.extra.base;
-  if (!base) throw new Error("이 브랜치의 시작점을 알 수 없습니다.");
+  if (!base) throw new Error(t("m.unknownBase"));
   const tip = await rev(ctx.root, branch);
   checkPlan(await firstParentRange(ctx.root, base, tip), steps);
   const items: ChainItem[] = steps.filter((s) => s.action !== "drop").map((s) => ({
@@ -268,7 +269,7 @@ const rebasePlan: OpFn = async (ctx, [branch, steps]: [string, RebaseStep[]]) =>
     return;
   }
   const n = steps.filter((s) => s.action !== "pick").length;
-  ctx.note(`git rebase -i ${short(base)}  # ${branch}: ${steps.map((s) => `${s.action} ${short(s.id)}`).join(", ")}${n ? "" : " (순서만)"}`);
+  ctx.note(`git rebase -i ${short(base)}  # ${branch}: ${steps.map((s) => `${s.action} ${short(s.id)}`).join(", ")}${n ? "" : t("m.n.orderOnly")}`);
   await setBranch(ctx, branch, next, tip);
 };
 

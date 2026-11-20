@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 import useSmallStore from "@/hooks/useSmallStore";
 import { closeMenu, menuStore, pickMenu } from "@/components/ui/menuUtils";
+import { t } from "@shared/i18n/i18n";
 
 const Menu = () => {
   const menu = useSmallStore(menuStore);
@@ -50,7 +51,7 @@ const Menu = () => {
         </button>
       ))}
       <button type="button" role="menuitem" className="m-cancel" onClick={() => pickMenu(-1)}>
-        취소 <kbd>Esc</kbd>
+        {t("common.cancel")} <kbd>Esc</kbd>
       </button>
     </div>,
     host,

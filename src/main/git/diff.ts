@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { git } from "@/git/cli";
+import { t } from "@shared/i18n/i18n";
 import type { DiffOptions, FileDiff } from "@shared/types/ipc";
 
 export const DIFF_MAX_LINES = 1500;
@@ -21,7 +22,7 @@ function blob(root: string, spec: string): Promise<Buffer | null> {
 
 function insideRoot(root: string, file: string): string {
   const full = path.resolve(root, file);
-  if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error(`저장소 밖의 경로입니다: ${file}`);
+  if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error(t("m.outside", { path: file }));
   return full;
 }
 
@@ -49,7 +50,7 @@ export async function fileDiff(root: string, file: string, commit: string | null
       const buf = fs.readFileSync(full);
       if (!buf.includes(0)) {
         const body = buf.toString("utf8").replace(/\n$/, "").split("\n");
-        text = `새 파일 ${file}\n@@ -0,0 +1,${body.length} @@\n` + body.map((l) => "+" + l).join("\n");
+        text = `${t("m.newFile", { path: file })}\n@@ -0,0 +1,${body.length} @@\n` + body.map((l) => "+" + l).join("\n");
       } else text = `Binary files /dev/null and b/${file} differ`;
     }
   }

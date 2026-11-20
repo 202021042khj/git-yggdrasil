@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { git } from "@/git/cli";
 import { parseDiff } from "@/git/patch";
+import { t } from "@shared/i18n/i18n";
 import type { BlameLine, FileHistoryEntry, Hunk, SearchHit } from "@shared/types/ipc";
 
 const US = "\x1f";
@@ -74,7 +75,7 @@ export async function blame(root: string, file: string, commit?: string | null):
 /** 충돌 중인 파일의 지금 내용 (충돌 표시 포함). 너무 크거나 바이너리면 null */
 export function conflictText(root: string, file: string): string | null {
   const full = path.resolve(root, file);
-  if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error(`저장소 밖의 경로입니다: ${file}`);
+  if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error(t("m.outside", { path: file }));
   const buf = fs.readFileSync(full);
   if (buf.length > 2_000_000 || buf.includes(0)) return null;
   return buf.toString("utf8");

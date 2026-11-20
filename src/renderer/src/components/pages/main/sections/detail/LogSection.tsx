@@ -1,6 +1,7 @@
 import "./LogSection.css";
 
 import { openReflog } from "@/components/pages/main/sections/dialogs/reflogUtils";
+import { t } from "@shared/i18n/i18n";
 import type { LogEntry } from "@/app/store";
 
 interface LogSectionProps {
@@ -11,13 +12,13 @@ interface LogSectionProps {
 const LogSection = ({ log }: LogSectionProps) => (
   <>
     <div className="pr-head">
-      <h3>실행 기록 (대응 git 명령)</h3>
-      <button type="button" id="reflog-open" className="small" title="되돌리기로 찾을 수 없는 예전 커밋까지 (git reflog)" onClick={() => void openReflog()}>예전 커밋 찾기</button>
+      <h3>{t("log.title")}</h3>
+      <button type="button" id="reflog-open" className="small" title={t("log.reflogTip")} onClick={() => void openReflog()}>{t("log.reflog")}</button>
     </div>
     <ol id="log" className="log">
       {log.length
         ? [...log].reverse().map((e, i) => <li key={log.length - i}>{e.summary}<code>{e.cmd}</code></li>)
-        : <li className="muted">아직 실행한 조작이 없습니다.</li>}
+        : <li className="muted">{t("log.empty")}</li>}
     </ol>
   </>
 );

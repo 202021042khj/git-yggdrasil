@@ -12,14 +12,15 @@ import { store } from "@/app/store";
 import { pushedSet } from "@/model/graph";
 import { isError, preview } from "@/model/preview";
 import { rebaseStore } from "@/components/pages/main/sections/dialogs/rebaseUtils";
+import { t } from "@shared/i18n/i18n";
 import type { RebaseStep } from "@shared/types/ipc";
 
-const ACTIONS: Array<{ value: RebaseStep["action"]; label: string }> = [
-  { value: "pick", label: "그대로" },
-  { value: "reword", label: "메시지 수정" },
-  { value: "squash", label: "위 커밋에 합치기" },
-  { value: "fixup", label: "위 커밋에 합치기 (메시지 버림)" },
-  { value: "drop", label: "빼기" },
+const actionOptions = (): Array<{ value: RebaseStep["action"]; label: string }> => [
+  { value: "pick", label: t("rb.pick") },
+  { value: "reword", label: t("rb.reword") },
+  { value: "squash", label: t("rb.squash") },
+  { value: "fixup", label: t("rb.fixup") },
+  { value: "drop", label: t("rb.drop") },
 ];
 
 const needsMsg = (a: RebaseStep["action"]) => a === "reword" || a === "squash";
@@ -91,8 +92,8 @@ const RebaseEditor = () => {
 
   return (
     <dialog id="rebase" ref={ref} className="ask rebase" aria-labelledby="rebase-title">
-      <h2 id="rebase-title">{target.branch} 커밋 정리 ({target.ids.length}개)</h2>
-      <p className="muted rebase-help">위가 오래된 커밋입니다. 줄을 끌거나 ↑↓(또는 Alt+↑↓)로 순서를 바꾸고, 줄마다 할 일을 고르세요.</p>
+      <h2 id="rebase-title">{t("rb.title", { branch: target.branch, n: target.ids.length })}</h2>
+      <p className="muted rebase-help">{t("rb.help")}</p>
       <ol id="rebase-list" ref={listRef} className="rebase-list">
         {steps.map((x, i) => {
           const c = s.commits[x.id];
@@ -111,14 +112,14 @@ const RebaseEditor = () => {
             >
               <span className="rb-grip" aria-hidden="true">⋮⋮</span>
               <span className="rb-move">
-                <button type="button" className="small" aria-label="위로" disabled={i === 0} onClick={() => move(i, i - 1)}>↑</button>
-                <button type="button" className="small" aria-label="아래로" disabled={i === steps.length - 1} onClick={() => move(i, i + 1)}>↓</button>
+                <button type="button" className="small" aria-label={t("rb.up")} disabled={i === 0} onClick={() => move(i, i - 1)}>↑</button>
+                <button type="button" className="small" aria-label={t("rb.down")} disabled={i === steps.length - 1} onClick={() => move(i, i + 1)}>↓</button>
               </span>
-              <Dropdown label={`${c.msg} 에 할 일`} value={x.action} options={ACTIONS} onChange={(a) => setAction(i, a)} />
+              <Dropdown label={t("rb.actionFor", { msg: c.msg })} value={x.action} options={actionOptions()} onChange={(a) => setAction(i, a)} />
               <span className="rb-main">
                 <span className="rb-msg">{c.msg}</span>
-                <span className="muted rb-meta">{short(x.id)}{!!c.files.length && ` · 파일 ${c.files.length}개`}{pushed.has(x.id) && " · push 됨"}</span>
-                {needsMsg(x.action) && <textarea data-msg={i} rows={x.action === "squash" ? 3 : 1} aria-label="새 메시지" value={x.msg ?? ""} onChange={(e) => setMsg(i, e.target.value)} />}
+                <span className="muted rb-meta">{short(x.id)}{!!c.files.length && t("rb.files", { n: c.files.length })}{pushed.has(x.id) && t("rb.pushed")}</span>
+                {needsMsg(x.action) && <textarea data-msg={i} rows={x.action === "squash" ? 3 : 1} aria-label={t("rb.newMsg")} value={x.msg ?? ""} onChange={(e) => setMsg(i, e.target.value)} />}
               </span>
             </li>
           );
@@ -129,14 +130,14 @@ const RebaseEditor = () => {
           ? <p className="muted">{res.error}</p>
           : <>
             <p><b>{res.summary}</b></p>
-            {!!res.conflicts.length && <p className="warn">⚠ 충돌할 수 있는 파일: {res.conflicts.join(", ")} — 체크아웃한 브랜치라면 멈춘 뒤 해결하며 진행합니다.</p>}
-            {res.rewrites.some((id) => pushed.has(id)) && <p className="warn">push 된 커밋을 다시 씁니다. 이후 force push 가 필요합니다.</p>}
+            {!!res.conflicts.length && <p className="warn">{t("rb.conflicts", { files: res.conflicts.join(", ") })}</p>}
+            {res.rewrites.some((id) => pushed.has(id)) && <p className="warn">{t("rb.rewritesPushed")}</p>}
           </>}
       </div>
       <div className="ask-actions">
-        <button type="button" id="rebase-run" className="primary" disabled={isError(res)} onClick={() => void handleRun()}>실행</button>
-        <button type="button" id="rebase-reset" onClick={() => setSteps(original())}>처음대로</button>
-        <button type="button" id="rebase-cancel" onClick={() => ref.current?.close()}>취소</button>
+        <button type="button" id="rebase-run" className="primary" disabled={isError(res)} onClick={() => void handleRun()}>{t("rb.run")}</button>
+        <button type="button" id="rebase-reset" onClick={() => setSteps(original())}>{t("rb.reset")}</button>
+        <button type="button" id="rebase-cancel" onClick={() => ref.current?.close()}>{t("common.cancel")}</button>
       </div>
     </dialog>
   );

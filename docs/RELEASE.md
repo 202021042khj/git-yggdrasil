@@ -38,11 +38,13 @@ npm run dist       # 지금 OS 용
 
 앱은 켤 때 한 번, 그리고 메뉴 **Git Yggdrasil → 업데이트 확인…** 으로 `202021042khj/git-yggdrasil` 의 최신 릴리스를 확인합니다. 새 버전이 있으면 받아 두었다가 재시작할 때 설치합니다.
 
-새 버전 올리는 순서:
+새 버전 올리는 순서 (GitHub Actions `.github/workflows/release.yml` 이 빌드 · 릴리스를 한다):
 
-1. `package.json` 의 `version` 을 올립니다 (예: 0.2.0).
-2. 릴리스를 올릴 권한이 있는 GitHub 토큰을 `GH_TOKEN` 환경 변수에 두고 `npm run release` 를 실행합니다. electron-builder 가 GitHub 에 초안(draft) 릴리스를 만들고 .dmg · .zip · latest-mac.yml 을 올립니다.
-3. GitHub 에서 초안 릴리스를 확인하고 **Publish** 합니다. 그때부터 설치된 앱들이 업데이트를 받습니다.
+1. `package.json` 의 `version` 을 올리고 커밋 · push 합니다 (예: 0.2.0).
+2. 같은 버전의 태그를 push 합니다: `git tag v0.2.0 && git push origin v0.2.0`
+3. Actions 가 macOS · Windows · Linux 에서 빌드하고 `v0.2.0` 릴리스를 바로 공개로 만듭니다 (약 10~15분). 태그와 `version` 이 다르면 실패합니다.
 
+- 파일 이름에는 버전이 없습니다 (`Yggdrasil-mac-arm64.dmg`, `Yggdrasil-mac-x64.dmg`, `Yggdrasil-windows-setup.exe`, `Yggdrasil-linux-x64.AppImage`). 랜딩의 `releases/latest/download/<파일>` 링크가 릴리스마다 그대로 맞습니다. 이름을 바꾸면 랜딩 `features/download/constants.ts` 도 같이 바꿉니다.
+- 손으로 올릴 때는 `GH_TOKEN` 을 두고 `npm run release` (지금 OS 용만 올라감).
 - 저장소가 **비공개**면 설치된 앱이 릴리스를 읽을 수 없어 자동 업데이트가 동작하지 않습니다. 공개 저장소에 릴리스를 올리거나, 별도의 업데이트 서버(generic provider)를 쓰세요.
 - macOS 자동 업데이트는 서명된 앱에서만 설치됩니다.

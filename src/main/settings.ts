@@ -1,9 +1,10 @@
-// 앱 설정: userData/settings.json 에 저장하고, 화면 색·확대·에디터를 적용한다
+// 앱 설정: userData/settings.json 에 저장하고, 화면 색·확대·에디터·언어를 적용한다
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { BrowserWindow, nativeTheme, shell } from "electron";
+import { app, BrowserWindow, nativeTheme, shell } from "electron";
 import { handle } from "@/ipc/guard";
+import { getLocale, resolveLocale, setLocale } from "@shared/i18n/i18n";
 import { DEFAULT_SETTINGS, type Settings } from "@shared/types/ipc";
 
 let file = "";
@@ -20,6 +21,7 @@ export function sanitize(raw: unknown): Settings {
     autoFetchMinutes: Math.round(num(r.autoFetchMinutes, 0, 240, DEFAULT_SETTINGS.autoFetchMinutes)),
     reopenLast: typeof r.reopenLast === "boolean" ? r.reopenLast : DEFAULT_SETTINGS.reopenLast,
     pullMode: r.pullMode === "rebase" ? "rebase" : "merge",
+    language: r.language === "ko" || r.language === "en" || r.language === "system" ? r.language : DEFAULT_SETTINGS.language,
   };
 }
 
@@ -34,7 +36,20 @@ export function splitCommand(cmd: string): string[] {
 
 export const settings = (): Settings => current;
 
+const localeListeners: Array<() => void> = [];
+/** 화면 언어가 바뀌면 부른다 (앱 메뉴 다시 만들기 등) */
+export const onLocaleChange = (fn: () => void): void => { localeListeners.push(fn); };
+
+/** 설정 + OS 언어로 main 의 언어를 정한다. 바뀌었으면 알린다 */
+function applyLocale(): void {
+  const next = resolveLocale(current.language, app.getLocale());
+  if (next === getLocale()) return;
+  setLocale(next);
+  localeListeners.forEach((fn) => fn());
+}
+
 function apply(): void {
+  applyLocale();
   nativeTheme.themeSource = current.theme;
   for (const w of BrowserWindow.getAllWindows()) w.webContents.setZoomFactor(current.zoom);
 }
@@ -53,11 +68,17 @@ export function openInEditor(target: string): void {
   });
 }
 
-export function initSettings(userData: string): void {
+/** overrides: 점검 실행에서 파일과 상관없이 정하는 값 (예: YGG_LANG=en) */
+export function initSettings(userData: string, overrides: Partial<Settings> = {}): void {
   file = path.join(userData, "settings.json");
-  try { current = sanitize(JSON.parse(fs.readFileSync(file, "utf8"))); } catch { current = { ...DEFAULT_SETTINGS }; }
+  let saved: unknown = {};
+  try { saved = JSON.parse(fs.readFileSync(file, "utf8")); } catch { /* 처음 실행 · 깨진 파일은 기본값 */ }
+  current = sanitize({ ...(saved as object), ...overrides });
+  // 처음 실행이면 언어를 OS 에 맞춰 정한 뒤 메뉴를 만든다 (setLocale 의 기본값과 같으면 알림이 없으므로 직접 맞춘다)
+  setLocale(resolveLocale(current.language, app.getLocale()));
   apply();
   handle("settings:get", () => current);
+  handle("settings:locale", () => getLocale());
   handle("settings:set", (_e, patch: Partial<Settings>) => {
     current = sanitize({ ...current, ...patch });
     try { fs.writeFileSync(file, JSON.stringify(current, null, 2)); } catch { /* 저장 못 해도 이번 실행에는 적용 */ }

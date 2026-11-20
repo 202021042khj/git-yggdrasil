@@ -1,5 +1,6 @@
 // git CLI 호출. 모든 git 실행은 여기를 거친다.
 import { execFile } from "node:child_process";
+import { t } from "@shared/i18n/i18n";
 
 export interface GitOptions {
   /** 실패해도 던지지 않고 null 을 돌려준다 */
@@ -39,7 +40,7 @@ export function git(cwd: string, args: string[], { allowFail = false, env = {}, 
       if (err && !allowFail) {
         const e: GitError = new Error(`git ${args.join(" ")}: ${(stderr || err.message).trim()}`);
         e.code = err.code ?? undefined;
-        e.stderr = (stderr || (err.killed ? "시간 초과로 중단했습니다." : err.message)).trim();
+        e.stderr = (stderr || (err.killed ? t("m.timeout") : err.message)).trim();
         return reject(e);
       }
       resolve(err ? null : stdout);

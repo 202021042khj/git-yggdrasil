@@ -3,6 +3,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { ipcMain, type IpcMainInvokeEvent } from "electron";
+import { t } from "@shared/i18n/i18n";
 
 /** 개발 중에는 Vite 개발 서버, 빌드 후에는 out/renderer/index.html */
 function rendererOrigin(): { dev: string | null; file: string } {
@@ -32,7 +33,7 @@ function trusted(e: IpcMainInvokeEvent): boolean {
 /** ipcMain.handle 대신 쓴다. 보낸 쪽이 우리 화면이 아니면 오류로 거절한다. */
 export function handle<A extends unknown[], R>(channel: string, fn: (e: IpcMainInvokeEvent, ...args: A) => R): void {
   ipcMain.handle(channel, (e, ...args) => {
-    if (!trusted(e)) throw new Error(`허용하지 않은 곳에서 온 요청입니다 (${channel})`);
+    if (!trusted(e)) throw new Error(t("m.untrusted", { channel }));
     return fn(e, ...(args as A));
   });
 }

@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { GH_CLIENT_ID, GH_SCOPE, GH_USER_AGENT } from "@/github/constants";
+import { t as tr } from "@shared/i18n/i18n";
 import type { GhStatus, GhUser } from "@shared/types/ipc";
 
 /** Electron safeStorage 중 쓰는 부분 (테스트에서 가짜로 바꿀 수 있게) */
@@ -56,11 +57,11 @@ function load(): AuthData | null {
 function save(): void {
   try {
     if (!auth) { fs.rmSync(file(), { force: true }); return; }
-    if (!store?.isEncryptionAvailable()) throw new Error("이 시스템에서는 토큰을 안전하게 저장할 수 없습니다.");
+    if (!store?.isEncryptionAvailable()) throw new Error(tr("m.gh.noSafeStorage"));
     fs.mkdirSync(userDataDir, { recursive: true });
     fs.writeFileSync(file(), store.encryptString(JSON.stringify(auth)), { mode: 0o600 });
   } catch (err) {
-    console.error("[github] 토큰 저장 실패:", (err as Error).message);
+    console.error("[github] failed to save token:", (err as Error).message);
   }
 }
 
@@ -99,8 +100,8 @@ export async function startLogin(): Promise<DeviceCode> {
   const d = await postForm("https://github.com/login/device/code", { client_id: GH_CLIENT_ID, scope: GH_SCOPE });
   if (d.error) {
     throw new Error(d.error === "device_flow_disabled"
-      ? "GitHub OAuth App 설정에서 Enable Device Flow 가 꺼져 있습니다."
-      : `로그인 시작 실패: ${d.error_description || d.error}`);
+      ? tr("m.gh.deviceFlowOff")
+      : tr("m.gh.startFailed", { error: d.error_description || d.error }));
   }
   return {
     userCode: d.user_code as string,
@@ -119,7 +120,7 @@ export async function waitLogin({ deviceCode, interval, expiresIn }: DeviceCode,
   const deadline = Date.now() + expiresIn * 1000;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, wait * 1000));
-    if (me.cancelled) throw new Error("로그인을 취소했습니다.");
+    if (me.cancelled) throw new Error(tr("m.gh.cancelled"));
     const t = await postForm("https://github.com/login/oauth/access_token", {
       client_id: GH_CLIENT_ID, device_code: deviceCode, grant_type: "urn:ietf:params:oauth:grant-type:device_code",
     });
@@ -132,11 +133,11 @@ export async function waitLogin({ deviceCode, interval, expiresIn }: DeviceCode,
     }
     if (t.error === "authorization_pending") continue;
     if (t.error === "slow_down") { wait = t.interval || wait + 5; continue; }
-    if (t.error === "expired_token") throw new Error("코드가 만료되었습니다. 다시 로그인해 주세요.");
-    if (t.error === "access_denied") throw new Error("GitHub 에서 로그인을 거절했습니다.");
-    throw new Error(`로그인 실패: ${t.error_description || t.error}`);
+    if (t.error === "expired_token") throw new Error(tr("m.gh.codeExpired"));
+    if (t.error === "access_denied") throw new Error(tr("m.gh.denied"));
+    throw new Error(tr("m.gh.failed", { error: t.error_description || t.error || "" }));
   }
-  throw new Error("코드가 만료되었습니다. 다시 로그인해 주세요.");
+  throw new Error(tr("m.gh.codeExpired"));
 }
 
 export function cancelLogin(): void {

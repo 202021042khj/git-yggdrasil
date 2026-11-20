@@ -4,6 +4,7 @@ import path from "node:path";
 import { git } from "@/git/cli";
 import { readOpKind, recordConflicts, gitDir, SPLIT_FILE } from "@/git/opState";
 import { unmergedFiles } from "@/git/status";
+import { t } from "@shared/i18n/i18n";
 import type { GitOptions } from "@/git/cli";
 import type { OpContext, OpFn } from "@/git/ops/context";
 
@@ -25,7 +26,7 @@ export async function runOrStop(ctx: OpContext, args: string[], opts?: GitOption
   } catch (err) {
     if (readOpKind(ctx.root) || (await unmergedFiles(ctx.root)).length) {
       const files = await recordConflicts(ctx.root);
-      ctx.warn(`충돌로 멈췄습니다 (${files.join(", ")}). 오른쪽 패널에서 해결한 뒤 위 배너의 계속을 누르세요.`);
+      ctx.warn(t("m.stopped", { files: files.join(", ") }));
       return true;
     }
     throw err;
@@ -37,12 +38,12 @@ const resolveFile: OpFn = async (ctx, [file, choice]: [string, "ours" | "theirs"
   const { root } = ctx;
   const unmerged = await unmergedFiles(root);
   if (!unmerged.includes(file) && !(choice === "both" && hasMarkers(root, file))) {
-    throw new Error(`${file} 은(는) 충돌 중인 파일이 아닙니다.`);
+    throw new Error(t("m.notConflicted", { file }));
   }
   if (choice === "both") {
     if (hasMarkers(root, file)) {
       opener?.(path.join(root, file));
-      ctx.warn(`${file} 을(를) 에디터로 열었습니다. <<<<<<< ======= >>>>>>> 표시를 정리하고 저장한 뒤 다시 "직접 편집" 을 누르면 해결로 표시합니다.`);
+      ctx.warn(t("m.openedEditor", { file }));
       return;
     }
     await ctx.run(["add", "--", file]);
@@ -61,33 +62,33 @@ const resolveFile: OpFn = async (ctx, [file, choice]: [string, "ours" | "theirs"
 /** 저장소 안의 파일 경로만 허용 (../ 로 밖을 가리키지 못하게) */
 export function insideRoot(root: string, file: string): string {
   const full = path.resolve(root, file);
-  if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error(`저장소 밖의 경로입니다: ${file}`);
+  if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error(t("m.outside", { path: file }));
   return full;
 }
 
 /** 앱의 충돌 편집기에서 고른 내용으로 파일을 쓰고 해결로 표시 */
 const resolveContent: OpFn = async (ctx, [file, text]: [string, string]) => {
   const full = insideRoot(ctx.root, file);
-  if (/^(<{7}|>{7}) /m.test(text)) throw new Error("아직 충돌 표시(<<<<<<< / >>>>>>>)가 남아 있습니다. 모든 충돌 구간을 고른 뒤 저장하세요.");
+  if (/^(<{7}|>{7}) /m.test(text)) throw new Error(t("m.markersLeft"));
   fs.writeFileSync(full, text);
-  ctx.note(`# ${file} 을(를) 충돌 편집기에서 고른 내용으로 저장`);
+  ctx.note(`# ${t("m.savedResolved", { file })}`);
   await ctx.run(["add", "--", file]);
 };
 
 const continueOp: OpFn = async (ctx) => {
   const { root } = ctx;
   const left = await unmergedFiles(root);
-  if (left.length) throw new Error(`아직 해결하지 않은 파일이 있습니다: ${left.join(", ")}`);
+  if (left.length) throw new Error(t("m.unresolved", { files: left.join(", ") }));
   const kind = readOpKind(root);
   const staged = ((await git(root, ["diff", "--cached", "--name-only", "-z"], { allowFail: true })) || "").split("\0");
   const marker = staged.filter((f) => f && hasMarkers(root, f));
-  if (marker.length) throw new Error(`충돌 표시(<<<<<<<)가 남아 있는 파일이 있습니다: ${marker.join(", ")}`);
+  if (marker.length) throw new Error(t("m.markersIn", { files: marker.join(", ") }));
   if (kind === "rebase") {
     // 커밋 분할 중이면 남은 변경이 없어야 계속할 수 있다
     const g = await gitDir(root);
     if (fs.existsSync(path.join(g, SPLIT_FILE))) {
       const dirty = ((await git(root, ["status", "--porcelain"], { allowFail: true })) || "").trim();
-      if (dirty) throw new Error("아직 커밋하지 않은 변경이 있습니다. 남은 변경을 커밋하거나 stage 해서 커밋한 뒤 계속하세요.");
+      if (dirty) throw new Error(t("m.uncommitted"));
       fs.rmSync(path.join(g, SPLIT_FILE), { force: true });
     }
     await runOrStop(ctx, ["rebase", "--continue"]);
@@ -101,7 +102,7 @@ const skipOp: OpFn = async (ctx) => {
   const kind = readOpKind(ctx.root);
   if (kind === "rebase") await runOrStop(ctx, ["rebase", "--skip"]);
   else if (kind === "cherry-pick") await runOrStop(ctx, ["cherry-pick", "--skip"]);
-  else throw new Error("건너뛸 수 있는 작업이 아닙니다.");
+  else throw new Error(t("m.cantSkip"));
 };
 
 const abortOp: OpFn = async (ctx) => {
@@ -112,7 +113,7 @@ const abortOp: OpFn = async (ctx) => {
   } else if (kind === "merge") await ctx.run(["merge", "--abort"]);
   else if (kind === "cherry-pick") await ctx.run(["cherry-pick", "--abort"]);
   else if (kind === "revert") await ctx.run(["revert", "--abort"]);
-  else throw new Error("중단할 진행 중 작업이 없습니다. 충돌 파일은 A 쪽이나 B 쪽을 골라 정리하세요.");
+  else throw new Error(t("m.nothingToAbort"));
 };
 
 export const conflictOps = { resolveFile, resolveContent, continueOp, skipOp, abortOp };

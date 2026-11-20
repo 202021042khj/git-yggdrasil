@@ -112,4 +112,6 @@ export interface RepoState {
   submodules?: SubmoduleInfo[];
   worktrees?: WorktreeInfo[];
   lfs?: LfsInfo;
+  /** 연 폴더가 아직 git 저장소가 아니다 (화면이 "git 시작하기"를 보여 준다. 나머지 값은 비어 있다) */
+  notGit?: boolean;
 }

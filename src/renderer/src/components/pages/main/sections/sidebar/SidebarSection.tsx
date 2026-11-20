@@ -12,11 +12,13 @@ import { openContextMenu } from "@/interactions/contextMenu";
 import { branchOrder, syncInfo } from "@/model/graph";
 import { layout } from "@/model/layout";
 import { saveSettings } from "@/components/pages/main/sections/dialogs/settingsUtils";
+import { t } from "@shared/i18n/i18n";
+import RichText from "@/components/common/RichText";
 import type { UseMainLogicResult } from "@/hooks/useMainLogic";
 
 const PULL_OPTIONS = [{ value: "merge", label: "merge" }, { value: "rebase", label: "rebase" }] as const;
 
-const checkout = (b: string) => void run({ op: "checkout", args: [b], summary: `${b} 로 전환` });
+const checkout = (b: string) => void run({ op: "checkout", args: [b], summary: t("act.switchTo", { branch: b }) });
 
 /** 사이드바: 저장소 · 브랜치 목록 (앞섬/뒤처짐, pull 배지) · 새 브랜치 · pull 방식 */
 const SidebarSection = ({ ui, repo }: UseMainLogicResult) => {
@@ -46,13 +48,13 @@ const SidebarSection = ({ ui, repo }: UseMainLogicResult) => {
 
   const handleNewBranch = async () => {
     const from = repo.head || (repo.detached ? short(repo.detached) : "");
-    const name = await askText("새 브랜치 이름", "feat/", `${from} 에서 새 브랜치를 만들고 전환합니다 (git switch -c).`);
-    if (name) void run({ op: "switchCreate", args: [name], summary: `${from} 에서 새 브랜치 ${name} 를 만들고 전환` });
+    const name = await askText(t("ask.newBranchName"), "feat/", t("sb.newBranchHint", { from }));
+    if (name) void run({ op: "switchCreate", args: [name], summary: t("sb.newBranchSummary", { from, name }) });
   };
 
   return (
     <>
-      <h3>저장소</h3>
+      <h3>{t("sb.repo")}</h3>
       <div id="repo-tree">
         <div className="tree">
           <div className="repo"><Icon name="folder" />{repo.repoName || ""}</div>
@@ -68,31 +70,31 @@ const SidebarSection = ({ ui, repo }: UseMainLogicResult) => {
                 data-checkout={b}
                 role="button"
                 tabIndex={0}
-                aria-label={`브랜치 ${b}${isHead ? ", 체크아웃됨" : ""}`}
-                title="더블클릭·Enter: checkout · 오른쪽 클릭·Shift+F10: 메뉴"
+                aria-label={t("graph.branchLabel", { name: b, head: isHead })}
+                title={t("sb.branchTip")}
                 onDoubleClick={() => { if (!isHead) checkout(b); }}
                 onKeyDown={(e) => handleRowKey(e, b)}
               >
                 <span className="dot" style={{ background: colorOf(b) }} />
                 {isHead && "◉ "}{b}
-                {wt && <span className="badge wt" title={`${wt.path} 에서 체크아웃 중 — 여기서는 체크아웃할 수 없습니다`}>다른 폴더</span>}
+                {wt && <span className="badge wt" title={t("sb.wtTip", { path: wt.path })}>{t("sb.wtBadge")}</span>}
                 {!remote
-                  ? <span className="badge">로컬</span>
+                  ? <span className="badge">{t("sb.local")}</span>
                   : behind
-                    ? <button type="button" className="badge pull" title={`클릭: pull (${ui.pullMode})`} onClick={() => void run({ op: "pull", args: [b, ui.pullMode], summary: `${b} pull (${ui.pullMode})` })}>{text} pull</button>
+                    ? <button type="button" className="badge pull" title={t("sb.pullTip", { mode: ui.pullMode })} onClick={() => void run({ op: "pull", args: [b, ui.pullMode], summary: t("top.pullSummary", { branch: b, mode: ui.pullMode }) })}>{text} pull</button>
                     : <span className="badge">{text}</span>}
               </div>
             );
           })}
           {!repo.head && repo.detached && (
-            <div className="detached-note">브랜치 없이 <code>{short(repo.detached)}</code> 를 보는 중입니다. 여기서 이어서 작업하려면 새 브랜치를 만드세요.</div>
+            <div className="detached-note"><RichText text={t("sb.detached", { id: short(repo.detached) })} /></div>
           )}
         </div>
       </div>
       <div className="repo-tools">
-        <button type="button" id="new-branch" className="small" title="git switch -c" onClick={() => void handleNewBranch()}>새 브랜치</button>
+        <button type="button" id="new-branch" className="small" title="git switch -c" onClick={() => void handleNewBranch()}>{t("sb.newBranch")}</button>
         <span className="muted">pull</span>
-        <Dropdown id="pull-mode" label="pull 방식" value={ui.pullMode} options={[...PULL_OPTIONS]} onChange={(v) => void saveSettings({ pullMode: v })} />
+        <Dropdown id="pull-mode" label={t("set.pull")} value={ui.pullMode} options={[...PULL_OPTIONS]} onChange={(v) => void saveSettings({ pullMode: v })} />
       </div>
     </>
   );

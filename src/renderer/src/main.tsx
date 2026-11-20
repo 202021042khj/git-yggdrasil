@@ -2,6 +2,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { syncLocale } from "@/app/locale";
 import { open, recent, refresh } from "@/app/repoSession";
 import { installDebug } from "@/dev/debug";
 import { mountContextMenu } from "@/interactions/contextMenu";
@@ -24,13 +25,15 @@ mountContextMenu();
 initGithub();
 installDebug();
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
-
-void loadSettings().then((s) => {
-  const last = recent()[0];
-  if (s.reopenLast && last) void open(window.gitApi.open(last));
+// 첫 화면부터 main 과 같은 언어로 그린다
+void syncLocale().then(() => {
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  );
+  void loadSettings().then((s) => {
+    const last = recent()[0];
+    if (s.reopenLast && last) void open(window.gitApi.open(last));
+  });
 });

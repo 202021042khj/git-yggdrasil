@@ -18,6 +18,7 @@ import { focusMessageInput } from "@/components/pages/main/sections/detail/detai
 import { askText } from "@/components/ui/dialogUtils";
 import { closeMenu, menuKey, openMenu } from "@/components/ui/menuUtils";
 import { toast } from "@/components/ui/toastUtils";
+import { t } from "@shared/i18n/i18n";
 
 interface DragState {
   src: DragSource;
@@ -84,9 +85,9 @@ export function hideInCanvas(): void {
 function tipHtml(res: Preview, n: number): string {
   const locked = touchesPushed(store.repo, res);
   return `<div class="sum">${esc(res.summary)}</div><code>${esc(res.cmd)}</code>
-    ${res.conflicts.length ? `<div class="warn">충돌 예상: ${res.conflicts.map(esc).join(", ")} — 현재 브랜치면 충돌 지점에서 멈추고 해결 모드로 들어갑니다</div>` : ""}
-    ${locked ? `<div class="lock">push 된 히스토리를 다시 씁니다 — 실행 전에 확인합니다</div>` : ""}
-    ${n > 1 ? `<div class="hint">놓으면 ${n}가지 중에서 고릅니다</div>` : ""}`;
+    ${res.conflicts.length ? `<div class="warn">${esc(t("drag.conflicts", { files: res.conflicts.join(", ") }))}</div>` : ""}
+    ${locked ? `<div class="lock">${esc(t("drag.rewritesPushed"))}</div>` : ""}
+    ${n > 1 ? `<div class="hint">${esc(t("drag.choices", { n }))}</div>` : ""}`;
 }
 
 // ---------- 끌기 시작: 놓을 곳마다 라벨 ----------
@@ -121,7 +122,7 @@ function begin(d: DragState): void {
     const pill = document.createElement("div");
     pill.className = `v2-pill k-${tgt.kind}`;
     const first = actions ? actions[0].verb : quickLabelVerb(d.src, tgt.id!, s);
-    pill.innerHTML = `<span class="v">${esc(tgt.kind === "canvas" ? "빈 곳에 놓기: " + first : first)}</span>${actions && actions.length > 1 ? `<span class="more">외 ${actions.length - 1}</span>` : ""}`;
+    pill.innerHTML = `<span class="v">${esc(tgt.kind === "canvas" ? t("drag.onCanvas", { verb: first }) : first)}</span>${actions && actions.length > 1 ? `<span class="more">${esc(t("drag.more", { n: actions.length - 1 }))}</span>` : ""}`;
     layer.appendChild(pill);
     const pw = pill.offsetWidth, ph = pill.offsetHeight;
     const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
@@ -131,7 +132,7 @@ function begin(d: DragState): void {
     placed.push({ tgt, actions, el, pill, hit: PANEL.has(tgt.kind) ? rect : { left: x, top: y, width: pw, height: ph } });
   }
   document.body.classList.add("v2-dragging");
-  if (!placed.length) toast("이 항목을 놓을 수 있는 곳이 없습니다.");
+  if (!placed.length) toast(t("drag.nowhere"));
 }
 
 function distToRect(x: number, y: number, r: Placed["hit"]): number {
@@ -152,12 +153,12 @@ function move(e: PointerEvent): void {
     const v = best.pill.querySelector(".v")!;
     if (!best.actions.length) {
       best.pill.classList.add("none");
-      v.textContent = "놓을 수 없음";
+      v.textContent = t("drag.cannotDrop");
       best.hit = { left: -1e6, top: -1e6, width: 0, height: 0 };
       best = null;
     } else {
       v.textContent = best.actions[0].verb;
-      if (best.actions.length > 1) best.pill.insertAdjacentHTML("beforeend", `<span class="more">외 ${best.actions.length - 1}</span>`);
+      if (best.actions.length > 1) best.pill.insertAdjacentHTML("beforeend", `<span class="more">${esc(t("drag.more", { n: best.actions.length - 1 }))}</span>`);
     }
   }
   if (best !== hover) {
@@ -210,7 +211,7 @@ export function actionMenuItem(src: DragSource, a: Action, label = a.verb) {
   return {
     label,
     cmd: a.res.cmd,
-    warn: [a.res.conflicts.length ? "충돌 예상" : "", locked ? "공유된 히스토리 재작성" : ""].filter(Boolean).join(" · ") || undefined,
+    warn: [a.res.conflicts.length ? t("drag.warnConflict") : "", locked ? t("drag.warnRewrite") : ""].filter(Boolean).join(" · ") || undefined,
     onHover: () => showInCanvas(a.res),
     onPick: () => void performAction(src, a),
   };
@@ -226,13 +227,13 @@ export async function performAction(src: DragSource, a: Action): Promise<void> {
     if (a.op === "stashPush") input.msg = typed || undefined;
     else {
       const first = src.kind === "file" ? [...s.working.staged, ...s.working.unstaged].find((f) => under(f, src.file!)) : s.working.staged[0] || s.working.unstaged[0];
-      const msg = typed || (await askText("커밋 메시지", "update " + (first || "").split("/").pop(), "메시지 칸에 미리 적어 두면 묻지 않습니다."));
+      const msg = typed || (await askText(t("drag.commitMsg"), "update " + (first || "").split("/").pop(), t("drag.commitMsgHint")));
       if (msg === null) return;
-      input.msg = msg || "새 커밋";
+      input.msg = msg || t("verb.defaultMsg");
       box.value = "";
     }
   } else if (a.needs === "name") {
-    const name = await askText("새 브랜치 이름", "feat/new");
+    const name = await askText(t("ask.newBranchName"), "feat/new");
     if (!name) return;
     input.name = name;
   }
@@ -261,7 +262,7 @@ function clickCommit(id: string, e: PointerEvent): void {
   }
   if (e.shiftKey && ui.selected) {
     const range = rangeOnStem(store.repo, ui.selected, id);
-    if (!range) { toast("범위 선택은 같은 브랜치(줄기) 안에서만 됩니다. 다른 브랜치의 커밋은 ⌘ 클릭으로 더하세요."); return; }
+    if (!range) { toast(t("drag.rangeSameStem")); return; }
     store.update({ multi: range, selectedFile: null });
     return;
   }
@@ -279,7 +280,7 @@ export function mountDrag(onCommitDoubleClick: (id: string) => void = focusMessa
     const el = target.closest<HTMLElement>("[data-drag]");
     if (!el) return;
     const src = withSelection(sourceFromElement(el));
-    if (src.kind === "working" && !store.repo.working.staged.length && !store.repo.working.unstaged.length) { toast("커밋할 변경이 없습니다."); return; }
+    if (src.kind === "working" && !store.repo.working.staged.length && !store.repo.working.unstaged.length) { toast(t("pv.noChanges")); return; }
     drag = { src, srcEl: el, startX: e.clientX, startY: e.clientY, active: false };
     e.preventDefault();
   });

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import useModal from "@/hooks/useModal";
 import useSmallStore from "@/hooks/useSmallStore";
 import { askStore } from "@/components/ui/dialogUtils";
+import { t } from "@shared/i18n/i18n";
 
 /** askText() 로 여는 한 줄 입력창 */
 const AskDialog = () => {
@@ -50,8 +51,8 @@ const AskDialog = () => {
         {ask?.hint && <p id="ask-hint" className="muted">{ask.hint}</p>}
         <input id="ask-input" ref={inputRef} type="text" autoComplete="off" spellCheck={false} value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={handleKeyDown} />
         <div className="ask-actions">
-          <button type="button" className="primary" onClick={() => finish(true)}>확인</button>
-          <button type="button" onClick={() => finish(false)}>취소</button>
+          <button type="button" className="primary" onClick={() => finish(true)}>{t("common.ok")}</button>
+          <button type="button" onClick={() => finish(false)}>{t("common.cancel")}</button>
         </div>
       </form>
     </dialog>

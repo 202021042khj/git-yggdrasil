@@ -26,10 +26,15 @@ export function makeRepo(tmp: string): string {
   return repo;
 }
 
-export async function launch(): Promise<Ctx> {
+/** language: 화면 언어. 기존 시험은 한국어 문구로 찾으므로 기본은 ko (OS 언어와 상관없이 같은 결과) */
+export async function launch(language: "ko" | "en" = "ko"): Promise<Ctx> {
   const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "ygg-e2e-")));
   const repo = makeRepo(tmp);
-  const app = await electron.launch({ args: ["."], env: { ...process.env, YGG_PROFILE: path.join(tmp, "profile") } as Record<string, string> });
+  // 따로 된 프로필에 언어를 적어 두고 띄운다 (실제 설정 파일은 건드리지 않는다)
+  const profile = path.join(tmp, "profile");
+  fs.mkdirSync(profile, { recursive: true });
+  fs.writeFileSync(path.join(profile, "settings.json"), JSON.stringify({ language }));
+  const app = await electron.launch({ args: ["."], env: { ...process.env, YGG_PROFILE: profile } as Record<string, string> });
   const page = await app.firstWindow();
   await page.waitForFunction(() => !!(globalThis as unknown as { __yggDebug?: unknown }).__yggDebug);
   await page.evaluate((dir) => (globalThis as unknown as { __yggDebug: { openRepo(d: string): Promise<void> } }).__yggDebug.openRepo(dir), repo);
@@ -52,4 +57,18 @@ export async function dragTo(page: Page, from: string, to: string): Promise<void
   await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 15 });
   await page.waitForTimeout(150);
   await page.mouse.up();
+}
+
+// Electron 은 새 페이지를 열 수 없어 AxeBuilder 대신 axe-core 를 직접 넣어 돌린다 (CSP 와 무관한 evaluate)
+const AXE = fs.readFileSync(path.join(process.cwd(), "node_modules/axe-core/axe.min.js"), "utf8");
+interface Violation { id: string; impact: string; help: string; nodes: Array<{ target: string[] }> }
+
+export async function scan(page: Page, include?: string): Promise<string[]> {
+  await page.evaluate(AXE);
+  const violations = await page.evaluate(async (sel) => {
+    const axe = (globalThis as unknown as { axe: { run(ctx: unknown, opts: unknown): Promise<{ violations: Violation[] }> } }).axe;
+    const r = await axe.run({ include: [sel ?? "html"] }, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] } });
+    return r.violations.map((v) => ({ id: v.id, impact: v.impact, help: v.help, nodes: v.nodes.map((n) => ({ target: n.target })) }));
+  }, include ?? null);
+  return violations.map((v) => `${v.id} (${v.impact}): ${v.help}\n    ${v.nodes.slice(0, 4).map((n) => n.target.join(" ")).join("\n    ")}`);
 }

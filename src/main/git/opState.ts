@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { git } from "@/git/cli";
 import { readStatus } from "@/git/status";
+import { t } from "@shared/i18n/i18n";
 import type { OpKind, OpState } from "@shared/types/repo";
 
 /** 앱이 멈춘 시점의 충돌 파일 목록 (해결한 파일을 ✓ 로 보여 주려고 남긴다) */
@@ -47,7 +48,7 @@ export async function readOpState(root: string, unmerged: string[], head: string
     const dir = path.join(g, has("rebase-merge") ? "rebase-merge" : "rebase-apply");
     const branch = readText(path.join(dir, "head-name")).replace(/^refs\/heads\//, "");
     const onto = readText(path.join(dir, "onto"));
-    const ontoName = (onto && (await branchAt(root, onto))) || (onto ? onto.slice(0, 7) : "대상");
+    const ontoName = (onto && (await branchAt(root, onto))) || (onto ? onto.slice(0, 7) : t("os.target"));
     const step = Number(readText(path.join(dir, "msgnum")) || readText(path.join(dir, "next")) || 1);
     const total = Number(readText(path.join(dir, "end")) || readText(path.join(dir, "last")) || step);
     const cur = has("REBASE_HEAD") ? await subjectOf(root, "REBASE_HEAD") : "";
@@ -56,28 +57,28 @@ export async function readOpState(root: string, unmerged: string[], head: string
     try { split = JSON.parse(fs.readFileSync(path.join(g, SPLIT_FILE), "utf8")); } catch { split = null; }
     if (split && !unmerged.length) {
       // 커밋 분할: rebase 가 그 커밋에서 멈춰 있고, 커밋의 변경은 작업 영역에 풀려 있다
-      op = { kind: "split", branch, title: `"${split.msg}" 커밋 나누기`, step: Math.max(0, step - 1), total,
+      op = { kind: "split", branch, title: t("ctx.splitSummary", { msg: split.msg }), step: Math.max(0, step - 1), total,
         current: { msg: split.msg, files: split.files }, tip, oursName: "", theirsName: "" };
     } else {
-      op = { kind: "rebase", branch, title: `${branch} 를 ${ontoName} 위로 rebase`, step: Math.max(0, step - 1), total,
-        current: { msg: cur || "(현재 커밋)" }, tip, oursName: `대상 ${ontoName}`, theirsName: `적용 중인 커밋 "${cur}"` };
+      op = { kind: "rebase", branch, title: t("os.rebase", { branch, onto: ontoName }), step: Math.max(0, step - 1), total,
+        current: { msg: cur || t("os.currentCommit") }, tip, oursName: t("os.ontoSide", { name: ontoName }), theirsName: t("os.applying", { msg: cur }) };
     }
   } else if (has("MERGE_HEAD")) {
     const msg = readText(path.join(g, "MERGE_MSG")).split("\n")[0];
-    const from = (msg.match(/^Merge (?:remote-tracking )?branch '([^']+)'/) || [])[1] || "들어오는 쪽";
-    op = { kind: "merge", title: msg || "merge", oursName: `현재 ${head || "HEAD"}`, theirsName: from };
+    const from = (msg.match(/^Merge (?:remote-tracking )?branch '([^']+)'/) || [])[1] || t("os.incoming");
+    op = { kind: "merge", title: msg || "merge", oursName: t("os.current", { name: head || "HEAD" }), theirsName: from };
   } else if (has("CHERRY_PICK_HEAD")) {
     const cur = await subjectOf(root, "CHERRY_PICK_HEAD");
     const todo = readText(path.join(g, "sequencer", "todo")).split("\n").filter((l) => /^\w/.test(l)).length;
-    op = { kind: "cherry-pick", title: `${head || "HEAD"} 에 cherry-pick`, step: 0, total: Math.max(1, todo),
-      current: { msg: cur }, oursName: `현재 ${head || "HEAD"}`, theirsName: `가져오는 커밋 "${cur}"` };
+    op = { kind: "cherry-pick", title: t("os.cherryPick", { branch: head || "HEAD" }), step: 0, total: Math.max(1, todo),
+      current: { msg: cur }, oursName: t("os.current", { name: head || "HEAD" }), theirsName: t("os.picking", { msg: cur }) };
   } else if (has("REVERT_HEAD")) {
     const cur = await subjectOf(root, "REVERT_HEAD");
-    op = { kind: "revert", title: `"${cur}" 되돌리기 (revert)`, step: 0, total: 1, current: { msg: `Revert "${cur}"` },
-      oursName: `현재 ${head || "HEAD"}`, theirsName: `되돌리는 커밋 "${cur}"` };
+    op = { kind: "revert", title: t("os.revert", { msg: cur }), step: 0, total: 1, current: { msg: `Revert "${cur}"` },
+      oursName: t("os.current", { name: head || "HEAD" }), theirsName: t("os.reverting", { msg: cur }) };
   } else if (unmerged.length) {
     // 진행 중인 작업 없이 충돌 파일만 있는 경우 (예: stash pop 충돌)
-    op = { kind: "files", title: "충돌 파일 정리", oursName: "현재 작업 영역", theirsName: "적용한 변경 (예: stash)" };
+    op = { kind: "files", title: t("os.files"), oursName: t("os.filesOurs"), theirsName: t("os.filesTheirs") };
   }
 
   if (!op) {

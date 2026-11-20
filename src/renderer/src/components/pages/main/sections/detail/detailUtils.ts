@@ -7,6 +7,7 @@ import { blocked, run } from "@/app/actions";
 import { store } from "@/app/store";
 import { DIFF_PREFS_KEY } from "@/constants/storage";
 import { pushedSet } from "@/model/graph";
+import { t } from "@shared/i18n/i18n";
 
 export interface DiffPrefs {
   split: boolean;
@@ -38,7 +39,7 @@ export const reword = async (id: string, next: string): Promise<void> => {
   const s = store.repo;
   if (blocked()) return;
   const msg = next.trim();
-  if (!msg || msg === s.commits[id].msg) { toast(msg ? "메시지가 같습니다." : "메시지가 비어 있습니다."); return; }
-  if (pushedSet(s).has(id) && !confirmAction("push 된 커밋의 메시지를 바꿉니다.\n원격과 히스토리가 달라져서 이후 force push 가 필요합니다. 계속할까요?")) return;
-  await run({ op: "reword", args: [id, msg], summary: `${short(id)} "${s.commits[id].msg}" 메시지 → "${msg}"` });
+  if (!msg || msg === s.commits[id].msg) { toast(msg ? t("dt.sameMsg") : t("dt.emptyMsg")); return; }
+  if (pushedSet(s).has(id) && !confirmAction(t("dt.confirmReword"))) return;
+  await run({ op: "reword", args: [id, msg], summary: t("dt.rewordSummary", { id: short(id), from: s.commits[id].msg, to: msg }) });
 };

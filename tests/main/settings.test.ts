@@ -6,9 +6,10 @@ vi.mock("electron", () => ({ BrowserWindow: { getAllWindows: () => [] }, ipcMain
 const { sanitize, splitCommand } = await import("@/settings");
 
 test("잘못되거나 빠진 값은 기본값, 범위 밖은 끝값으로", () => {
-  assert.deepEqual(sanitize(null), { theme: "system", zoom: 1, editor: "", autoFetchMinutes: 0, reopenLast: true, pullMode: "merge" });
-  const s = sanitize({ theme: "purple", zoom: 9, editor: "  code -w ", autoFetchMinutes: -3, reopenLast: "yes", pullMode: "rebase" });
-  assert.deepEqual(s, { theme: "system", zoom: 1.5, editor: "code -w", autoFetchMinutes: 0, reopenLast: true, pullMode: "rebase" });
+  assert.deepEqual(sanitize(null), { theme: "system", zoom: 1, editor: "", autoFetchMinutes: 0, reopenLast: true, pullMode: "merge", language: "system" });
+  const s = sanitize({ theme: "purple", zoom: 9, editor: "  code -w ", autoFetchMinutes: -3, reopenLast: "yes", pullMode: "rebase", language: "fr" });
+  assert.deepEqual(s, { theme: "system", zoom: 1.5, editor: "code -w", autoFetchMinutes: 0, reopenLast: true, pullMode: "rebase", language: "system" });
+  assert.equal(sanitize({ language: "en" }).language, "en");
   assert.equal(sanitize({ zoom: 0.873 }).zoom, 0.87);
 });
 

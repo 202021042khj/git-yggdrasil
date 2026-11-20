@@ -1,5 +1,6 @@
 import useSmallStore from "@/hooks/useSmallStore";
 import { ghStatusStore, login, logout } from "@/components/pages/main/sections/dialogs/githubUtils";
+import { t } from "@shared/i18n/i18n";
 
 /** 상단의 GitHub 계정 단추: 로그인 · 로그아웃 */
 const GithubAccountButton = () => {
@@ -11,10 +12,10 @@ const GithubAccountButton = () => {
       type="button"
       id="gh-account"
       className="small gh-account"
-      title={u ? `${u.name} (${u.login}) — 클릭하면 로그아웃` : "GitHub 계정으로 로그인하면 push·pull 인증, 내 저장소 clone, PR 만들기를 쓸 수 있습니다"}
+      title={u ? t("gh.accountTip", { name: u.name, login: u.login }) : t("gh.loginTip")}
       onClick={() => void (status.loggedIn ? logout() : login())}
     >
-      {u ? <>{u.avatar && <img src={`${u.avatar}&s=36`} alt="" />}{u.login}</> : "GitHub 로그인"}
+      {u ? <>{u.avatar && <img src={`${u.avatar}&s=36`} alt="" />}{u.login}</> : t("gh.login")}
     </button>
   );
 };

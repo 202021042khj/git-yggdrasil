@@ -1,6 +1,6 @@
 # Git Yggdrasil (Electron)
 
-git 히스토리를 그래프 위에서 끌어 놓아 다루는 데스크톱 git 클라이언트입니다.
+git 히스토리를 그래프 위에서 끌어 놓아 다루는 데스크톱 git 클라이언트입니다. 화면은 한국어와 영어를 지원합니다 (설정 → 언어 / Language, 기본은 OS 언어).
 electron-vite + TypeScript 로 만들었고, 코드 구조 규칙은 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 에 있습니다.
 
 ## 실행
@@ -64,7 +64,7 @@ npm run dist:mac # 배포용 .dmg (docs/RELEASE.md)
 - 커밋 정리(interactive rebase): 브랜치 이름표 오른쪽 클릭 → 순서 바꾸기·메시지 수정·합치기(squash/fixup)·빼기를 한 창에서 정하고 미리 본 뒤 실행. 체크아웃 없이 처리하고, 충돌이 나면 현재 브랜치에서는 실제 rebase -i 로 멈춰 해결
 - 서브모듈(상태·받기·열기), worktree(목록·다른 폴더에 체크아웃·열기·지우기, 다른 폴더가 쓰는 브랜치 표시), Git LFS 파일 표시와 미설치 안내
 - 예전 커밋 찾기(reflog): HEAD 기록과 앱 백업을 보여 주고, 어느 브랜치에서도 닿지 않는 커밋을 표시. 새 브랜치로 살리기·현재 브랜치에 복사·그 커밋으로 되돌리기(reset --keep)
-- 설정 (⌘,): 화면 색(시스템·밝게·어둡게), 글자 크기, 외부 에디터 명령, 자동 fetch, pull 방식, 켤 때 마지막 저장소 열기
+- 설정 (⌘,): 언어(시스템·한국어·English), 화면 색(시스템·밝게·어둡게), 글자 크기, 외부 에디터 명령, 자동 fetch, pull 방식, 켤 때 마지막 저장소 열기
 - 키보드만으로 사용: 그래프 화살표 탐색, Enter 고르기, Space 여러 개, Shift+F10 메뉴 (docs/ARCHITECTURE.md 의 접근성 표)
 - 다른 OAuth App 으로 시험하려면 `YGG_GH_CLIENT_ID` 환경 변수로 Client ID 를 바꿀 수 있음
 
@@ -88,5 +88,6 @@ tests/        Vitest 통합 테스트
 npm run build
 YGG_SMOKE=/path/to/repo YGG_SHOT=/tmp/shot.png npx electron .
 # 화면에서 시나리오 실행: YGG_EVAL=/path/to/scenario.js 를 함께 주면 결과를 같이 출력
+# 화면 언어 지정: YGG_LANG=en (또는 ko)
 ```
 

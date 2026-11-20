@@ -1,6 +1,7 @@
 // 앱 설정: 읽기 · 저장 · 자동 fetch (화면 색·글자 크기는 메인 프로세스가 적용한다)
 import { createStore } from "@/lib/createStore";
-import { show } from "@/app/repoSession";
+import { syncLocale } from "@/app/locale";
+import { refresh, show } from "@/app/repoSession";
 import { store } from "@/app/store";
 import { PULL_MODE_KEY } from "@/constants/storage";
 import { DEFAULT_SETTINGS, type Settings } from "@shared/types/ipc";
@@ -30,6 +31,10 @@ export const saveSettings = async (patch: Partial<Settings>): Promise<void> => {
   settingsStore.set(next);
   if (patch.pullMode) store.update({ pullMode: next.pullMode });
   if (patch.autoFetchMinutes !== undefined) scheduleFetch();
+  if (patch.language !== undefined) {
+    await syncLocale(); // main 이 정한 언어로 (main 은 메뉴도 다시 만든다)
+    if (store.hasRepo()) void refresh(); // 멈춘 작업 제목처럼 main 이 만든 문구도 새 언어로
+  }
 };
 
 export const openSettings = () => settingsOpenStore.set(true);

@@ -7,6 +7,7 @@ import { store } from "@/app/store";
 import { dimmedCommits, visibleRepo } from "@/model/filter";
 import { renderGraph } from "@/model/layout";
 import { keyboardFocus, moveFocus, nextNode, pinLaneNames } from "@/components/pages/main/sections/canvas/canvasUtils";
+import { t } from "@shared/i18n/i18n";
 import type { UseMainLogicResult } from "@/hooks/useMainLogic";
 
 /** 캔버스: 커밋 그래프 · 결과 미리보기 겹침 · 레인 이름 고정 · 이전 커밋 더 불러오기 */
@@ -75,7 +76,7 @@ const CanvasSection = ({ ui, repo }: UseMainLogicResult) => {
           id="graph"
           ref={graphRef}
           role="group"
-          aria-label="커밋 그래프"
+          aria-label={t("canvas.graph")}
           aria-describedby="graph-help"
           width={g.width}
           height={Math.max(g.height, size.h - 4)}
@@ -84,12 +85,12 @@ const CanvasSection = ({ ui, repo }: UseMainLogicResult) => {
           // biome-ignore lint/security/noDangerouslySetInnerHtml: 그래프 SVG 는 model/layout 이 값을 이스케이프해 만든 문자열이다
           dangerouslySetInnerHTML={{ __html: g.svg }}
         />
-        <p id="graph-help" className="sr-only">화살표로 커밋 사이를 움직이고 Enter 로 고릅니다. Space 는 여러 개 고르기, Shift+F10 은 할 일 메뉴, Home 과 End 는 줄기의 처음과 끝입니다.</p>
+        <p id="graph-help" className="sr-only">{t("canvas.help")}</p>
         {/* 드래그 중 결과 미리보기 (interactions/drag 가 직접 채운다) */}
         <svg id="ghost-graph" aria-hidden="true" />
       </section>
       <button type="button" id="load-more" className="load-more" hidden={!repo.truncated} disabled={loadingMore} onClick={() => void handleLoadMore()}>
-        이전 커밋 더 불러오기 ({shown.toLocaleString()} / {(repo.totalCommits || shown).toLocaleString()})
+        {t("canvas.more", { shown: shown.toLocaleString(), total: (repo.totalCommits || shown).toLocaleString() })}
       </button>
     </>
   );

@@ -4,6 +4,7 @@ import path from "node:path";
 import { app, type BrowserWindow } from "electron";
 import { repoRoot } from "@/git/cli";
 import { readRepo } from "@/git/readRepo";
+import { t } from "@shared/i18n/i18n";
 import type { RepoState } from "@shared/types/repo";
 
 let win: BrowserWindow | null = null;
@@ -34,8 +35,9 @@ function watch(root: string): void {
 }
 
 export async function openRepo(dir: string): Promise<RepoState> {
-  const root = await repoRoot(dir);
-  if (!root) throw new Error(`git 저장소가 아닙니다: ${dir}`);
+  if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new Error(t("m.noFolder", { path: dir }));
+  // git 저장소가 아니어도 연다 (화면이 "git 시작하기" 를 보여 준다)
+  const root = (await repoRoot(dir)) ?? path.resolve(dir);
   current = root;
   watch(root);
   app.addRecentDocument(root);
@@ -43,6 +45,6 @@ export async function openRepo(dir: string): Promise<RepoState> {
 }
 
 export function requireRoot(): string {
-  if (!current) throw new Error("열린 저장소가 없습니다.");
+  if (!current) throw new Error(t("m.noRepo"));
   return current;
 }

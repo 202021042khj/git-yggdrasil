@@ -1,8 +1,9 @@
 // 커밋 그래프 배치와 SVG 그리기
-import { CHAR_W, DX, DY, LABEL_STEP, LANE_COLORS, OP_REF, PADX, TOP } from "@/constants/layout";
+import { CHAR_W, DX, DY, LABEL_STEP, LANE_COLORS, opRef, PADX, TOP } from "@/constants/layout";
 import { esc, short, trunc, truncMiddle } from "@/lib/html";
 import { relTime } from "@/lib/time";
 import { ancestors, generations, pushedSet, stems, type Stem } from "@/model/graph";
+import { t } from "@shared/i18n/i18n";
 import type { RepoState } from "@shared/types/repo";
 
 export interface Lane extends Stem {
@@ -33,7 +34,7 @@ function refsAt(s: RepoState): Record<string, RefLabel[]> {
   if (s.detached && !s.head) add(s.detached, { name: "HEAD", kind: "detached" });
   for (const [r, id] of Object.entries(s.remotes)) add(id, { name: r, kind: "remote" });
   for (const t of Object.values(s.tags || {})) add(t.target, { name: t.name, kind: "tag" });
-  if (s.op?.tip) (at[s.op.tip] ||= []).unshift({ name: OP_REF, kind: "op" });
+  if (s.op?.tip) (at[s.op.tip] ||= []).unshift({ name: opRef(), kind: "op" });
   const order: RefKind[] = ["detached", "op", "local", "tag", "remote"];
   Object.values(at).forEach((list) => list.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)));
   return at;
@@ -127,7 +128,7 @@ export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
   out.push(`<rect class="bg" data-drop="canvas" x="0" y="0" width="${W}" height="${L.height}"/>`);
   if (opts.interactive) {
     out.push(`<g class="remote-band" data-drop="remote"><rect x="0" y="0" width="${W}" height="44"/>
-      <text id="remote-band-label" x="16" y="27">origin: 브랜치 이름표나 태그를 여기로 끌어 놓으면 push</text></g>`);
+      <text id="remote-band-label" x="16" y="27">${esc(t("graph.remoteBand"))}</text></g>`);
   }
 
   // 간선
@@ -167,10 +168,10 @@ export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
     const shape = cm.parents.length > 1
       ? `<rect x="-10" y="-10" width="20" height="20" transform="rotate(45)" style="stroke:${p.lane.color};fill:${fill}"/>`
       : `<circle r="11" style="stroke:${p.lane.color};fill:${fill}"/>`;
-    const tip = `${short(c)} ${cm.msg}${cm.author ? `\n${cm.author} · ${relTime(cm.date)}` : ""}\n파일: ${cm.files.join(", ") || "-"}\n${isPushed ? "push 됨 (공유된 히스토리)" : "로컬 전용 (자유롭게 편집 가능)"}`;
+    const tip = `${short(c)} ${cm.msg}${cm.author ? `\n${cm.author} · ${relTime(cm.date)}` : ""}\n${t("graph.tipFiles", { files: cm.files.join(", ") || "-" })}\n${isPushed ? t("graph.tipPushed") : t("graph.tipLocal")}`;
     // 화면 낭독기용 이름: 메시지 · 해시 · 줄기 · 공유 여부 · HEAD (그래프 안에서는 화살표로 이동, 하나만 Tab 으로 닿는다)
     const where = labels[c]?.filter((r) => r.kind === "local").map((r) => r.name).join(", ");
-    const spoken = `커밋 ${cm.msg}, ${short(c)}, ${p.lane.name.startsWith("·") ? "이름 없는 줄기" : `${p.lane.name} 줄기`}${where ? `, 브랜치 ${where} 끝` : ""}${c === headTip ? ", 지금 체크아웃" : ""}, ${isPushed ? "push 됨" : "로컬 전용"}${cm.parents.length > 1 ? ", merge 커밋" : ""}`;
+    const spoken = t("graph.commitLabel", { msg: cm.msg, id: short(c), lane: p.lane.name.startsWith("·") ? null : p.lane.name, tipOf: where || null, head: c === headTip, pushed: isPushed, merge: cm.parents.length > 1 });
     const focusable = opts.interactive && c === (opts.focusId ?? opts.selected ?? headTip);
     out.push(`<g class="${cls}" ${opts.interactive ? `data-drag="commit" data-drop="commit" data-id="${c}" role="button" aria-label="${esc(spoken)}" aria-pressed="${opts.selected === c || !!opts.multi?.has(c)}" tabindex="${focusable ? 0 : -1}"` : ""} transform="translate(${p.x},${p.y})">
       ${c === headTip ? `<circle class="halo" r="17"/>` : ""}${shape}
@@ -201,9 +202,9 @@ function refLabel(s: RepoState, r: RefLabel, x: number, y: number, laneColor: st
     }
   }
   const prefix = isHead ? "◉ " : r.kind === "tag" ? "⚑ " : r.kind === "detached" ? "◉ " : "";
-  let full = prefix + (r.kind === "detached" ? "HEAD (브랜치 없음)" : r.name) + (incoming ? ` ↓${incoming}` : "");
+  let full = prefix + (r.kind === "detached" ? t("graph.detached") : r.name) + (incoming ? ` ↓${incoming}` : "");
   // 원격 이름표가 넘치면 "origin/" 대신 "원격" 으로 줄여 브랜치 이름을 살린다
-  if (r.kind === "remote" && full.length > Math.floor((DX - 30) / CHAR_W)) full = "원격 " + r.name.replace(/^[^/]+\//, "") + (incoming ? ` ↓${incoming}` : "");
+  if (r.kind === "remote" && full.length > Math.floor((DX - 30) / CHAR_W)) full = t("graph.remoteShort", { name: r.name.replace(/^[^/]+\//, "") }) + (incoming ? ` ↓${incoming}` : "");
   const text = truncMiddle(full, Math.floor((DX - 30) / CHAR_W));
   const w = text.length * CHAR_W + 18;
   const color = r.kind === "local" ? laneColor : r.kind === "op" || r.kind === "detached" ? "var(--warn)" : r.kind === "tag" ? "var(--tag)" : "var(--lane-remote)";
@@ -211,10 +212,10 @@ function refLabel(s: RepoState, r: RefLabel, x: number, y: number, laneColor: st
     : r.kind === "local" ? `data-drag="label" data-drop="label" data-branch="${esc(r.name)}"`
     : r.kind === "remote" ? `data-drag="remote" data-remote="${esc(r.name)}"`
     : r.kind === "tag" ? `data-drag="tag" data-tag="${esc(r.name)}"` : "";
-  const title = r.kind === "tag" ? `태그 ${r.name}${s.tags?.[r.name]?.message ? `\n${s.tags[r.name].message}` : ""}`
-    : `${r.name}${incoming ? `\n받을 커밋 ${incoming}개 — 로컬 이름표로 끌어 놓으면 pull` : ""}`;
-  const spoken = r.kind === "tag" ? `태그 ${r.name}` : r.kind === "remote" ? `원격 브랜치 ${r.name}${incoming ? `, 받을 커밋 ${incoming}개` : ""}`
-    : r.kind === "detached" ? "HEAD, 브랜치 없음" : r.kind === "op" ? "진행 중인 작업" : `브랜치 ${r.name}${isHead ? ", 체크아웃됨" : ""}`;
+  const title = r.kind === "tag" ? `${t("src.tag", { name: r.name })}${s.tags?.[r.name]?.message ? `\n${s.tags[r.name].message}` : ""}`
+    : `${r.name}${incoming ? `\n${t("graph.incomingTip", { n: incoming })}` : ""}`;
+  const spoken = r.kind === "tag" ? t("src.tag", { name: r.name }) : r.kind === "remote" ? t("graph.remoteLabel", { name: r.name, n: incoming })
+    : r.kind === "detached" ? t("graph.detachedLabel") : r.kind === "op" ? t("graph.opLabel") : t("graph.branchLabel", { name: r.name, head: isHead });
   const a11y = interactive ? ` role="button" aria-label="${esc(spoken)}" tabindex="-1"` : "";
   return `<g class="ref ${r.kind} ${isHead ? "head" : ""} ${incoming ? "incoming" : ""}" ${attrs}${a11y} transform="translate(${x - w / 2},${y})">
     <rect width="${w}" height="20" rx="10" style="stroke:${color};fill:${r.kind === "remote" || r.kind === "tag" ? "var(--bg)" : color}"/>

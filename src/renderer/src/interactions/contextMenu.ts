@@ -12,6 +12,7 @@ import { open } from "@/app/repoSession";
 import { askText, confirmAction } from "@/components/ui/dialogUtils";
 import { openMenu, type MenuItem } from "@/components/ui/menuUtils";
 import { toast } from "@/components/ui/toastUtils";
+import { t } from "@shared/i18n/i18n";
 
 /** 메뉴 항목을 더하는 곳 (예: GitHub PR 만들기). 섹션이 등록한다 */
 export type ContextProvider = (src: DragSource) => MenuItem[];
@@ -45,59 +46,59 @@ function extraItems(src: DragSource): MenuItem[] {
   const s = store.repo;
   const items: MenuItem[] = [];
   if (src.ids && src.ids.length > 1) {
-    items.push(direct("선택 풀기", "", () => store.update({ multi: [] })));
+    items.push(direct(t("ctx.clearSelection"), "", () => store.update({ multi: [] })));
     return items;
   }
   if (src.kind === "commit" && src.id) {
     const id = src.id;
-    items.push(direct("여기서 새 브랜치…", `git branch <이름> ${short(id)}`, async () => {
-      const name = await askText("새 브랜치 이름", "feat/new");
-      if (name) await run({ op: "createBranch", args: [name, id], summary: `${short(id)} 에서 새 브랜치 ${name}` });
+    items.push(direct(t("ctx.newBranch"), `git branch ${t("ctx.ph.name")} ${short(id)}`, async () => {
+      const name = await askText(t("ask.newBranchName"), "feat/new");
+      if (name) await run({ op: "createBranch", args: [name, id], summary: t("pv.createBranch", { commit: short(id), name }) });
     }));
-    items.push(direct("태그 달기…", `git tag <이름> ${short(id)}`, async () => {
-      const name = await askText("태그 이름", "v", "예: v1.0.0");
+    items.push(direct(t("ctx.tag"), `git tag ${t("ctx.ph.name")} ${short(id)}`, async () => {
+      const name = await askText(t("ctx.tagName"), "v", t("ctx.tagNameHint"));
       if (!name) return;
-      const message = await askText("태그 설명 (선택)", "", "비워 두면 설명 없는 가벼운 태그, 적으면 주석 태그(-a)를 만듭니다.");
+      const message = await askText(t("ctx.tagMessage"), "", t("ctx.tagMessageHint"));
       if (message === null) return;
-      await run({ op: "tagCreate", args: [name, id, message || undefined], summary: `태그 ${name} 달기 (${short(id)})` });
+      await run({ op: "tagCreate", args: [name, id, message || undefined], summary: t("ctx.tagSummary", { name, commit: short(id) }) });
     }));
-    items.push(direct("이 커밋을 임시로 체크아웃", `git switch --detach ${short(id)}`, () =>
-      void run({ op: "checkoutCommit", args: [id], summary: `${short(id)} 임시 체크아웃 (브랜치 없음)` })));
+    items.push(direct(t("ctx.detach"), `git switch --detach ${short(id)}`, () =>
+      void run({ op: "checkoutCommit", args: [id], summary: t("ctx.detachSummary", { commit: short(id) }) })));
     if (s.head && s.branches[s.head] && isAncestor(s, id, s.branches[s.head]) && s.commits[id].parents.length === 1) {
-      items.push(direct("이 커밋 나누기…", "git rebase -i (edit) && git reset HEAD~1", () => {
-        if (s.working.staged.length || s.working.unstaged.length) { toast("작업 영역에 변경이 있습니다. 먼저 커밋하거나 stash 한 뒤 나누세요."); return; }
-        if (!confirmAction(`"${s.commits[id].msg}" 커밋을 여러 개로 나눕니다.\n커밋의 변경이 작업 영역으로 풀리고, 파일이나 변경 덩어리를 골라 나눠 커밋한 뒤 위 배너의 계속을 누르면 됩니다.`)) return;
-        void run({ op: "splitCommit", args: [id], summary: `"${s.commits[id].msg}" 커밋 나누기` });
+      items.push(direct(t("ctx.split"), "git rebase -i (edit) && git reset HEAD~1", () => {
+        if (s.working.staged.length || s.working.unstaged.length) { toast(t("ctx.splitDirty")); return; }
+        if (!confirmAction(t("ctx.splitConfirm", { msg: s.commits[id].msg }))) return;
+        void run({ op: "splitCommit", args: [id], summary: t("ctx.splitSummary", { msg: s.commits[id].msg }) });
       }));
     }
   }
   if (src.kind === "label" && src.branch && s.branches[src.branch]) {
     const b = src.branch;
-    items.push(direct("이름 바꾸기…", `git branch -m ${b} <새 이름>`, async () => {
-      const to = await askText("새 브랜치 이름", b, `${b} 의 이름을 바꿉니다.`);
+    items.push(direct(t("ctx.rename"), `git branch -m ${b} ${t("ctx.ph.newName")}`, async () => {
+      const to = await askText(t("ask.newBranchName"), b, t("ctx.renameHint", { branch: b }));
       if (!to || to === b) return;
-      if (s.branches[to]) { toast(`${to} 브랜치가 이미 있습니다.`); return; }
+      if (s.branches[to]) { toast(t("pv.branchExists", { name: to })); return; }
       const up = s.upstream?.[b];
-      const withRemote = !!up && confirmAction(`${b} 은(는) 원격 ${up} 와 연결되어 있습니다.\n원격에도 ${to} 로 올리고 옛 이름(${up})을 원격에서 지울까요?\n\n확인 = 원격까지 변경, 취소 = 로컬 이름만 변경`);
-      await run({ op: "renameBranch", args: [b, to, withRemote], summary: `${b} → ${to} 이름 변경${withRemote ? " (원격 포함)" : ""}` });
+      const withRemote = !!up && confirmAction(t("ctx.renameRemote", { branch: b, upstream: up, to }));
+      await run({ op: "renameBranch", args: [b, to, withRemote], summary: withRemote ? t("ctx.renameSummaryRemote", { from: b, to }) : t("ctx.renameSummary", { from: b, to }) });
     }));
     const wt = (s.worktrees || []).find((w) => w.branch === b);
-    if (!wt) items.push(direct("다른 폴더에 체크아웃 (worktree)…", `git worktree add <폴더> ${b}`, () => void addWorktree(b)));
-    else if (!wt.current) items.push(direct(`${b} 쓰는 폴더 열기`, wt.path, () => void open(window.gitApi.open(wt.path))));
-    items.push(direct("커밋 정리 (rebase -i)…", `git rebase -i  # ${b}`, () => openRebaseEditor(b)));
+    if (!wt) items.push(direct(t("ctx.worktree"), `git worktree add ${t("ctx.ph.folder")} ${b}`, () => void addWorktree(b)));
+    else if (!wt.current) items.push(direct(t("ctx.openWorktree", { branch: b }), wt.path, () => void open(window.gitApi.open(wt.path))));
+    items.push(direct(t("ctx.rebasePlan"), `git rebase -i  # ${b}`, () => openRebaseEditor(b)));
     const up = s.upstream?.[b];
-    items.push(direct(up ? `upstream 바꾸기 (지금 ${up})…` : "upstream 연결…", `git branch --set-upstream-to=<원격 브랜치> ${b}`, async () => {
-      const remoteBranch = await askText("연결할 원격 브랜치", up || `origin/${b}`, "비우면 연결을 끊습니다.");
+    items.push(direct(up ? t("ctx.upstreamChange", { upstream: up }) : t("ctx.upstreamSet"), `git branch --set-upstream-to=${t("ctx.ph.remoteBranch")} ${b}`, async () => {
+      const remoteBranch = await askText(t("ctx.upstreamAsk"), up || `origin/${b}`, t("ctx.upstreamHint"));
       if (remoteBranch === null) return;
-      await run({ op: "setUpstream", args: [b, remoteBranch], summary: remoteBranch ? `${b} 의 upstream → ${remoteBranch}` : `${b} 의 upstream 연결 끊기` });
+      await run({ op: "setUpstream", args: [b, remoteBranch], summary: remoteBranch ? t("ctx.upstreamSummary", { branch: b, upstream: remoteBranch }) : t("ctx.upstreamUnset", { branch: b }) });
     }));
   }
   if (src.kind === "remote" && src.remote) {
     const r = src.remote;
     const local = r.split("/").slice(1).join("/");
     if (!s.branches[local]) {
-      items.unshift(direct(`로컬 브랜치 ${local} 로 가져오기`, `git switch --track ${r}`, () =>
-        void run({ op: "checkoutRemote", args: [r], summary: `${r} 를 로컬 브랜치로 가져오기` })));
+      items.unshift(direct(t("ctx.trackRemote", { branch: local }), `git switch --track ${r}`, () =>
+        void run({ op: "checkoutRemote", args: [r], summary: t("ctx.trackSummary", { remote: r }) })));
     }
   }
   return items;
@@ -110,9 +111,9 @@ export function contextItems(src: DragSource): MenuItem[] {
 export function openContextMenu(src: DragSource, x: number, y: number): void {
   if (blocked()) return;
   const s = store.repo;
-  if (src.kind === "working" && !s.working.staged.length && !s.working.unstaged.length) { toast("변경이 없습니다."); return; }
+  if (src.kind === "working" && !s.working.staged.length && !s.working.unstaged.length) { toast(t("ctx.noChanges")); return; }
   const items = contextItems(src);
-  if (!items.length) { toast("이 항목으로 할 수 있는 조작이 없습니다."); return; }
+  if (!items.length) { toast(t("ctx.nothing")); return; }
   openMenu(x, y, sourceLabel(src), items, hideInCanvas);
 }
 

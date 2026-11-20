@@ -6,6 +6,7 @@ import useModal from "@/hooks/useModal";
 import useSmallStore from "@/hooks/useSmallStore";
 import { cloneInto } from "@/components/pages/main/sections/shell/welcomeUtils";
 import { cancelLogin, ghLoginStore, ghReposStore } from "@/components/pages/main/sections/dialogs/githubUtils";
+import { t } from "@shared/i18n/i18n";
 
 /** GitHub 로그인 창(기기 코드) · 내 저장소 목록 창 */
 const GithubSection = () => {
@@ -29,29 +30,29 @@ const GithubSection = () => {
   return (
     <>
       <dialog id="gh-login" ref={loginRef} className="ask gh-login">
-        <h2>GitHub 로그인</h2>
-        <p>브라우저에서 GitHub 승인 페이지가 열렸습니다. 아래 코드를 입력하고 승인하세요. 코드는 클립보드에 복사해 두었습니다.</p>
+        <h2>{t("gh.login")}</h2>
+        <p>{t("gh.deviceIntro")}</p>
         <output id="gh-code" className="gh-code">{loginInfo?.userCode}</output>
-        <p className="muted" id="gh-login-status">승인을 기다리는 중…</p>
+        <p className="muted" id="gh-login-status">{t("gh.waiting")}</p>
         <div className="ask-actions">
-          <button type="button" id="gh-reopen" onClick={() => { if (loginInfo) void window.ghApi.openUrl(loginInfo.verificationUri); }}>브라우저 다시 열기</button>
-          <button type="button" id="gh-cancel" onClick={cancelLogin}>취소</button>
+          <button type="button" id="gh-reopen" onClick={() => { if (loginInfo) void window.ghApi.openUrl(loginInfo.verificationUri); }}>{t("gh.reopen")}</button>
+          <button type="button" id="gh-cancel" onClick={cancelLogin}>{t("common.cancel")}</button>
         </div>
       </dialog>
       <dialog id="gh-repos" ref={reposRef} className="ask gh-repos">
-        <h2>내 GitHub 저장소</h2>
-        <input id="gh-filter" ref={filterRef} type="search" placeholder="이름으로 찾기" aria-label="저장소 이름으로 찾기" autoComplete="off" value={q} onChange={(e) => setQ(e.target.value)} />
+        <h2>{t("gh.myRepos")}</h2>
+        <input id="gh-filter" ref={filterRef} type="search" placeholder={t("gh.filter")} aria-label={t("gh.filterAria")} autoComplete="off" value={q} onChange={(e) => setQ(e.target.value)} />
         <div id="gh-repo-list" className="gh-repo-list">
           {list.length
             ? list.map((r) => (
               <button key={r.fullName} type="button" className="gh-repo" onClick={() => { reposRef.current?.close(); void cloneInto(r.cloneUrl); }}>
-                <span className="n">{r.fullName}{r.private && " · 비공개"}</span>
+                <span className="n">{r.fullName}{r.private && t("gh.private")}</span>
                 <span className="d">{r.description || ""}</span>
               </button>
             ))
-            : <p className="muted">찾는 저장소가 없습니다.</p>}
+            : <p className="muted">{t("gh.noRepos")}</p>}
         </div>
-        <div className="ask-actions"><button type="button" id="gh-repos-close" onClick={() => reposRef.current?.close()}>닫기</button></div>
+        <div className="ask-actions"><button type="button" id="gh-repos-close" onClick={() => reposRef.current?.close()}>{t("common.close")}</button></div>
       </dialog>
     </>
   );

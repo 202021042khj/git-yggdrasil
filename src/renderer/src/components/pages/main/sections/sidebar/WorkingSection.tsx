@@ -7,6 +7,7 @@ import { toast } from "@/components/ui/toastUtils";
 import { blocked, run, runPreviewed } from "@/app/actions";
 import { store } from "@/app/store";
 import { isError, preview } from "@/model/preview";
+import { t } from "@shared/i18n/i18n";
 import type { UseMainLogicResult } from "@/hooks/useMainLogic";
 
 interface TreeNode {
@@ -33,7 +34,7 @@ const sortKids = (n: TreeNode) => [...n.kids.values()].sort((a, b) => Number(a.f
 
 const stage = (path: string, checked: boolean) => {
   const to = checked ? "staged" : "unstaged";
-  void run({ op: "stageFiles", args: [[path], to], summary: `${path || "전체"} ${to === "staged" ? "stage" : "unstage"}` });
+  void run({ op: "stageFiles", args: [[path], to], summary: to === "staged" ? t("wk.stage", { path: path || t("wk.all") }) : t("wk.unstage", { path: path || t("wk.all") }) });
 };
 
 const discard = (path: string) => {
@@ -67,7 +68,7 @@ const WorkingSection = ({ ui, repo }: UseMainLogicResult) => {
     if (blocked("commitTo")) return;
     const box = msgRef.current!;
     const msg = box.value.trim();
-    if (!msg) { box.focus(); toast("커밋 메시지를 입력하세요."); return; }
+    if (!msg) { box.focus(); toast(t("wk.needMsg")); return; }
     const branch = repo.head || "HEAD";
     const res = preview("commitTo", repo, [branch, msg, undefined]);
     if (isError(res)) { toast(res.error); return; }
@@ -113,36 +114,36 @@ const WorkingSection = ({ ui, repo }: UseMainLogicResult) => {
         data-file={ch.length ? n.path : undefined}
         data-path={n.path}
         style={{ paddingLeft: depth * 12 + 4 }}
-        title={n.path || "저장소 루트"}
+        title={n.path || t("wk.root")}
         onClick={(e) => handleRowClick(e, n)}
       >
         {n.file
           ? <span className="chev" />
-          : <button type="button" className="chev" aria-expanded={isOpen} aria-label={`${n.name} ${isOpen ? "접기" : "펼치기"}`} onClick={() => toggleFolder(n.path)}>{isOpen ? "▾" : "▸"}</button>}
+          : <button type="button" className="chev" aria-expanded={isOpen} aria-label={isOpen ? t("wk.collapse", { name: n.name }) : t("wk.expand", { name: n.name })} onClick={() => toggleFolder(n.path)}>{isOpen ? "▾" : "▸"}</button>}
         <input
           type="checkbox"
           disabled={!ch.length}
           checked={allStaged}
           ref={(el) => { if (el) el.indeterminate = someStaged; }}
-          aria-label={`${n.path || "전체"} stage`}
+          aria-label={t("wk.stage", { path: n.path || t("wk.all") })}
           onChange={(e) => stage(n.path, e.target.checked)}
         />
         <span className="name">
           <Icon name={icon} />{n.name}
-          {n.file && lfsSet.has(n.path) && <> <span className="tag-mini" title="Git LFS 로 관리하는 파일">LFS</span></>}
-          {n.file && subSet.has(n.path) && <> <span className="tag-mini" title="서브모듈 (다른 저장소)">서브모듈</span></>}
+          {n.file && lfsSet.has(n.path) && <> <span className="tag-mini" title={t("wk.lfsTip")}>LFS</span></>}
+          {n.file && subSet.has(n.path) && <> <span className="tag-mini" title={t("wk.subTip")}>{t("wk.sub")}</span></>}
         </span>
         {isCf
           ? <span className={`st ${resolved[n.path] ? "S" : "C"}`}>{resolved[n.path] ? "✓" : "C"}</span>
           : n.file
-            ? !!ch.length && <span className={`st ${committed.has(n.path) ? "M" : "U"}`} title={partly.length ? "일부만 stage 됨" : ""}>{partly.length ? "◐" : committed.has(n.path) ? "M" : "U"}</span>
+            ? !!ch.length && <span className={`st ${committed.has(n.path) ? "M" : "U"}`} title={partly.length ? t("wk.partly") : ""}>{partly.length ? "◐" : committed.has(n.path) ? "M" : "U"}</span>
             : (!!ch.length || !!cf.length) && (
               <span className="st">
                 {!!cf.length && <><span className="st C">⚠{cf.length}</span> </>}
                 {!!ch.length && `${stagedCount ? `${stagedCount}/` : ""}${ch.length}`}
               </span>
             )}
-        {!!ch.length && <button type="button" className="discard" title="변경 버리기 (git restore)" aria-label={`${n.path || "전체"} 변경 버리기`} onClick={() => discard(n.path)}>↶</button>}
+        {!!ch.length && <button type="button" className="discard" title={t("wk.discardTip")} aria-label={t("wk.discardAria", { path: n.path || t("wk.all") })} onClick={() => discard(n.path)}>↶</button>}
       </div>,
     );
     if (!n.file && isOpen) sortKids(n).forEach((k) => walk(k, depth + 1));
@@ -150,25 +151,25 @@ const WorkingSection = ({ ui, repo }: UseMainLogicResult) => {
   walk(root, 0);
 
   const target = repo.head || (repo.detached ? "HEAD" : "");
-  const handleText = w.staged.length ? `Staged ${w.staged.length}개 끌기` : w.unstaged.length ? `변경 ${w.unstaged.length}개 모두 끌기` : "변경 없음";
-  const commitText = !changed.size ? "커밋할 변경 없음"
-    : `${repo.head || "브랜치 없이(HEAD)"} 에 커밋 (${w.staged.length ? `staged ${w.staged.length}개` : `변경 전체 ${changed.size}개`})`;
+  const handleText = w.staged.length ? t("wk.dragStaged", { n: w.staged.length }) : w.unstaged.length ? t("wk.dragAll", { n: w.unstaged.length }) : t("wk.noChanges");
+  const commitText = !changed.size ? t("wk.nothingToCommit")
+    : w.staged.length ? t("wk.commitStaged", { branch: repo.head || t("wk.detachedHead"), n: w.staged.length }) : t("wk.commitAll", { branch: repo.head || t("wk.detachedHead"), n: changed.size });
 
   return (
     <>
-      <h3>작업 영역</h3>
+      <h3>{t("target.working")}</h3>
       <div id="working" className="working-card" data-drop="working">
-        <textarea id="commit-msg" ref={msgRef} rows={2} aria-label="커밋 메시지" placeholder="커밋 메시지 (⌘Enter 로 커밋)" onKeyDown={handleMsgKey} />
+        <textarea id="commit-msg" ref={msgRef} rows={2} aria-label={t("drag.commitMsg")} placeholder={t("wk.msgPlaceholder")} onKeyDown={handleMsgKey} />
         <button type="button" id="commit-btn" className="commit-btn" disabled={!changed.size || !target} onClick={() => void commitFromBox()}>{commitText}</button>
-        <div className={`working-handle${changed.size ? "" : " empty"}`} data-drag="working" title="브랜치 이름표나 커밋에 끌어 놓기 · 오른쪽 클릭으로 메뉴">{handleText}</div>
+        <div className={`working-handle${changed.size ? "" : " empty"}`} data-drag="working" title={t("wk.handleTip")}>{handleText}</div>
         <div className="tree-tools">
-          <span id="work-summary" className="muted">변경 {changed.size} · staged {staged.size}</span>
+          <span id="work-summary" className="muted">{t("wk.summary", { changed: changed.size, staged: staged.size })}</span>
           <label className="muted">
-            <input type="checkbox" id="only-changed" checked={ui.onlyChanged} onChange={(e) => store.update({ onlyChanged: e.target.checked })} /> 변경만
+            <input type="checkbox" id="only-changed" checked={ui.onlyChanged} onChange={(e) => store.update({ onlyChanged: e.target.checked })} /> {t("wk.onlyChanged")}
           </label>
         </div>
         <div id="file-tree" className="file-tree">{rows}</div>
-        <p className="muted hint">체크하면 stage (폴더는 하위 전체). 파일이나 폴더를 브랜치 이름표에 끌면 그 경로만 커밋합니다.</p>
+        <p className="muted hint">{t("wk.hint")}</p>
       </div>
     </>
   );

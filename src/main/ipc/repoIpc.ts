@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { dialog } from "electron";
 import { handle } from "@/ipc/guard";
-import { git } from "@/git/cli";
+import { git, repoRoot } from "@/git/cli";
 import { execute } from "@/git/ops/execute";
 import { authUrlFromError, forgetCredential, saveCredential, systemHelper } from "@/git/credential";
 import { explainRemoteError, hintText } from "@/git/remoteErrors";
@@ -11,6 +11,7 @@ import { fileDiff } from "@/git/diff";
 import { loadMore, readRepo } from "@/git/readRepo";
 import { gitAuth } from "@/github/auth";
 import { currentRoot, getWindow, openRepo, requireRoot } from "@/repo/session";
+import { t } from "@shared/i18n/i18n";
 import type { DiffOptions, OpExtra, OpName, RunResult } from "@shared/types/ipc";
 
 const CLONE_TIMEOUT = 10 * 60 * 1000;
@@ -22,15 +23,23 @@ export function registerRepoIpc(): void {
   handle("repo:pick", async () => {
     const win = getWindow();
     const r = win
-      ? await dialog.showOpenDialog(win, { title: "git 저장소 폴더 열기", properties: ["openDirectory"] })
-      : await dialog.showOpenDialog({ title: "git 저장소 폴더 열기", properties: ["openDirectory"] });
+      ? await dialog.showOpenDialog(win, { title: t("m.pickRepo"), properties: ["openDirectory"] })
+      : await dialog.showOpenDialog({ title: t("m.pickRepo"), properties: ["openDirectory"] });
     if (r.canceled || !r.filePaths[0]) return null;
     return openRepo(r.filePaths[0]);
   });
 
   handle("repo:open", (_e, dir: string) => openRepo(dir));
+
+  // 지금 연 폴더가 git 저장소가 아니면 git init 하고 다시 연다 (감시도 .git 까지 새로)
+  handle("repo:init", async () => {
+    const dir = requireRoot();
+    if (await repoRoot(dir)) return openRepo(dir); // 그 사이 터미널에서 init 했으면 그대로 연다
+    await git(dir, ["init"]);
+    return openRepo(dir);
+  });
   handle("repo:pickDir", async (_e, title: string) => {
-    const opts = { title: String(title || "폴더 고르기"), properties: ["openDirectory", "createDirectory"] as Array<"openDirectory" | "createDirectory"> };
+    const opts = { title: String(title || t("m.pickDir")), properties: ["openDirectory", "createDirectory"] as Array<"openDirectory" | "createDirectory"> };
     const win = getWindow();
     const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
     return r.canceled ? null : r.filePaths[0] ?? null;
@@ -40,7 +49,7 @@ export function registerRepoIpc(): void {
   // retry: 인증 때문에 실패한 직후 다시 시도할 때는 방금 고른 폴더를 그대로 쓴다 (경로는 화면에서 받지 않는다)
   let lastCloneParent: string | null = null;
   handle("repo:clone", async (_e, url: string, retry = false) => {
-    const opts = { title: "어느 폴더 안에 받을까요?", properties: ["openDirectory", "createDirectory"] as Array<"openDirectory" | "createDirectory"> };
+    const opts = { title: t("m.pickCloneParent"), properties: ["openDirectory", "createDirectory"] as Array<"openDirectory" | "createDirectory"> };
     const win = getWindow();
     const r = retry && lastCloneParent ? { canceled: false, filePaths: [lastCloneParent] }
       : win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
@@ -48,7 +57,7 @@ export function registerRepoIpc(): void {
     lastCloneParent = r.filePaths[0];
     const name = url.replace(/[\\/]+$/, "").split(/[\\/:]/).pop()?.replace(/\.git$/, "") || "repo";
     const dest = path.join(r.filePaths[0], name);
-    if (fs.existsSync(dest)) throw new Error(`이미 같은 이름의 폴더가 있습니다: ${dest}`);
+    if (fs.existsSync(dest)) throw new Error(t("m.folderExists", { path: dest }));
     try {
       const auth = await gitAuth().catch(() => null);
       await git(r.filePaths[0], [...(auth ? auth.args : []), "clone", "--", url, dest], { timeout: CLONE_TIMEOUT, env: auth ? auth.env : {}, net: true });
@@ -89,8 +98,8 @@ export function registerRepoIpc(): void {
 
   handle("repo:run", async (_e, { op, args, extra }: { op: OpName; args: unknown[]; extra?: OpExtra }): Promise<RunResult> => {
     const root = currentRoot();
-    if (!root) return { ok: false, cmds: [], error: "열린 저장소가 없습니다." };
-    if (busy) return { ok: false, cmds: [], error: "이전 작업이 아직 실행 중입니다." };
+    if (!root) return { ok: false, cmds: [], error: t("m.noRepo") };
+    if (busy) return { ok: false, cmds: [], error: t("act.busy") };
     busy = true;
     try {
       const result = await execute(root, op, args, extra);

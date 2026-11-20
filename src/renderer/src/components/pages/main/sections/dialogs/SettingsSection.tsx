@@ -6,19 +6,26 @@ import Dropdown from "@/components/ui/Dropdown";
 import useModal from "@/hooks/useModal";
 import useSmallStore from "@/hooks/useSmallStore";
 import { saveSettings, settingsOpenStore, settingsStore } from "@/components/pages/main/sections/dialogs/settingsUtils";
+import { t } from "@shared/i18n/i18n";
 import type { Settings } from "@shared/types/ipc";
 
-const THEME_OPTIONS: Array<{ value: Settings["theme"]; label: string }> = [
-  { value: "system", label: "시스템을 따름" },
-  { value: "light", label: "밝게" },
-  { value: "dark", label: "어둡게" },
+const themeOptions = (): Array<{ value: Settings["theme"]; label: string }> => [
+  { value: "system", label: t("set.theme.system") },
+  { value: "light", label: t("set.theme.light") },
+  { value: "dark", label: t("set.theme.dark") },
 ];
-const FETCH_OPTIONS = [
-  { value: "0", label: "끔" },
-  { value: "5", label: "5분마다" },
-  { value: "15", label: "15분마다" },
-  { value: "30", label: "30분마다" },
-  { value: "60", label: "1시간마다" },
+const fetchOptions = () => [
+  { value: "0", label: t("set.fetch.off") },
+  { value: "5", label: t("set.fetch.min", { n: 5 }) },
+  { value: "15", label: t("set.fetch.min", { n: 15 }) },
+  { value: "30", label: t("set.fetch.min", { n: 30 }) },
+  { value: "60", label: t("set.fetch.hour") },
+];
+/** 언어 이름은 그 언어로 적는다 (지금 화면 언어를 못 읽는 사람도 고를 수 있게) */
+const languageOptions = (): Array<{ value: Settings["language"]; label: string }> => [
+  { value: "system", label: t("set.lang.system") },
+  { value: "ko", label: "한국어" },
+  { value: "en", label: "English" },
 ];
 const PULL_OPTIONS: Array<{ value: Settings["pullMode"]; label: string }> = [{ value: "merge", label: "merge" }, { value: "rebase", label: "rebase" }];
 
@@ -37,31 +44,32 @@ const SettingsSection = () => {
   return (
     <dialog id="settings" ref={ref} className="ask settings" aria-labelledby="settings-title">
       <form method="dialog" id="settings-form">
-        <h2 id="settings-title">설정</h2>
+        <h2 id="settings-title">{t("set.title")}</h2>
         <div className="set-grid">
-          <label htmlFor="set-theme">화면 색</label>
-          <Dropdown id="set-theme" label="화면 색" value={s.theme} options={THEME_OPTIONS} onChange={(theme) => void saveSettings({ theme })} />
-          <label htmlFor="set-zoom">글자 크기</label>
+          <label htmlFor="set-lang">{t("set.lang")}</label>
+          <Dropdown id="set-lang" label={t("set.lang")} value={s.language} options={languageOptions()} onChange={(language) => void saveSettings({ language })} />
+          <label htmlFor="set-theme">{t("set.theme")}</label>
+          <Dropdown id="set-theme" label={t("set.theme")} value={s.theme} options={themeOptions()} onChange={(theme) => void saveSettings({ theme })} />
+          <label htmlFor="set-zoom">{t("set.zoom")}</label>
           <span className="set-zoom">
             <input id="set-zoom" type="range" min="0.8" max="1.5" step="0.05" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} onPointerUp={() => void saveSettings({ zoom })} onKeyUp={() => void saveSettings({ zoom })} />
             <output id="set-zoom-out">{Math.round(zoom * 100)}%</output>
           </span>
-          <label htmlFor="set-editor">에디터</label>
+          <label htmlFor="set-editor">{t("set.editor")}</label>
           <span>
-            <input id="set-editor" type="text" placeholder="비우면 OS 기본 앱 (예: code, cursor, subl)" spellCheck={false} autoComplete="off" value={editor} onChange={(e) => setEditor(e.target.value)} onBlur={() => { if (editor !== s.editor) void saveSettings({ editor }); }} />
-            <span className="muted set-hint">충돌 파일을 "외부 에디터로" 열 때 씁니다. 공백이 있는 경로는 따옴표로 감싸세요.</span>
+            <input id="set-editor" type="text" placeholder={t("set.editorPlaceholder")} spellCheck={false} autoComplete="off" value={editor} onChange={(e) => setEditor(e.target.value)} onBlur={() => { if (editor !== s.editor) void saveSettings({ editor }); }} />
+            <span className="muted set-hint">{t("set.editorHint")}</span>
           </span>
-          <label htmlFor="set-fetch">자동 fetch</label>
-          <Dropdown id="set-fetch" label="자동 fetch" value={String(s.autoFetchMinutes)} options={FETCH_OPTIONS} onChange={(v) => void saveSettings({ autoFetchMinutes: Number(v) })} />
-          <label htmlFor="set-pull">pull 방식</label>
-          <Dropdown id="set-pull" label="pull 방식" value={s.pullMode} options={PULL_OPTIONS} onChange={(pullMode) => void saveSettings({ pullMode })} />
+          <label htmlFor="set-fetch">{t("set.fetch")}</label>
+          <Dropdown id="set-fetch" label={t("set.fetch")} value={String(s.autoFetchMinutes)} options={fetchOptions()} onChange={(v) => void saveSettings({ autoFetchMinutes: Number(v) })} />
+          <label htmlFor="set-pull">{t("set.pull")}</label>
+          <Dropdown id="set-pull" label={t("set.pull")} value={s.pullMode} options={PULL_OPTIONS} onChange={(pullMode) => void saveSettings({ pullMode })} />
           <span />
           <label className="set-check">
-            <input id="set-reopen" type="checkbox" checked={s.reopenLast} onChange={(e) => void saveSettings({ reopenLast: e.target.checked })} /> 켤 때 마지막 저장소 다시 열기
+            <input id="set-reopen" type="checkbox" checked={s.reopenLast} onChange={(e) => void saveSettings({ reopenLast: e.target.checked })} /> {t("set.reopen")}
           </label>
         </div>
-        <p className="muted set-hint">화면 문구는 지금 한국어만 지원합니다.</p>
-        <div className="ask-actions"><button type="submit" className="primary">닫기</button></div>
+        <div className="ask-actions"><button type="submit" className="primary">{t("common.close")}</button></div>
       </form>
     </dialog>
   );

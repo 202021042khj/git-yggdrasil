@@ -8,6 +8,7 @@ import { store } from "@/app/store";
 import { askText, confirmAction, showNotice } from "@/components/ui/dialogUtils";
 import { askCredential } from "@/components/ui/credentialUtils";
 import { toast } from "@/components/ui/toastUtils";
+import { t } from "@shared/i18n/i18n";
 import type { OpExtra, OpName } from "@shared/types/ipc";
 import type { RepoState } from "@shared/types/repo";
 
@@ -18,12 +19,12 @@ export interface RunRequest {
   extra?: OpExtra;
 }
 
-export const OP_BLOCK_MSG = "⏸ 멈춘 작업이 있습니다. 위 배너에서 해결 후 계속하거나 중단하세요.";
+export const opBlockMsg = () => t("act.blocked");
 
 /** 진행 중 작업이 있으면 막고 알린다 */
 export function blocked(op?: OpName): boolean {
   if (!store.repo.op || (op && ALLOWED_DURING_OP.has(op))) return false;
-  toast(OP_BLOCK_MSG);
+  toast(opBlockMsg());
   return true;
 }
 
@@ -43,34 +44,34 @@ export function extraFor(op: OpName, args: unknown[], s: RepoState): OpExtra {
 export function confirmPreviewed(op: OpName, args: unknown[], res: Preview): boolean {
   const s = store.repo;
   if (op === "resetHead" && args[1] === "hard"
-    && !confirmAction("작업 영역의 변경까지 모두 버리고 되돌립니다 (git reset --hard).\n버린 변경은 되돌리기(⌘Z)로도 복구되지 않습니다. 계속할까요?")) return false;
-  if (op === "discard" && !confirmAction("변경을 버립니다. 버린 변경은 되돌리기(⌘Z)로 복구되지 않습니다. 계속할까요?")) return false;
-  if (touchesPushed(s, res) && !confirmAction(`${res.summary}\n\npush 된 히스토리를 다시 씁니다 (이후 force push 필요). 계속할까요?`)) return false;
+    && !confirmAction(t("act.confirmHard"))) return false;
+  if (op === "discard" && !confirmAction(t("act.confirmDiscard"))) return false;
+  if (touchesPushed(s, res) && !confirmAction(t("act.confirmRewrite", { summary: res.summary }))) return false;
   return true;
 }
 
 export async function runPreviewed(op: OpName, args: unknown[], res: Preview): Promise<void> {
   if (blocked(op) || !confirmPreviewed(op, args, res)) return;
-  const conflictNote = res.conflicts.length ? ` (충돌 예상: ${res.conflicts.join(", ")})` : "";
+  const conflictNote = res.conflicts.length ? t("act.conflictNote", { files: res.conflicts.join(", ") }) : "";
   await run({ op, args, summary: res.summary + conflictNote, extra: { force: !!res.force } });
 }
 
 /** 실제 실행. 원격이 없거나 체크아웃이 필요하면 사용자에게 물어 이어서 진행한다 */
 export async function run(req: RunRequest, retried = false): Promise<boolean> {
-  if (store.ui.busy) { toast("이전 작업이 아직 실행 중입니다."); return false; }
+  if (store.ui.busy) { toast(t("act.busy")); return false; }
   if (!retried && blocked(req.op)) return false;
   // 다른 worktree 가 쓰는 브랜치는 git 이 체크아웃을 거절한다: 미리 알리고 그 폴더를 열지 묻는다
   if (req.op === "checkout") {
     const wt = store.repo.worktrees?.find((w) => w.branch === req.args[0] && !w.current);
     if (wt) {
-      if (confirmAction(`${req.args[0]} 는 다른 폴더(worktree)에서 체크아웃되어 있어 여기서는 체크아웃할 수 없습니다.\n${wt.path}\n\n그 폴더를 열까요?`)) void open(window.gitApi.open(wt.path));
+      if (confirmAction(t("act.inWorktree", { branch: String(req.args[0]), path: wt.path }))) void open(window.gitApi.open(wt.path));
       return false;
     }
   }
   const extra = { ...extraFor(req.op, req.args, store.repo), ...req.extra };
   store.update({ busy: true });
   document.body.classList.add("busy");
-  toast(`실행 중… ${req.summary}`);
+  toast(t("act.running", { summary: req.summary }));
   let followUp: (() => Promise<unknown>) | null = null;
   let ok = false;
   try {
@@ -81,19 +82,19 @@ export async function run(req: RunRequest, retried = false): Promise<boolean> {
       store.addLog({ summary: req.summary, cmd: r.cmds.join("\n") });
       toast(r.warnings?.length ? `${req.summary} — ${r.warnings.join(" ")}` : req.summary);
     } else {
-      const label = r.unsupported ? "아직 지원 안 함" : r.code === "NEEDS_CHECKOUT" ? "충돌 — 체크아웃 필요" : "실패";
-      store.addLog({ summary: `${label}: ${req.summary}`, cmd: [...r.cmds, r.error, ...(r.hint ? [`# ${r.hint.title}`] : [])].join("\n") });
+      const summary = r.unsupported ? t("act.logUnsupported", { summary: req.summary }) : r.code === "NEEDS_CHECKOUT" ? t("act.logNeedsCheckout", { summary: req.summary }) : t("act.logFailed", { summary: req.summary });
+      store.addLog({ summary, cmd: [...r.cmds, r.error, ...(r.hint ? [`# ${r.hint.title}`] : [])].join("\n") });
       const otherHost = r.code === "AUTH_REQUIRED" && r.authUrl && !/^https:\/\/github\.com$/.test(r.authUrl);
       if (r.hint && !otherHost) showNotice(r.hint.title, r.hint.fix, r.error);
-      else toast(r.error || "실패했습니다.");
+      else toast(r.error || t("act.failed"));
     }
     if (r.repo) show(r.repo);
     // 체크아웃하지 않은 브랜치에서 충돌: 체크아웃한 뒤 같은 조작을 다시 해서 충돌 해결 모드로 들어간다
     if (r.code === "NEEDS_CHECKOUT" && !retried && r.branch) {
       const branch = r.branch;
       followUp = async () => {
-        if (!confirmAction(`${r.error}\n\n${branch} 로 체크아웃하고 다시 진행할까요? 충돌 지점에서 멈추면 오른쪽 패널에서 해결할 수 있습니다.`)) return;
-        if (await run({ op: "checkout", args: [branch], summary: `${branch} 로 전환` }, true)) await run(req, true);
+        if (!confirmAction(t("act.needsCheckout", { error: r.error ?? "", branch }))) return;
+        if (await run({ op: "checkout", args: [branch], summary: t("act.switchTo", { branch }) }, true)) await run(req, true);
       };
     }
     // GitHub 밖 HTTPS 호스트 인증 실패: 사용자 이름·토큰을 받아 git 도우미에 저장하고 다시 시도
@@ -104,8 +105,8 @@ export async function run(req: RunRequest, retried = false): Promise<boolean> {
     // 원격이 없어서 push 가 실패했으면: 주소를 받아 origin 으로 추가하고 다시 시도
     if (r.code === "NO_REMOTE" && !retried) {
       followUp = async () => {
-        const url = await askText("원격 저장소 주소", "", "예: https://github.com/아이디/저장소.git — origin 으로 추가한 뒤 다시 push 합니다.");
-        if (url && (await run({ op: "remoteAdd", args: ["origin", url], summary: `원격 origin 추가 (${url})` }, true))) await run(req, true);
+        const url = await askText(t("act.remoteUrl"), "", t("act.remoteUrlHint"));
+        if (url && (await run({ op: "remoteAdd", args: ["origin", url], summary: t("act.addOrigin", { url }) }, true))) await run(req, true);
       };
     }
   } catch (err) {

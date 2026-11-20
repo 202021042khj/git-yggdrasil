@@ -1,11 +1,12 @@
 // GitHub REST API: 사용자, 저장소 목록·생성, PR
 import { logout, token } from "@/github/auth";
 import { GH_API, GH_USER_AGENT } from "@/github/constants";
+import { t } from "@shared/i18n/i18n";
 import type { GhChecks, GhPull, GhRepo, GhReview, GhUser } from "@shared/types/ipc";
 
 async function api<T>(method: string, url: string, body?: unknown): Promise<T> {
   const tk = await token();
-  if (!tk) throw new Error("GitHub 에 로그인되어 있지 않습니다.");
+  if (!tk) throw new Error(t("m.gh.notLoggedIn"));
   const res = await fetch(url.startsWith("http") ? url : `${GH_API}${url}`, {
     method,
     headers: {
@@ -20,7 +21,7 @@ async function api<T>(method: string, url: string, body?: unknown): Promise<T> {
   const data: any = res.status === 204 ? null : await res.json().catch(() => null);
   if (res.status === 401) {
     logout();
-    throw new Error("GitHub 로그인이 만료되었습니다. 다시 로그인해 주세요.");
+    throw new Error(t("m.gh.expired"));
   }
   if (!res.ok) {
     const detail = data && (data.errors || []).map((e: { message?: string; code?: string }) => e.message || e.code).filter(Boolean).join(", ");
@@ -84,7 +85,7 @@ export function mapPull(p: RawPull): GhPull {
     title: p.title,
     url: p.url,
     draft: p.isDraft,
-    author: p.author?.login ?? "(알 수 없음)",
+    author: p.author?.login ?? t("m.gh.unknownAuthor"),
     head: p.headRefName,
     base: p.baseRefName,
     fromFork: p.isCrossRepository,
@@ -99,7 +100,7 @@ export async function listPulls(fullName: string): Promise<GhPull[]> {
   const r = await api<{ data?: { repository: { pullRequests: { nodes: RawPull[] } } | null }; errors?: Array<{ message: string }> }>(
     "POST", "/graphql", { query: PULLS_QUERY, variables: { owner, name } });
   if (r.errors?.length) throw new Error(`GitHub: ${r.errors.map((e) => e.message).join(", ")}`);
-  if (!r.data?.repository) throw new Error(`GitHub 에서 ${fullName} 저장소를 찾을 수 없습니다.`);
+  if (!r.data?.repository) throw new Error(t("m.gh.repoNotFound", { repo: fullName }));
   return r.data.repository.pullRequests.nodes.map(mapPull);
 }
 

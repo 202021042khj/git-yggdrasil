@@ -13,6 +13,8 @@ import { ownerBranch, pushedSet, stems } from "@/model/graph";
 import { oldestFirst } from "@/model/selection";
 import ConflictEditor from "@/components/pages/main/sections/detail/ConflictEditor";
 import { diffPrefsStore, reword, setDiffPrefs } from "@/components/pages/main/sections/detail/detailUtils";
+import { t, type MessageKey } from "@shared/i18n/i18n";
+import RichText from "@/components/common/RichText";
 import type { UseMainLogicResult } from "@/hooks/useMainLogic";
 import type { FileDiff, Hunk } from "@shared/types/ipc";
 import type { RepoState } from "@shared/types/repo";
@@ -23,7 +25,7 @@ interface DetailSectionProps extends UseMainLogicResult {
 
 const lineClass = (l: string) => (/^(\+\+\+|---|diff |index )/.test(l) ? "ctx" : l.startsWith("+") ? "add" : l.startsWith("-") ? "del" : "ctx");
 
-const Loading = () => <p className="muted">불러오는 중…</p>;
+const Loading = () => <p className="muted">{t("common.loading")}</p>;
 
 // ---------- diff ----------
 const SplitTable = ({ text }: { text: string }) => {
@@ -46,22 +48,22 @@ const DiffBody = ({ d, onFull }: { d: FileDiff; onFull: () => void }) => {
   const prefs = useSmallStore(diffPrefsStore);
   const img = d.image && (
     <div className="img-diff">
-      {d.image.before && <figure><figcaption>전</figcaption><img src={d.image.before} alt="바뀌기 전 이미지" /></figure>}
+      {d.image.before && <figure><figcaption>{t("dt.before")}</figcaption><img src={d.image.before} alt={t("dt.beforeAlt")} /></figure>}
       {d.image.after
-        ? <figure><figcaption>{d.image.before ? "후" : "새 파일"}</figcaption><img src={d.image.after} alt="바뀐 뒤 이미지" /></figure>
-        : <p className="muted">이 파일은 지워졌습니다.</p>}
+        ? <figure><figcaption>{d.image.before ? t("dt.after") : t("dt.newFile")}</figcaption><img src={d.image.after} alt={t("dt.afterAlt")} /></figure>
+        : <p className="muted">{t("dt.deleted")}</p>}
     </div>
   );
-  if (d.binary) return img || <p className="muted">바이너리 파일이라 내용을 비교해 보여 줄 수 없습니다.</p>;
+  if (d.binary) return img || <p className="muted">{t("dt.binary")}</p>;
   return (
     <>
       {img}
-      {/git-lfs\.github\.com\/spec/.test(d.text) && <p className="muted ex-note">Git LFS 포인터 파일입니다. 실제 내용은 LFS 서버에 있고, 여기에는 크기와 해시만 바뀐 것으로 보입니다.</p>}
+      {/git-lfs\.github\.com\/spec/.test(d.text) && <p className="muted ex-note">{t("dt.lfsPointer")}</p>}
       {!d.text
-        ? <p className="muted">{prefs.ignoreWhitespace ? "공백 말고는 바뀐 내용이 없습니다." : "변경 내용 없음"}</p>
+        ? <p className="muted">{prefs.ignoreWhitespace ? t("dt.onlyWhitespace") : t("dt.noDiff")}</p>
         : prefs.split ? <SplitTable text={d.text} />
         : <pre>{d.text.split("\n").map((l, i) => <span key={i} className={lineClass(l)}>{l}</span>)}</pre>}
-      {!!d.omitted && <button type="button" className="small more-diff" onClick={onFull}>{d.omitted.toLocaleString()}줄 더 보기 (전체)</button>}
+      {!!d.omitted && <button type="button" className="small more-diff" onClick={onFull}>{t("dt.showMore", { n: d.omitted })}</button>}
     </>
   );
 };
@@ -77,11 +79,11 @@ const DiffBox = ({ file, commit, repo }: { file: string; commit: string | null; 
       <div className="dh">
         <span className="dt">{file}</span>
         <span className="diff-tools">
-          <span className="seg" role="group" aria-label="diff 보기 방식">
-            <button type="button" className="small" aria-pressed={!prefs.split} onClick={() => setDiffPrefs({ split: false })}>통합</button>
-            <button type="button" className="small" aria-pressed={prefs.split} onClick={() => setDiffPrefs({ split: true })}>좌우</button>
+          <span className="seg" role="group" aria-label={t("dt.diffMode")}>
+            <button type="button" className="small" aria-pressed={!prefs.split} onClick={() => setDiffPrefs({ split: false })}>{t("dt.unified")}</button>
+            <button type="button" className="small" aria-pressed={prefs.split} onClick={() => setDiffPrefs({ split: true })}>{t("dt.split")}</button>
           </span>
-          <label className="muted"><input type="checkbox" checked={prefs.ignoreWhitespace} onChange={(e) => setDiffPrefs({ ignoreWhitespace: e.target.checked })} /> 공백 무시</label>
+          <label className="muted"><input type="checkbox" checked={prefs.ignoreWhitespace} onChange={(e) => setDiffPrefs({ ignoreWhitespace: e.target.checked })} /> {t("dt.ignoreWs")}</label>
         </span>
       </div>
       {loading ? <Loading /> : error ? <p className="muted">{error}</p> : data && <DiffBody d={data} onFull={() => setFull(true)} />}
@@ -93,19 +95,18 @@ const DiffBox = ({ file, commit, repo }: { file: string; commit: string | null; 
 const HunkBlock = ({ h, file, staged }: { h: Hunk; file: string; staged: boolean }) => {
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const toggle = (i: number) => setPicked((p) => { const n = new Set(p); if (n.has(i)) n.delete(i); else n.add(i); return n; });
-  const verb = staged ? "unstage" : "stage";
 
   return (
     <div className="hunk">
       <div className="hunk-head">
         <code>{h.header}</code>
         {!!picked.size && (
-          <button type="button" className="small" onClick={() => void run({ op: "stageHunk", args: [file, h.index, staged, [...picked]], summary: `${file} 의 고른 ${picked.size}줄 ${verb}` })}>
-            고른 {picked.size}줄만 {verb}
+          <button type="button" className="small" onClick={() => void run({ op: "stageHunk", args: [file, h.index, staged, [...picked]], summary: staged ? t("dt.unstageLinesSummary", { file, n: picked.size }) : t("dt.stageLinesSummary", { file, n: picked.size }) })}>
+            {staged ? t("dt.unstageLines", { n: picked.size }) : t("dt.stageLines", { n: picked.size })}
           </button>
         )}
-        <button type="button" className="small" onClick={() => void run({ op: "stageHunk", args: [file, h.index, staged], summary: `${file} 의 변경 덩어리 ${verb}` })}>
-          {staged ? "이 덩어리 unstage" : "이 덩어리만 stage"}
+        <button type="button" className="small" onClick={() => void run({ op: "stageHunk", args: [file, h.index, staged], summary: staged ? t("dt.unstageHunkSummary", { file }) : t("dt.stageHunkSummary", { file }) })}>
+          {staged ? t("dt.unstageHunk") : t("dt.stageHunk")}
         </button>
       </div>
       <pre>
@@ -117,7 +118,7 @@ const HunkBlock = ({ h, file, staged }: { h: Hunk; file: string; staged: boolean
               role="checkbox"
               aria-checked={picked.has(i)}
               tabIndex={0}
-              title="클릭해서 이 줄 고르기"
+              title={t("dt.pickLine")}
               onClick={() => toggle(i)}
               onKeyDown={(e: KeyboardEvent) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(i); } }}
             >
@@ -137,9 +138,9 @@ const HunkList = ({ file, repo }: { file: string; repo: RepoState }) => {
   if (!unstaged.length && !staged.length) return null;
   return (
     <>
-      {!!unstaged.length && <><h4>아직 stage 안 한 변경 ({unstaged.length}덩어리)</h4>{unstaged.map((h) => <HunkBlock key={`u${h.index}${h.header}`} h={h} file={file} staged={false} />)}</>}
-      <p className="muted hint">+/- 줄을 클릭(또는 Space)해서 고르면 그 줄만 stage 할 수 있습니다.</p>
-      {!!staged.length && <><h4>stage 한 변경 ({staged.length}덩어리)</h4>{staged.map((h) => <HunkBlock key={`s${h.index}${h.header}`} h={h} file={file} staged />)}</>}
+      {!!unstaged.length && <><h4>{t("dt.unstagedHunks", { n: unstaged.length })}</h4>{unstaged.map((h) => <HunkBlock key={`u${h.index}${h.header}`} h={h} file={file} staged={false} />)}</>}
+      <p className="muted hint">{t("dt.lineHint")}</p>
+      {!!staged.length && <><h4>{t("dt.stagedHunks", { n: staged.length })}</h4>{staged.map((h) => <HunkBlock key={`s${h.index}${h.header}`} h={h} file={file} staged />)}</>}
     </>
   );
 };
@@ -149,13 +150,13 @@ const HistoryList = ({ file, onGoto }: { file: string; onGoto: (id: string) => v
   const { data, error, loading } = useAsync(() => window.gitApi.fileHistory(file), [file]);
   if (loading) return <Loading />;
   if (error) return <p className="muted">{error}</p>;
-  if (!data?.length) return <p className="muted">이 파일을 바꾼 커밋이 없습니다.</p>;
+  if (!data?.length) return <p className="muted">{t("dt.noHistory")}</p>;
   return (
     <ol className="hist">
       {data.map((h) => (
         <li key={h.id}>
           <button type="button" className="link" onClick={() => onGoto(h.id)}>{h.msg}</button>
-          <span className="muted">{short(h.id)} · {h.author || ""} · {relTime(h.date)}{h.path !== file && ` · 당시 이름 ${h.path}`}</span>
+          <span className="muted">{short(h.id)} · {h.author || ""} · {relTime(h.date)}{h.path !== file && t("dt.renamedFrom", { path: h.path })}</span>
         </li>
       ))}
     </ol>
@@ -184,28 +185,28 @@ const BlameView = ({ file, commit, onGoto }: { file: string; commit: string | nu
   );
 };
 
-const TABS: Array<[DetailTab, string]> = [["diff", "변경"], ["history", "히스토리"], ["blame", "blame"]];
+const TABS: Array<[DetailTab, MessageKey]> = [["diff", "dt.tab.diff"], ["history", "dt.tab.history"], ["blame", "dt.tab.blame"]];
 
 const FileView = ({ path, commit, tab, repo, onGoto }: { path: string; commit: string | null; tab: DetailTab; repo: RepoState; onGoto: (id: string) => void }) => {
   const isWorking = !commit;
   const inStaged = repo.working.staged.includes(path), inUnstaged = repo.working.unstaged.includes(path);
   const changed = isWorking && (inStaged || inUnstaged);
-  const where = changed ? (inStaged ? (inUnstaged ? " · 일부 stage" : " · Staged") : " · Unstaged") : "";
+  const where = changed ? (inStaged ? (inUnstaged ? t("dt.partlyStaged") : " · Staged") : " · Unstaged") : "";
 
   return (
     <div className="file-view">
       <div className="kv">
-        <b>{path}</b> {isWorking ? <span className="muted">· 작업 영역{where}</span> : <span className="muted">· {short(commit!)} 에서</span>}
+        <b>{path}</b> {isWorking ? <span className="muted">· {t("target.working")}{where}</span> : <span className="muted">· {t("dt.inCommit", { id: short(commit!) })}</span>}
       </div>
       <div className="tabs" role="tablist">
         {TABS.map(([k, label]) => (
-          <button key={k} type="button" role="tab" aria-selected={k === tab} onClick={() => store.update({ detailTab: k })}>{label}</button>
+          <button key={k} type="button" role="tab" aria-selected={k === tab} onClick={() => store.update({ detailTab: k })}>{t(label)}</button>
         ))}
       </div>
       {tab === "history" ? <HistoryList file={path} onGoto={onGoto} />
         : tab === "blame" ? <BlameView file={path} commit={commit} onGoto={onGoto} />
         : isWorking
-          ? changed ? <><DiffBox key={`work:${path}`} file={path} commit={null} repo={repo} /><HunkList file={path} repo={repo} /></> : <p className="muted">작업 영역에서 바뀌지 않은 파일입니다. 히스토리나 blame 을 보세요.</p>
+          ? changed ? <><DiffBox key={`work:${path}`} file={path} commit={null} repo={repo} /><HunkList file={path} repo={repo} /></> : <p className="muted">{t("dt.unchanged")}</p>
           : <DiffBox key={`${commit}:${path}`} file={path} commit={commit} repo={repo} />}
     </div>
   );
@@ -216,7 +217,7 @@ const ConflictPanel = ({ repo, selectedPath }: { repo: RepoState; selectedPath: 
   const o = repo.op;
   if (!o || o.kind === "split" || !o.conflicts.length) return null;
   const focus = selectedPath && o.conflicts.includes(selectedPath) ? selectedPath : o.conflicts.find((f) => !o.resolved[f]) || o.conflicts[0];
-  const how = { ours: "A 쪽", theirs: "B 쪽", both: "외부 에디터" } as const;
+  const how = { ours: t("dt.how.ours"), theirs: t("dt.how.theirs"), both: t("dt.how.both") };
 
   const resolve = (f: string, choice: keyof typeof how) => {
     store.update({ selectedFile: { path: f, commit: null } });
@@ -228,20 +229,20 @@ const ConflictPanel = ({ repo, selectedPath }: { repo: RepoState; selectedPath: 
 
   return (
     <div className="conflict-box">
-      <h4>⚠ 충돌 해결 — 파일마다 어느 쪽을 쓸지 고르세요</h4>
+      <h4>{t("dt.conflictTitle")}</h4>
       <div className="cf-side">A = {o.oursName}<br />B = {o.theirsName}</div>
       {o.kind === "rebase" && (
-        <div className="cf-side">※ rebase 중에는 git 의 <code>--ours</code> 가 <b>대상(받는 쪽)</b>, <code>--theirs</code> 가 <b>내 커밋</b>입니다. 버튼은 의미대로 표시했습니다.</div>
+        <div className="cf-side"><RichText text={t("dt.rebaseNote")} /></div>
       )}
       {o.conflicts.map((f) => (
         <div key={f} className="cf-file">
           <button type="button" className={`cf-name link${o.resolved[f] ? " done" : ""}`} data-cf={f} onClick={() => store.update({ selectedFile: { path: f, commit: null } })}>
             {o.resolved[f] ? "✓" : "⚠"} {f}
           </button>
-          <div className="cf-actions">{choiceBtn(f, "ours", "A 쪽 사용")}{choiceBtn(f, "theirs", "B 쪽 사용")}{choiceBtn(f, "both", "외부 에디터로")}</div>
+          <div className="cf-actions">{choiceBtn(f, "ours", t("dt.useOurs"))}{choiceBtn(f, "theirs", t("dt.useTheirs"))}{choiceBtn(f, "both", t("dt.useEditor"))}</div>
         </div>
       ))}
-      {focus && !o.resolved[focus] && <><h4>{focus} — 구간별로 고르기</h4><ConflictEditor key={focus} file={focus} repo={repo} /></>}
+      {focus && !o.resolved[focus] && <><h4>{t("dt.byHunk", { file: focus })}</h4><ConflictEditor key={focus} file={focus} repo={repo} /></>}
     </div>
   );
 };
@@ -264,27 +265,27 @@ const CommitView = ({ id, repo, ui, onGoto }: { id: string; repo: RepoState; ui:
   return (
     <>
       <div className="reword">
-        <input id="msg-input" value={msg} disabled={!editable} aria-label="커밋 메시지" onChange={(e) => setMsg(e.target.value)} onKeyDown={handleKey} />
-        <button type="button" id="msg-save" className="small" title="Enter" disabled={!editable} onClick={() => void reword(id, msg)}>메시지 수정</button>
+        <input id="msg-input" value={msg} disabled={!editable} aria-label={t("drag.commitMsg")} onChange={(e) => setMsg(e.target.value)} onKeyDown={handleKey} />
+        <button type="button" id="msg-save" className="small" title="Enter" disabled={!editable} onClick={() => void reword(id, msg)}>{t("dt.reword")}</button>
       </div>
-      {pushedSet(repo).has(id) && <div className="kv lock-note">push 된 커밋 — 수정하면 force push 가 필요합니다</div>}
+      {pushedSet(repo).has(id) && <div className="kv lock-note">{t("dt.pushedNote")}</div>}
       <div className="kv"><code>{c.id}</code></div>
-      {c.author && <div className="kv">작성자: {c.author}</div>}
-      {c.date && <div className="kv" title={fullTime(c.date)}>날짜: {relTime(c.date)} · {fullTime(c.date)}</div>}
-      <div className="kv">줄기: {st.owner.get(id) || "(브랜치 없음)"}</div>
+      {c.author && <div className="kv">{t("dt.author", { author: c.author })}</div>}
+      {c.date && <div className="kv" title={fullTime(c.date)}>{t("dt.date", { rel: relTime(c.date), full: fullTime(c.date) })}</div>}
+      <div className="kv">{t("dt.stem", { stem: st.owner.get(id) || t("dt.noBranch") })}</div>
       {!!tags.length && (
-        <div className="kv">태그: {tags.map((t, i) => <span key={t.name}>{i > 0 && ", "}<code>{t.name}</code>{t.message && ` ${t.message}`}</span>)}</div>
+        <div className="kv">{t("dt.tags")} {tags.map((tag, i) => <span key={tag.name}>{i > 0 && ", "}<code>{tag.name}</code>{tag.message && ` ${tag.message}`}</span>)}</div>
       )}
       <div className="kv">
-        부모: {c.parents.length
+        {t("dt.parents")} {c.parents.length
           ? c.parents.map((x, i) => <span key={x}>{i > 0 && ", "}<button type="button" className="link" onClick={() => onGoto(x)}><code>{short(x)}</code></button></span>)
-          : "없음 (첫 커밋)"}
+          : t("dt.noParents")}
       </div>
       <div className="kv">
-        파일 (클릭하면 diff):<br />
+        {t("dt.files")}<br />
         {c.files.length
           ? c.files.map((f, i) => <span key={f}>{i > 0 && <br />}<button type="button" className="file-link link" onClick={() => store.update({ selectedFile: { path: f, commit: id }, detailTab: "diff" })}>{f}</button></span>)
-          : "- (merge 커밋)"}
+          : t("dt.mergeFiles")}
       </div>
       {sel && sel.commit === id && <FileView path={sel.path} commit={id} tab={ui.detailTab} repo={repo} onGoto={onGoto} />}
     </>
@@ -296,7 +297,7 @@ const MultiView = ({ ids, repo, onGoto }: { ids: string[]; repo: RepoState; onGo
   const sorted = oldestFirst(repo, ids);
   return (
     <div className="multi-view">
-      <h4>커밋 {sorted.length}개 선택됨</h4>
+      <h4>{t("dt.multi", { n: sorted.length })}</h4>
       <ol className="hist">
         {sorted.map((id) => (
           <li key={id}>
@@ -305,8 +306,8 @@ const MultiView = ({ ids, repo, onGoto }: { ids: string[]; repo: RepoState; onGo
           </li>
         ))}
       </ol>
-      <p className="muted hint">고른 커밋 중 하나를 다른 브랜치 이름표에 끌어 놓거나 오른쪽 클릭하면, 오래된 것부터 한꺼번에 복사(cherry-pick)합니다. ⌘ 클릭으로 더하거나 빼고, Shift 클릭은 같은 브랜치에서 범위를 고릅니다. Esc 로 선택을 풉니다.</p>
-      <button type="button" className="small" onClick={() => store.update({ multi: [] })}>선택 풀기</button>
+      <p className="muted hint">{t("dt.multiHint")}</p>
+      <button type="button" className="small" onClick={() => store.update({ multi: [] })}>{t("ctx.clearSelection")}</button>
     </div>
   );
 };
@@ -322,7 +323,7 @@ const DetailSection = ({ ui, repo, onGoto }: DetailSectionProps) => {
       {ui.multi.length > 1 ? <MultiView ids={ui.multi} repo={repo} onGoto={onGoto} />
         : c ? <CommitView key={c.id} id={c.id} repo={repo} ui={ui} onGoto={onGoto} />
         : ui.selectedFile && !ui.selectedFile.commit ? <FileView path={ui.selectedFile.path} commit={null} tab={ui.detailTab} repo={repo} onGoto={onGoto} />
-        : !repo.op && <span className="muted">커밋이나 파일을 클릭하면 상세 정보와 diff 가 보입니다. ⌘K 로 커밋·파일을 찾을 수 있습니다.</span>}
+        : !repo.op && <span className="muted">{t("dt.empty")}</span>}
     </div>
   );
 };

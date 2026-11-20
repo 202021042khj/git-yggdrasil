@@ -8,6 +8,7 @@ import { readRepo } from "@/git/readRepo";
 import { createPull, createRepo, fetchUser, listPulls, listRepos, parseRemote, repoInfo } from "@/github/api";
 import { authStatus, cancelLogin, logout, startLogin, waitLogin } from "@/github/auth";
 import { requireRoot, send } from "@/repo/session";
+import { t } from "@shared/i18n/i18n";
 
 const remoteUrl = async (root: string, name: string) => ((await git(root, ["remote", "get-url", name], { allowFail: true })) || "").trim();
 
@@ -63,7 +64,7 @@ export function registerGithubIpc(): void {
     const [remoteName, ...rest] = up.split("/");
     const url = await remoteUrl(root, remoteName);
     const fullName = parseRemote(url);
-    if (!fullName) throw new Error(`${remoteName} 은(는) GitHub 저장소가 아닙니다: ${url}`);
+    if (!fullName) throw new Error(t("m.gh.notGithubRemote", { remote: remoteName, url }));
     const baseBranch = base || (await repoInfo(fullName)).defaultBranch;
     const pr = await createPull({ fullName, head: rest.join("/"), base: baseBranch, title, body });
     void shell.openExternal(pr.htmlUrl);

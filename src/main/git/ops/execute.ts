@@ -9,6 +9,7 @@ import { explainRemoteError } from "@/git/remoteErrors";
 import { historyOps } from "@/git/ops/historyOps";
 import { remoteOps } from "@/git/ops/remoteOps";
 import { workingOps } from "@/git/ops/workingOps";
+import { t } from "@shared/i18n/i18n";
 import type { OpExtra, OpName, RunResult } from "@shared/types/ipc";
 
 interface Snapshot {
@@ -49,7 +50,7 @@ async function restore(ctx: Parameters<OpFn>[0], entry: UndoEntry, from: Snapsho
     if (was === want) continue;
     const cur = await snapshot(ctx.root);
     if (!want) { // to 상태에는 없는 브랜치 → 지운다
-      if (cur.head === b) throw new Error(`${b} 가 체크아웃되어 있어 지울 수 없습니다.`);
+      if (cur.head === b) throw new Error(t("m.deleteCheckedOut", { branch: b }));
       await ctx.run(["branch", "-D", b]);
     } else if (cur.head === b) {
       await ctx.run(["reset", SOFT_UNDO.has(entry.op) ? "--soft" : "--keep", want]);
@@ -68,13 +69,13 @@ const stackOf = (m: Map<string, UndoEntry[]>, root: string) => { if (!m.has(root
 const undo: OpFn = async (ctx) => {
   const stack = stackOf(undoStacks, ctx.root);
   const last = stack.at(-1);
-  if (!last) throw new Error("되돌릴 작업이 없습니다. (브랜치 위치를 바꾼 조작만 되돌릴 수 있습니다)");
+  if (!last) throw new Error(t("m.noUndo"));
   if (last.op === "renameBranch") { // 이름 변경은 이름만 되돌린다 (원격에 반영한 것은 그대로)
     await ctx.run(["branch", "-m", String(last.args[1]), String(last.args[0])]);
-    ctx.note("# 되돌림: 브랜치 이름 변경 (원격은 그대로)");
+    ctx.note(`# ${t("m.undoRename")}`);
   } else {
     await restore(ctx, last, last.after, last.before);
-    ctx.note(`# 되돌림: ${last.op}`);
+    ctx.note(`# ${t("m.undoOp", { op: last.op })}`);
   }
   stack.pop();
   stackOf(redoStacks, ctx.root).push(last);
@@ -84,13 +85,13 @@ const undo: OpFn = async (ctx) => {
 const redo: OpFn = async (ctx) => {
   const stack = stackOf(redoStacks, ctx.root);
   const next = stack.at(-1);
-  if (!next) throw new Error("다시 실행할 작업이 없습니다.");
+  if (!next) throw new Error(t("top.noRedo"));
   if (next.op === "renameBranch") {
     await ctx.run(["branch", "-m", String(next.args[0]), String(next.args[1])]);
-    ctx.note("# 다시 실행: 브랜치 이름 변경 (원격은 그대로)");
+    ctx.note(`# ${t("m.redoRename")}`);
   } else {
     await restore(ctx, next, next.before, next.after);
-    ctx.note(`# 다시 실행: ${next.op}`);
+    ctx.note(`# ${t("m.redoOp", { op: next.op })}`);
   }
   stack.pop();
   stackOf(undoStacks, ctx.root).push(next);
@@ -113,7 +114,7 @@ export function registerOps(ops: Partial<Record<OpName, OpFn>>): void {
 
 export async function execute(root: string, op: OpName, args: unknown[] = [], extra: OpExtra = {}): Promise<RunResult> {
   const fn = OPS[op];
-  if (!fn) throw new Error(`알 수 없는 조작: ${op}`);
+  if (!fn) throw new Error(t("m.unknownOp", { op }));
   const { ctx, cmds, warnings } = createContext(root, extra);
   const before = op === "undo" || op === "redo" ? null : await snapshot(root).catch(() => null);
   try {

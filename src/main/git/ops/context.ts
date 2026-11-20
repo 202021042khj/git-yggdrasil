@@ -1,6 +1,7 @@
 // 조작 실행 컨텍스트: 실행 기록, 경고, 공용 도우미
 import { git, type GitOptions } from "@/git/cli";
 import { gitAuth } from "@/github/auth";
+import { t } from "@shared/i18n/i18n";
 import type { OpExtra } from "@shared/types/ipc";
 
 /** 네트워크 명령 (fetch/pull/push/clone): 오래 걸릴 수 있고 GitHub 로그인 토큰을 붙인다 */
@@ -43,7 +44,7 @@ export function createContext(root: string, extra: OpExtra = {}) {
       return git(root, args, opts);
     },
     note: (line) => { cmds.push(line); },
-    warn: (msg) => { warnings.push(msg); cmds.push(`# 경고: ${msg}`); },
+    warn: (msg) => { warnings.push(msg); cmds.push(`# ${t("m.warning", { msg })}`); },
   };
   return { ctx, cmds, warnings };
 }
@@ -75,7 +76,7 @@ export async function backup(root: string, label: string, oid: string | null): P
 }
 
 export function unsupported(what: string): never {
-  const e: OpError = new Error(`${what}은(는) 아직 실제 저장소에서 지원하지 않습니다. 미리보기만 됩니다.`);
+  const e: OpError = new Error(t("m.unsupported", { what }));
   e.unsupported = true;
   throw e;
 }

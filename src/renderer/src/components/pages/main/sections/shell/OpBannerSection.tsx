@@ -4,11 +4,12 @@ import { confirmAction } from "@/components/ui/dialogUtils";
 import { run } from "@/app/actions";
 import { store } from "@/app/store";
 import { OP_CMD } from "@/constants/ops";
+import { t } from "@shared/i18n/i18n";
 import type { RepoState } from "@shared/types/repo";
 
 type OpKind = "continue" | "skip" | "abort";
 const OP = { continue: "continueOp", skip: "skipOp", abort: "abortOp" } as const;
-const LABEL: Record<OpKind, string> = { continue: "계속", skip: "이 커밋 건너뛰기", abort: "중단 (시작 전으로)" };
+const LABEL_KEY = { continue: "op.continue", skip: "op.skip", abort: "op.abort" } as const satisfies Record<OpKind, string>;
 
 interface OpBannerSectionProps {
   repo: RepoState;
@@ -20,20 +21,20 @@ const OpBannerSection = ({ repo }: OpBannerSectionProps) => {
   if (!o) return <div id="op-banner" className="op-banner hidden" />;
 
   const handleOp = (kind: OpKind) => {
-    if (kind === "skip" && !confirmAction(`"${o.current?.msg}" 커밋을 버리고 다음으로 넘어갈까요?`)) return;
+    if (kind === "skip" && !confirmAction(t("op.confirmSkip", { msg: o.current?.msg ?? "" }))) return;
     store.update({ selectedFile: null });
-    void run({ op: OP[kind], args: [], summary: `${o.title} — ${LABEL[kind]}` });
+    void run({ op: OP[kind], args: [], summary: t("op.summary", { title: o.title, action: t(LABEL_KEY[kind]) }) });
   };
 
   if (o.kind === "split") {
     return (
       <div id="op-banner" className="op-banner">
         <span className="ob-title">✂ {o.title}</span>
-        <span className="ob-step">변경 파일: {(o.current?.files || []).join(", ")}</span>
-        <span>파일이나 변경 덩어리를 골라 여러 번에 나눠 커밋한 뒤 계속을 누르세요.</span>
+        <span className="ob-step">{t("op.splitFiles", { files: (o.current?.files || []).join(", ") })}</span>
+        <span>{t("op.splitHint")}</span>
         <span className="spacer" />
-        <button type="button" className="primary" data-op="continue" title="git rebase --continue" onClick={() => handleOp("continue")}>▶ 계속 (뒤 커밋 다시 올리기)</button>
-        <button type="button" className="danger" data-op="abort" title="git rebase --abort" onClick={() => handleOp("abort")}>✕ 중단 (나누기 전으로)</button>
+        <button type="button" className="primary" data-op="continue" title="git rebase --continue" onClick={() => handleOp("continue")}>{t("op.splitContinue")}</button>
+        <button type="button" className="danger" data-op="abort" title="git rebase --abort" onClick={() => handleOp("abort")}>{t("op.splitAbort")}</button>
       </div>
     );
   }
@@ -44,13 +45,13 @@ const OpBannerSection = ({ repo }: OpBannerSectionProps) => {
 
   return (
     <div id="op-banner" className="op-banner">
-      <span className="ob-title">⏸ {o.title} — 충돌로 멈춤</span>
-      {seq && <span className="ob-step">커밋 {(o.step ?? 0) + 1}/{o.total ?? 1} "{o.current?.msg ?? ""}" 적용 중</span>}
-      <span>충돌 파일 {done}/{o.conflicts.length} 해결</span>
+      <span className="ob-title">{t("op.stopped", { title: o.title })}</span>
+      {seq && <span className="ob-step">{t("op.step", { step: (o.step ?? 0) + 1, total: o.total ?? 1, msg: o.current?.msg ?? "" })}</span>}
+      <span>{t("op.resolved", { done, total: o.conflicts.length })}</span>
       <span className="spacer" />
-      <button type="button" className="primary" data-op="continue" disabled={!all} title={`${OP_CMD[o.kind]} --continue`} onClick={() => handleOp("continue")}>▶ 계속</button>
-      {seq && <button type="button" data-op="skip" title={`${OP_CMD[o.kind]} --skip`} onClick={() => handleOp("skip")}>이 커밋 건너뛰기</button>}
-      <button type="button" className="danger" data-op="abort" title={`${OP_CMD[o.kind]} --abort`} onClick={() => handleOp("abort")}>✕ 중단 (시작 전으로)</button>
+      <button type="button" className="primary" data-op="continue" disabled={!all} title={`${OP_CMD[o.kind]} --continue`} onClick={() => handleOp("continue")}>▶ {t("op.continue")}</button>
+      {seq && <button type="button" data-op="skip" title={`${OP_CMD[o.kind]} --skip`} onClick={() => handleOp("skip")}>{t("op.skip")}</button>}
+      <button type="button" className="danger" data-op="abort" title={`${OP_CMD[o.kind]} --abort`} onClick={() => handleOp("abort")}>✕ {t("op.abort")}</button>
     </div>
   );
 };

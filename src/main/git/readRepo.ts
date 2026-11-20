@@ -111,9 +111,16 @@ async function readRemotes(root: string): Promise<RemoteInfo[]> {
   return Object.entries(map).map(([name, url]) => ({ name, url }));
 }
 
+/** git 저장소가 아닌 폴더: 빈 상태로 열어 두고 화면에서 "git 시작하기"(git init)를 고르게 한다 */
+export const notGitState = (dir: string): RepoState => ({
+  root: dir, repoName: path.basename(dir), notGit: true,
+  commits: {}, branches: {}, remotes: {}, head: "", files: [],
+  working: { staged: [], unstaged: [], conflicted: [] }, stash: [], op: null,
+});
+
 export async function readRepo(dir: string): Promise<RepoState> {
   const root = await repoRoot(dir);
-  if (!root) throw new Error(`git 저장소가 아닙니다: ${dir}`);
+  if (!root) return notGitState(dir);
   const [{ commits, truncated }, totalOut] = await Promise.all([
     readCommits(root, limitOf(root)),
     git(root, ["rev-list", "--count", "--branches", "--remotes", "--tags", "HEAD"], { allowFail: true }),

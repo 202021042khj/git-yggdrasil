@@ -1,6 +1,7 @@
 import "./FooterSection.css";
 
 import Icon from "@/components/common/Icon";
+import { t } from "@shared/i18n/i18n";
 import type { RepoState } from "@shared/types/repo";
 
 interface FooterSectionProps {
@@ -15,15 +16,15 @@ const FooterSection = ({ repo }: FooterSectionProps) => (
       <div id="stash-list" className="stash-list">
         {repo.stash.length
           ? repo.stash.map((st, i) => (
-            <div key={i} className="stash-card" data-drag="stash" data-stash={i} title="작업 영역으로 끌면 꺼내기 · 휴지통으로 끌면 삭제 · 오른쪽 클릭: 메뉴">
+            <div key={i} className="stash-card" data-drag="stash" data-stash={i} title={t("footer.stashTip")}>
               stash@{`{${i}}`} · {st.msg}
             </div>
           ))
-          : <span className="muted">비어 있음 — 변경 묶음을 여기로 끌면 stash</span>}
+          : <span className="muted">{t("footer.stashEmpty")}</span>}
       </div>
     </div>
     <div className="trash" data-drop="trash">
-      <Icon name="trash" />휴지통 <span className="muted">커밋 제거, 브랜치와 stash 삭제, 변경 버리기</span>
+      <Icon name="trash" />{t("target.trash")} <span className="muted">{t("footer.trashHint")}</span>
     </div>
   </footer>
 );
