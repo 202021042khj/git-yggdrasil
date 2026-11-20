@@ -20,6 +20,9 @@ module.exports = {
     entitlements: "build/entitlements.mac.plist",
     entitlementsInherit: "build/entitlements.mac.plist",
     notarize,
+    // YGG_ADHOC_SIGN=1 (CI): 인증서 없이 ad-hoc 서명("-"). 서명을 아예 끄면 Electron 실행 파일의 원래 서명이
+    // 바뀐 앱과 맞지 않아 macOS 가 "손상되었기 때문에 열 수 없습니다" 를 띄운다. ad-hoc 이면 "그래도 열기" 로 열 수 있다.
+    ...(process.env.YGG_ADHOC_SIGN ? { identity: "-" } : {}),
   },
   // 파일 이름에 버전을 넣지 않는다: 랜딩의 releases/latest/download/<이름> 주소가 릴리스마다 그대로 맞도록
   // (자동 업데이트는 latest*.yml 에 적힌 이름을 보므로 상관없다)
