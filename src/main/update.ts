@@ -16,7 +16,7 @@ function wire(): void {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.on("update-not-available", () => {
-    if (manual) void dialog.showMessageBox({ type: "info", message: t("upd.latest"), detail: `Git Yggdrasil ${app.getVersion()}` });
+    if (manual) void dialog.showMessageBox({ type: "info", message: t("upd.latest"), detail: `Yggdrasil ${app.getVersion()}` });
     manual = false;
   });
   autoUpdater.on("update-available", (info) => {

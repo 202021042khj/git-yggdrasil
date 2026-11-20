@@ -1,93 +1,250 @@
-# Git Yggdrasil (Electron)
+<div align="center">
 
-git 히스토리를 그래프 위에서 끌어 놓아 다루는 데스크톱 git 클라이언트입니다. 화면은 한국어와 영어를 지원합니다 (설정 → 언어 / Language, 기본은 OS 언어).
-electron-vite + TypeScript 로 만들었고, 코드 구조 규칙은 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 에 있습니다.
+<img src="docs/assets/logo.svg" width="112" alt="Yggdrasil logo" />
 
-## 실행
+# Yggdrasil
+
+**Rewrite git history by dragging the commit graph.**<br/>
+No commands to memorize, and every step can be undone with <kbd>⌘Z</kbd>.
+
+**English** · [한국어](README.ko.md)
+
+[![CI](https://github.com/202021042khj/git-yggdrasil/actions/workflows/ci.yml/badge.svg)](https://github.com/202021042khj/git-yggdrasil/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/202021042khj/git-yggdrasil?label=release&color=4a6b4f)](https://github.com/202021042khj/git-yggdrasil/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/202021042khj/git-yggdrasil/total?color=b5674b)](https://github.com/202021042khj/git-yggdrasil/releases)
+![Platforms](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-1c1b19)
+![Languages](https://img.shields.io/badge/i18n-English%20%7C%20한국어-6f8f75)
+[![License: MIT](https://img.shields.io/badge/license-MIT-4a6b4f)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/202021042khj/git-yggdrasil?style=flat&color=e3b341)](https://github.com/202021042khj/git-yggdrasil/stargazers)
+
+<br/>
+
+[**⬇ Download**](#-download) &nbsp;·&nbsp; [Features](#-features) &nbsp;·&nbsp; [How it works](#-how-it-works) &nbsp;·&nbsp; [Build from source](#-build-from-source)
+
+<br/>
+
+<img src="docs/assets/en/demo.gif" width="880" alt="Dragging a commit onto another branch, choosing Copy (cherry-pick), then undoing with ⌘Z" />
+
+</div>
+
+<br/>
+
+## ✨ Why Yggdrasil
+
+> Git is a tree. You should be able to *touch* it.
+
+- **🌳 Drag, don't type.** Drop a commit onto a branch to move or copy it. Drop a branch onto another to merge or rebase. A ghost preview shows the result *before* you let go.
+- **🛟 Safe by design.** History edits are computed with `git merge-tree` without touching your working tree. If something would conflict, **nothing changes** and you're told which files.
+- **↩️ Undo everything.** Every operation is logged with the exact git command it ran, and <kbd>⌘Z</kbd> / <kbd>⇧⌘Z</kbd> walk back and forth through them.
+- **🎓 Learn git as you go.** Each drop target and menu item shows the real command (`git cherry-pick …`, `git rebase --onto …`). Copy them into your terminal anytime.
+
+<br/>
+
+## ⬇ Download
+
+| | File | Notes |
+|---|---|---|
+| <img src="https://cdn.simpleicons.org/apple/1c1b19" width="16" /> **macOS · Apple Silicon** | [Yggdrasil-mac-arm64.dmg](https://github.com/202021042khj/git-yggdrasil/releases/latest/download/Yggdrasil-mac-arm64.dmg) | macOS 12+ |
+| <img src="https://cdn.simpleicons.org/apple/1c1b19" width="16" /> **macOS · Intel** | [Yggdrasil-mac-x64.dmg](https://github.com/202021042khj/git-yggdrasil/releases/latest/download/Yggdrasil-mac-x64.dmg) | macOS 12+ |
+| 🪟 **Windows** | [Yggdrasil-windows-setup.exe](https://github.com/202021042khj/git-yggdrasil/releases/latest/download/Yggdrasil-windows-setup.exe) | Windows 10+ (x64) |
+| 🐧 **Linux** | [Yggdrasil-linux-x64.AppImage](https://github.com/202021042khj/git-yggdrasil/releases/latest/download/Yggdrasil-linux-x64.AppImage) | `chmod +x` then run |
+
+Requires [git](https://git-scm.com/downloads) 2.38 or later on your `PATH`.
+
+<details>
+<summary><b>First launch: “can't be opened” / “Windows protected your PC”</b></summary>
+
+<br/>
+
+Yggdrasil isn't code-signed yet, so your OS asks for confirmation once.
+
+**macOS (15 Sequoia or later)**
+1. Open the app. When “Yggdrasil” Not Opened appears, click **Done** (don't move it to the Trash).
+2. Open **System Settings › Privacy & Security**, scroll to *Security*, and click **Open Anyway** next to Yggdrasil.
+3. Confirm with your password or Touch ID. From now on it opens normally.
+
+If macOS says the app “is damaged”, run this once:
 
 ```bash
+xattr -dr com.apple.quarantine /Applications/Yggdrasil.app
+```
+
+**Windows**
+1. SmartScreen shows “Windows protected your PC”. Click **More info**.
+2. Check the app name is Yggdrasil, then click **Run anyway**.
+
+Every release lists a SHA-256 checksum next to each file on the [Releases](https://github.com/202021042khj/git-yggdrasil/releases) page, so you can verify what you downloaded.
+
+</details>
+
+<br/>
+
+## 🧭 Features
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### Drag to rewrite history
+Drag a commit onto a branch label. Pick **Move**, **Copy (cherry-pick)** or **Merge** from the menu that appears. The ghost graph shows the outcome, and the exact git commands are listed.
+
+</td>
+<td width="50%"><img src="docs/assets/en/drag.jpg" alt="Dragging a commit with a ghost preview" /></td>
+</tr>
+<tr>
+<td><img src="docs/assets/en/rebase.jpg" alt="Clean up commits dialog" /></td>
+<td valign="top">
+
+### Clean up commits (interactive rebase)
+Reorder, reword, squash, fixup or drop commits in one dialog, preview the result, then apply. Works on branches you haven't checked out.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### Built-in conflict editor
+When a merge, rebase or cherry-pick stops on a conflict, a banner appears. Pick **A**, **B** or **both** for each hunk, see the result live, then continue or abort.
+
+</td>
+<td><img src="docs/assets/en/conflict.jpg" alt="Conflict editor" /></td>
+</tr>
+<tr>
+<td><img src="docs/assets/en/diff.jpg" alt="Side-by-side diff" /></td>
+<td valign="top">
+
+### Diff, history and blame
+Unified or side-by-side diffs, whitespace ignore, before/after images, file history that follows renames, and line-by-line blame.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### Find anything with <kbd>⌘K</kbd>
+Jump to any commit by message, author or hash, or to any file in the repository.
+
+</td>
+<td><img src="docs/assets/en/search.jpg" alt="⌘K search" /></td>
+</tr>
+<tr>
+<td><img src="docs/assets/en/dark.jpg" alt="Dark theme" /></td>
+<td valign="top">
+
+### Light & dark, English & 한국어
+Follows your system theme and language, or pick them in Settings (<kbd>⌘,</kbd>). Fully keyboard-accessible and screen-reader friendly.
+
+</td>
+</tr>
+</table>
+
+<details>
+<summary><b>Everything else Yggdrasil can do</b></summary>
+
+<br/>
+
+| Area | What you can do |
+|---|---|
+| **Everyday** | Stage / unstage files, hunks or single lines · commit, amend, commit selected paths · discard changes · stash by dragging · checkout, new branch, delete branch |
+| **History** | Cherry-pick (one or many) · move commits · rebase a branch · merge · squash, reorder, drop · revert · reset (soft / mixed / hard) · move branch pointers · split a commit |
+| **Remotes** | Clone · fetch / pull / push (drag a label onto the remote lane) · add / rename / remove remotes · set upstream · delete remote branches · tags (create, move, delete, push) |
+| **GitHub** | Sign in with Device Flow · clone your repos · publish a repo · open a PR from a branch · list PRs with review and check status · check out `pr/<number>` |
+| **Recovery** | Find lost commits from the reflog and app backups (`refs/yggdrasil/backup/`) · restore as a branch, copy, or reset to them |
+| **Repositories** | Open any folder, even one without git (**Start git** runs `git init`) · submodules · worktrees · Git LFS indicators · large repos load 400 commits at a time |
+| **Other hosts** | HTTPS sign-in for GitLab, Bitbucket and self-hosted servers via your system git credential helper · clear explanations for SSH, host key and permission errors |
+
+</details>
+
+<br/>
+
+## 🔍 How it works
+
+```mermaid
+flowchart LR
+    A["Drag commit<br/>onto branch"] --> B["Plan in memory<br/>git merge-tree + commit-tree"]
+    B -->|clean| C["Move the branch ref<br/>(backup kept)"]
+    B -->|conflict| D["Change nothing<br/>show conflicting files"]
+    C --> E["Graph redraws<br/>⌘Z ready"]
+```
+
+- History edits are **planned in memory**, so they work on branches you haven't checked out, and a conflict never leaves your repository half-changed.
+- When the current branch moves, the working tree is updated with `git reset --keep` (your local changes stay; git refuses if they'd be overwritten).
+- Before every operation, the old branch positions are saved under `refs/yggdrasil/backup/`.
+- Operations started in a terminal (a paused rebase, a merge with conflicts) are picked up as they are.
+
+<details>
+<summary><b>Privacy & security</b></summary>
+
+<br/>
+
+- Yggdrasil runs your installed `git`. It doesn't send your code anywhere.
+- GitHub tokens are encrypted with your OS keychain (Electron `safeStorage`) and passed to git **only through an environment variable, only for github.com**, never as a command argument.
+- Passwords for other hosts go straight into your system git credential helper. Yggdrasil keeps no copy.
+- The renderer is sandboxed with context isolation, and navigation and new windows are blocked.
+
+</details>
+
+<br/>
+
+## ⌨️ Shortcuts
+
+| Keys | Action | | Keys | Action |
+|---|---|---|---|---|
+| <kbd>⌘O</kbd> | Open a folder | | <kbd>⌘K</kbd> | Search commits & files |
+| <kbd>⌘⇧O</kbd> | Clone from URL | | <kbd>⌘,</kbd> | Settings |
+| <kbd>⌘Z</kbd> | Undo last operation | | <kbd>⇧⌘Z</kbd> | Redo |
+| <kbd>⌘↵</kbd> | Commit | | <kbd>Esc</kbd> | Cancel drag / close menu |
+| <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> | Move through the graph | | <kbd>⇧F10</kbd> | Context menu for the focused item |
+
+On Windows and Linux, use <kbd>Ctrl</kbd> instead of <kbd>⌘</kbd>.
+
+<br/>
+
+## 🛠 Build from source
+
+```bash
+git clone https://github.com/202021042khj/git-yggdrasil.git
+cd git-yggdrasil
 npm install
-npm run dev      # 개발 (화면 HMR)
-npm start        # 빌드 후 실행
-npm test         # 단위·통합 테스트 (main·renderer)
-npm run e2e      # 실제 앱 화면 E2E (Playwright)
-npm run typecheck
-npm run lint     # Biome
-npm run dist:mac # 배포용 .dmg (docs/RELEASE.md)
+npm run dev
 ```
 
-처음 실행하면 저장소 폴더를 고르는 화면이 뜹니다(⌘O). 마지막으로 연 저장소는 다음 실행 때 자동으로 열립니다.
+| Command | What it does |
+|---|---|
+| `npm run dev` | Run with hot reload |
+| `npm test` | Unit & integration tests (Vitest) |
+| `npm run e2e` | End-to-end tests on the real app (Playwright) |
+| `npm run typecheck` · `npm run lint` | TypeScript · Biome |
+| `npm run dist` | Package installers into `dist/` |
 
-## 지금 단계: 5단계 + P3 완료
+**Stack:** Electron · React 19 · TypeScript · electron-vite · Vitest · Playwright · Biome
 
-실제로 실행되는 조작:
-- 기본: 커밋 메시지 수정, stage / unstage, 변경 버리기, 커밋·경로만 커밋·amend, checkout, 새 브랜치, 브랜치 삭제
-- 원격: 원격 추가·주소 변경·삭제, URL 로 clone (⌘⇧O), fetch, pull, push (원격이 없으면 주소를 물어 origin 추가)
-- 히스토리: cherry-pick, 커밋 옮기기, 줄기 rebase, merge, 커밋 합치기·순서 변경·제거, revert, reset (mixed·soft·hard), 브랜치 포인터 옮기기
-- 되돌리기(⌘Z): 앱에서 한 조작 중 브랜치 위치를 바꾼 것을 하나씩 되돌림 (커밋류는 변경을 Staged 로 남김). stage·변경 버리기·stash 는 되돌릴 수 없음
+Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the code layout and [docs/RELEASE.md](docs/RELEASE.md) for how releases are built. Pushing a `v*` tag builds macOS, Windows and Linux on GitHub Actions and publishes a release.
 
-히스토리 조작은 `git merge-tree` + `commit-tree` 로 작업 폴더를 건드리지 않고 계산합니다.
-그래서 체크아웃하지 않은 브랜치에도 rebase·cherry-pick·merge 가 되고, **충돌이 나면 아무것도 바꾸지 않고** 충돌 파일을 알려 줍니다.
-현재 브랜치가 바뀌면 `git reset --keep` 으로 작업 영역을 맞춥니다 (로컬 변경은 보존, 겹치면 git 이 거절).
-조작 전 브랜치 위치는 `refs/yggdrasil/backup/` 에도 남습니다.
+<br/>
 
-충돌 (4단계):
-- 현재 브랜치의 cherry-pick · rebase · merge · revert · pull 은 충돌 지점에서 멈추고 배너와 해결 패널을 띄움
-- 체크아웃하지 않은 브랜치에서 충돌이 나면 아무것도 바꾸지 않고 "체크아웃하고 진행할까요?" 를 물음
-- 파일마다 A 쪽(--ours) · B 쪽(--theirs) · 직접 편집(에디터로 열고, 충돌 표시를 정리하면 해결로 표시), 패널에 실제 충돌 내용
-- 계속 · 건너뛰기 · 중단을 실제 git 으로 실행. 터미널에서 시작해 멈춘 작업도 열면 그대로 이어서 해결 가능
+## 🤝 Contributing
 
-큰 저장소 (5단계):
-- merge 후 지워진 브랜치의 커밋(이름 없는 레인)은 가로 구간이 겹치지 않으면 같은 줄을 나눠 씀 (예: 커밋 1,601개 · 레인 301개 → 8줄)
-- 처음엔 최근 커밋 400개, 캔버스 왼쪽 아래 "이전 커밋 더 불러오기" 로 400개씩 추가 (보던 자리 유지)
-- 레인 이름은 가로로 스크롤해도 왼쪽에 고정
-- 이름표를 끌 때 화면에 보이는 커밋에만 라벨을 붙이고, 조작 계산은 라벨에 닿을 때 (드래그 시작 14초 → 80ms)
+Bug reports, ideas and pull requests are welcome.
 
-아직 안 되는 것:
-- hunk·줄 단위 충돌 해결, stash pop 충돌 뒤 stash 정리
-- merge 커밋이 들어 있는 줄기를 다시 쓰기, 체크아웃 안 한 브랜치에 바로 커밋, 과거 커밋에 변경 합치기(fixup), 다시 실행(⇧⌘Z)
+1. Open an [issue](https://github.com/202021042khj/git-yggdrasil/issues) to describe the bug or idea.
+2. Fork, create a branch, and make sure `npm run typecheck && npm run lint && npm test` pass.
+3. Open a pull request. CI runs the same checks plus the E2E suite.
 
-인증: 시스템의 git 자격 증명 도우미와 SSH 에이전트를 그대로 씁니다. 비밀번호 입력이 필요하면 멈추지 않고 실패로 알립니다.
+Every user-facing string lives in `src/shared/i18n/` (`ko.ts` and `en.ts` must have the same keys). Translations for new languages are very welcome.
 
-## GitHub 연동
+<br/>
 
-- 상단 **GitHub 로그인** → 브라우저에서 코드 입력·승인 (Device Flow, OAuth App `Ov23liCTALlDkudn2YA3`, 권한 `repo read:user`)
-- 토큰은 OS 키체인 기반 암호화(Electron `safeStorage`)로 앱 데이터 폴더에 저장, 만료되는 토큰이면 refresh token 으로 자동 갱신
-- 로그인하면 github.com HTTPS 원격의 fetch / pull / push / clone 에 토큰을 자동으로 씀 (명령 인자가 아니라 환경 변수로만 전달, 다른 호스트에는 주지 않음)
-- 시작 화면 **내 GitHub 저장소에서 clone**, 원격 섹션 **GitHub 에 새 저장소로 올리기**, 브랜치 이름표 오른쪽 클릭 **GitHub PR 만들기**
-- P3: 태그(달기·옮기기·삭제·push), 변경 덩어리 단위 stage/unstage, 커밋 나누기, 브랜치 없이 커밋 체크아웃, upstream 연결, 원격 브랜치 삭제, ⌘K 찾기, 파일 히스토리·blame
-- 다시 실행(⌘⇧Z), 앱 안 충돌 편집기(구간별 A/B/둘 다 고르기), 줄 단위 stage, diff 좌우 비교·공백 무시·전체 보기·이미지 전후 보기, 그래프 필터(브랜치 숨김·작성자·기간)
-- PR 목록 (리뷰 결정·검사 결과 표시, 브라우저에서 열기, `pr/<번호>` 브랜치로 받아 체크아웃)
-- 원격 오류 안내: SSH 키·호스트 키·주소·인증·권한 문제를 원인과 해결 방법으로 보여 줌. SSH 는 암호·호스트 키를 묻느라 멈추지 않게 BatchMode 로 실행 (core.sshCommand 를 정해 두었으면 그대로 사용)
-- GitHub 밖 HTTPS 호스트(GitLab·Bitbucket·사내 서버) 로그인: 인증이 필요하면 사용자 이름·토큰을 받아 git 자격 증명 도우미(macOS 키체인 등)에 저장하고 다시 시도. 앱은 토큰을 따로 보관하지 않음
-- 여러 커밋 선택: ⌘ 클릭(하나씩)·Shift 클릭(같은 브랜치 범위)으로 고른 뒤 다른 브랜치 이름표에 끌거나 오른쪽 클릭하면 오래된 것부터 한꺼번에 cherry-pick
-- 커밋 정리(interactive rebase): 브랜치 이름표 오른쪽 클릭 → 순서 바꾸기·메시지 수정·합치기(squash/fixup)·빼기를 한 창에서 정하고 미리 본 뒤 실행. 체크아웃 없이 처리하고, 충돌이 나면 현재 브랜치에서는 실제 rebase -i 로 멈춰 해결
-- 서브모듈(상태·받기·열기), worktree(목록·다른 폴더에 체크아웃·열기·지우기, 다른 폴더가 쓰는 브랜치 표시), Git LFS 파일 표시와 미설치 안내
-- 예전 커밋 찾기(reflog): HEAD 기록과 앱 백업을 보여 주고, 어느 브랜치에서도 닿지 않는 커밋을 표시. 새 브랜치로 살리기·현재 브랜치에 복사·그 커밋으로 되돌리기(reset --keep)
-- 설정 (⌘,): 언어(시스템·한국어·English), 화면 색(시스템·밝게·어둡게), 글자 크기, 외부 에디터 명령, 자동 fetch, pull 방식, 켤 때 마지막 저장소 열기
-- 키보드만으로 사용: 그래프 화살표 탐색, Enter 고르기, Space 여러 개, Shift+F10 메뉴 (docs/ARCHITECTURE.md 의 접근성 표)
-- 다른 OAuth App 으로 시험하려면 `YGG_GH_CLIENT_ID` 환경 변수로 Client ID 를 바꿀 수 있음
+## 📄 License
 
-## 구조
+[MIT](LICENSE) © 202021042khj. Use it, change it, ship it. Just keep the copyright notice.
 
-자세한 내용은 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+<br/>
 
-```
-src/main      git 실행·조작·GitHub·IPC
-src/preload   화면에 노출하는 API (gitApi, ghApi)
-src/renderer  화면 (store · sections · interactions · model)
-src/shared    공용 타입
-tests/        Vitest 통합 테스트
-```
+<div align="center">
 
-## 점검용 실행
+**If Yggdrasil makes git a little friendlier for you, a ⭐ helps others find it.**
 
-화면 오류를 모으고 캡처를 남긴 뒤 종료합니다. 점검 실행은 임시 프로필을 써서 실제 설정·최근 목록·로그인을 건드리지 않습니다.
+<sub>Named after the world tree of Norse mythology, whose branches hold every world together.</sub>
 
-```bash
-npm run build
-YGG_SMOKE=/path/to/repo YGG_SHOT=/tmp/shot.png npx electron .
-# 화면에서 시나리오 실행: YGG_EVAL=/path/to/scenario.js 를 함께 주면 결과를 같이 출력
-# 화면 언어 지정: YGG_LANG=en (또는 ko)
-```
-
+</div>

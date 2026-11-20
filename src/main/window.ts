@@ -6,7 +6,7 @@ import { isAppUrl } from "@/ipc/guard";
 import { send, setWindow } from "@/repo/session";
 import { t } from "@shared/i18n/i18n";
 
-export const APP_NAME = "Git Yggdrasil";
+export const APP_NAME = "Yggdrasil";
 
 /** 개발 실행(npm run dev)에서도 우리 아이콘을 쓴다. 패키지 앱은 electron-builder 가 build/icon.png 로 아이콘을 넣는다 */
 const DEV_ICON = app.isPackaged ? undefined : path.join(app.getAppPath(), "build/icon.png");

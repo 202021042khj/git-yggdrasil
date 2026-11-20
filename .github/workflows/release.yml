@@ -83,11 +83,27 @@ jobs:
 
       - run: ls -la dist
 
+      # 릴리스 본문 맨 위 = 태그 메시지 (git tag -a v0.2.0 -m "한 줄 요약" 으로 만든 태그).
+      # 첫 줄이 랜딩 페이지 "릴리스 노트" 의 요약으로 쓰인다. 메시지 없는 태그면 비워 두고 자동 노트만 붙는다.
+      - name: 태그 메시지 읽기
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")"
+          : > notes.md
+          if [ "$(echo "$ref" | jq -r .object.type)" = "tag" ]; then
+            gh api "repos/${GITHUB_REPOSITORY}/git/tags/$(echo "$ref" | jq -r .object.sha)" --jq .message \
+              | sed '/^-----BEGIN PGP SIGNATURE-----/,$d' > notes.md
+          fi
+          cat notes.md
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Yggdrasil ${{ github.ref_name }}
-          generate_release_notes: true
+          body_path: notes.md
+          generate_release_notes: true # 태그 메시지 아래에 커밋 · PR 목록을 덧붙인다
           fail_on_unmatched_files: true
           files: |
             dist/Yggdrasil-*
