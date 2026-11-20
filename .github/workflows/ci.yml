@@ -15,13 +15,6 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # 테스트가 만드는 임시 저장소의 커밋 작성자 (러너에는 git 사용자 설정이 없다)
-  GIT_AUTHOR_NAME: CI
-  GIT_AUTHOR_EMAIL: ci@example.com
-  GIT_COMMITTER_NAME: CI
-  GIT_COMMITTER_EMAIL: ci@example.com
-
 jobs:
   check:
     name: 타입 · lint · 단위 테스트
@@ -33,6 +26,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # 러너에는 git 사용자 설정이 없다: 기본값만 둔다 (테스트는 저장소마다 user.name 을 따로 정하고, 그 값이 이긴다.
+      # GIT_AUTHOR_* 환경 변수는 저장소 설정까지 덮어써서 작성자를 확인하는 테스트가 깨지므로 쓰지 않는다)
+      - run: git config --global user.name CI && git config --global user.email ci@example.com
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
@@ -47,6 +43,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # 러너에는 git 사용자 설정이 없다: 기본값만 둔다 (테스트는 저장소마다 user.name 을 따로 정하고, 그 값이 이긴다.
+      # GIT_AUTHOR_* 환경 변수는 저장소 설정까지 덮어써서 작성자를 확인하는 테스트가 깨지므로 쓰지 않는다)
+      - run: git config --global user.name CI && git config --global user.email ci@example.com
       - run: npx electron-vite build
       # Ubuntu 24.04 는 Chromium 샌드박스에 필요한 사용자 이름공간을 막아 둔다 (앱의 sandbox: true 를 그대로 시험하려고 푼다)
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
