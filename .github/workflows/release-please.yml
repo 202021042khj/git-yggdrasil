@@ -27,6 +27,8 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          # 기본 브랜치가 dev 라도 release PR 은 main 으로 (빠지면 기본 브랜치로 열려 태그가 안 생긴다)
+          target-branch: main
 
   build:
     needs: release-please
