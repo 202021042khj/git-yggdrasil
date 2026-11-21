@@ -219,7 +219,7 @@ npm run dev
 
 **기술:** Electron · React 19 · TypeScript · electron-vite · Vitest · Playwright · Biome
 
-코드 구조는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), 배포 방법은 [docs/RELEASE.md](docs/RELEASE.md), 예전 개발 노트는 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) 에 있어요. `v*` 태그를 push 하면 GitHub Actions 가 macOS · Windows · Linux 를 빌드해 릴리스를 올려요.
+코드 구조는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), 배포 방법은 [docs/RELEASE.md](docs/RELEASE.md), 예전 개발 노트는 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) 에 있어요. 출시는 release-please 가 커밋 메시지로 버전과 [CHANGELOG](CHANGELOG.md) 를 정하고, GitHub Actions 가 macOS · Windows · Linux 를 빌드 · 스모크 테스트해 초안 릴리스에 올려요.
 
 <br/>
 

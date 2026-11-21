@@ -114,6 +114,8 @@ export interface RenderOptions {
   focusId?: string | null;
   /** 함께 고른 커밋 (여러 개 선택) */
   multi?: Set<string>;
+  /** 고른 브랜치 이름표 (강조) */
+  selectedBranch?: string | null;
 }
 
 export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
@@ -174,11 +176,11 @@ export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
     const spoken = t("graph.commitLabel", { msg: cm.msg, id: short(c), lane: p.lane.name.startsWith("·") ? null : p.lane.name, tipOf: where || null, head: c === headTip, pushed: isPushed, merge: cm.parents.length > 1 });
     const focusable = opts.interactive && c === (opts.focusId ?? opts.selected ?? headTip);
     out.push(`<g class="${cls}" ${opts.interactive ? `data-drag="commit" data-drop="commit" data-id="${c}" role="button" aria-label="${esc(spoken)}" aria-pressed="${opts.selected === c || !!opts.multi?.has(c)}" tabindex="${focusable ? 0 : -1}"` : ""} transform="translate(${p.x},${p.y})">
-      ${c === headTip ? `<circle class="halo" r="17"/>` : ""}${shape}
+      ${opts.selected === c || opts.multi?.has(c) ? `<circle class="sel-ring" r="21"/>` : ""}${c === headTip ? `<circle class="halo" r="17"/>` : ""}${shape}
       <text class="msg" y="-22" aria-hidden="true">${esc(trunc(cm.msg, 15))}</text><title>${esc(tip)}</title></g>`);
 
     (labels[c] || []).forEach((r, i) => {
-      out.push(refLabel(s, r, p.x, p.y + 30 + i * LABEL_STEP, laneColor(r.name) || p.lane.color, !!opts.interactive));
+      out.push(refLabel(s, r, p.x, p.y + 30 + i * LABEL_STEP, laneColor(r.name) || p.lane.color, !!opts.interactive, r.kind === "local" && r.name === opts.selectedBranch));
     });
   }
 
@@ -190,7 +192,7 @@ export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
   return { svg: out.join(""), width: W, height: L.height, layout: L };
 }
 
-function refLabel(s: RepoState, r: RefLabel, x: number, y: number, laneColor: string, interactive: boolean): string {
+function refLabel(s: RepoState, r: RefLabel, x: number, y: number, laneColor: string, interactive: boolean, selected = false): string {
   const isHead = r.kind === "local" && r.name === s.head;
   // 원격이 로컬보다 앞서 있으면 받을 커밋 수를 붙이고 강조 (끌어서 pull 할 수 있다는 신호)
   let incoming = 0;
@@ -217,7 +219,7 @@ function refLabel(s: RepoState, r: RefLabel, x: number, y: number, laneColor: st
   const spoken = r.kind === "tag" ? t("src.tag", { name: r.name }) : r.kind === "remote" ? t("graph.remoteLabel", { name: r.name, n: incoming })
     : r.kind === "detached" ? t("graph.detachedLabel") : r.kind === "op" ? t("graph.opLabel") : t("graph.branchLabel", { name: r.name, head: isHead });
   const a11y = interactive ? ` role="button" aria-label="${esc(spoken)}" tabindex="-1"` : "";
-  return `<g class="ref ${r.kind} ${isHead ? "head" : ""} ${incoming ? "incoming" : ""}" ${attrs}${a11y} transform="translate(${x - w / 2},${y})">
-    <rect width="${w}" height="20" rx="10" style="stroke:${color};fill:${r.kind === "remote" || r.kind === "tag" ? "var(--bg)" : color}"/>
+  return `<g class="ref ${r.kind} ${isHead ? "head" : ""} ${incoming ? "incoming" : ""}${selected ? " selected" : ""}" ${attrs}${a11y}${selected ? ' aria-pressed="true"' : ""} transform="translate(${x - w / 2},${y})">
+    ${selected ? `<rect class="sel-ring" x="-5" y="-5" width="${w + 10}" height="30" rx="15"/>` : ""}<rect width="${w}" height="20" rx="10" style="stroke:${color};fill:${r.kind === "remote" || r.kind === "tag" ? "var(--bg)" : color}"/>
     <text x="${w / 2}" y="14" aria-hidden="true">${esc(text)}</text><title>${esc(title)}</title></g>`;
 }

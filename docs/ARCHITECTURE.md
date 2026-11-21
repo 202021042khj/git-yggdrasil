@@ -38,7 +38,7 @@ src/shared    양쪽이 함께 쓰는 타입과 기본값 상수, 화면 문구 
 | `github/` | Device Flow 로그인, 토큰 보관(safeStorage), REST API |
 | `repo/session.ts` | 열린 저장소 하나와 창 하나, 파일 감시 |
 | `ipc/` | IPC 핸들러 등록만 (로직 없음) |
-| `dev/smoke.ts` | 점검용 실행 (`YGG_SMOKE`) |
+| `dev/smoke.ts` | 점검용 실행 (`YGG_SMOKE`, 결과 파일 `YGG_SMOKE_OUT`) — CI 가 빌드한 앱으로 `scripts/smoke-packaged.mjs` 를 돌릴 때도 쓴다 |
 | `settings.ts` | 앱 설정 저장·적용 (화면 색·확대·에디터·언어), `userData/settings.json` |
 | `update.ts` | 자동 업데이트 (패키지 앱에서만, GitHub Releases) |
 

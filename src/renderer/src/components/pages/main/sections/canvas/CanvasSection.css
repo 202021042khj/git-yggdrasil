@@ -14,8 +14,16 @@
   .edge.new { stroke-dasharray: 6 3; }
   .node { cursor: grab; }
   .node .msg { font-size: 11px; text-anchor: middle; fill: var(--text); }
-  .node.selected circle:not(.halo), .node.selected rect { stroke-width: 4; }
-  .node.multi circle:not(.halo), .node.multi rect {
+  /*
+   * 선택: 노드 뒤에 글자색(가장 진한 색) 고리 + 옅은 세이지 바탕, 메시지는 굵게.
+   * 고리를 레인 색이 아닌 글자색으로 그려서 어느 줄기(세이지 레인 포함)에서도 또렷하다
+   */
+  .node .sel-ring, .ref .sel-ring { fill: color-mix(in srgb, var(--accent) 28%, transparent); stroke: var(--text); stroke-width: 3; stroke-dasharray: none; }
+  .ref .sel-ring { rx: 15; }
+  .node.selected circle:not(.halo):not(.sel-ring), .node.selected rect { stroke-width: 4; }
+  .node.selected .msg { fill: var(--text); font-weight: 700; }
+  .ref.selected rect:not(.sel-ring) { stroke: var(--text) !important; stroke-width: 2; }
+  .node.multi circle:not(.halo):not(.sel-ring), .node.multi rect {
     stroke: var(--accent) !important;
     stroke-width: 4.5;
     filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 70%, transparent));

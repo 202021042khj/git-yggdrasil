@@ -33,6 +33,7 @@ const CanvasSection = ({ ui, repo }: UseMainLogicResult) => {
   const g = renderGraph(visibleRepo(repo, f), {
     interactive: true,
     selected: ui.selected,
+    selectedBranch: ui.selectedBranch,
     minWidth: size.w,
     dim: dimmedCommits(repo, f),
     focusId,

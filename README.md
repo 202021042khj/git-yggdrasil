@@ -219,7 +219,7 @@ npm run dev
 
 **Stack:** Electron · React 19 · TypeScript · electron-vite · Vitest · Playwright · Biome
 
-Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the code layout and [docs/RELEASE.md](docs/RELEASE.md) for how releases are built. Pushing a `v*` tag builds macOS, Windows and Linux on GitHub Actions and publishes a release.
+Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the code layout and [docs/RELEASE.md](docs/RELEASE.md) for how releases are built. Releases are cut by release-please from the commit messages (version and [CHANGELOG](CHANGELOG.md)); GitHub Actions then builds, smoke-tests and attaches macOS, Windows and Linux installers to a draft release.
 
 <br/>
 
