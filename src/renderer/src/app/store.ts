@@ -20,6 +20,8 @@ export interface UiState {
   /** 열린 저장소 (없으면 시작 화면) */
   repo: RepoState | null;
   selected: string | null;
+  /** 이름표(그래프 · 사이드바)를 눌러 고른 브랜치. selected 는 그 브랜치 끝 커밋. 다른 커밋을 고르면 풀린다 */
+  selectedBranch: string | null;
   /** ⌘·Shift 클릭으로 함께 고른 커밋 (selected 포함, 2개 이상일 때만 의미) */
   multi: string[];
   selectedFile: SelectedFile | null;
@@ -47,6 +49,7 @@ const EMPTY_REPO: RepoState = {
 const ui: UiState = {
   repo: null,
   selected: null,
+  selectedBranch: null,
   multi: [],
   selectedFile: null,
   detailTab: "diff",
@@ -88,7 +91,10 @@ export const store = {
   /** 상태를 바꾸고 다음 프레임에 한 번 다시 그린다 */
   update(patch: Partial<UiState>): void {
     Object.assign(ui, patch);
+    // 커밋을 따로 고르면 브랜치 선택은 풀린다 (브랜치를 고를 때는 selected 와 selectedBranch 를 함께 넘긴다)
+    if ("selected" in patch && !("selectedBranch" in patch)) ui.selectedBranch = null;
     if (ui.selected && ui.repo && !ui.repo.commits[ui.selected]) ui.selected = null;
+    if (ui.selectedBranch && ui.repo && !(ui.selectedBranch in ui.repo.branches)) ui.selectedBranch = null;
     if (ui.multi.length && ui.repo) ui.multi = ui.multi.filter((id) => ui.repo!.commits[id]);
     if (scheduled) return;
     scheduled = true;

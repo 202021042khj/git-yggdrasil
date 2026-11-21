@@ -1,14 +1,14 @@
 import "./SidebarSection.css";
 
-import { useEffect, type KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 
 import Dropdown from "@/components/ui/Dropdown";
 import Icon from "@/components/common/Icon";
 import { askText } from "@/components/ui/dialogUtils";
 import { short } from "@/lib/html";
 import { run } from "@/app/actions";
-import { store } from "@/app/store";
 import { openContextMenu } from "@/interactions/contextMenu";
+import { selectBranch } from "@/interactions/drag";
 import { branchOrder, syncInfo } from "@/model/graph";
 import { layout } from "@/model/layout";
 import { saveSettings } from "@/components/pages/main/sections/dialogs/settingsUtils";
@@ -25,15 +25,6 @@ const SidebarSection = ({ ui, repo }: UseMainLogicResult) => {
   const lanes = layout(repo).lanes;
   const colorOf = (b: string) => lanes.find((l) => l.name === b)?.color || "var(--lane-remote)";
 
-  // 캔버스의 이름표 더블클릭도 checkout
-  useEffect(() => {
-    const onDbl = (e: MouseEvent) => {
-      const el = (e.target as Element).closest<HTMLElement>("#graph .ref.local[data-branch]");
-      if (el && el.dataset.branch !== store.repo.head) checkout(el.dataset.branch!);
-    };
-    document.addEventListener("dblclick", onDbl);
-    return () => document.removeEventListener("dblclick", onDbl);
-  }, []);
 
   // 키보드: Enter 는 checkout, Shift+F10·메뉴 키는 할 일 메뉴
   const handleRowKey = (e: KeyboardEvent<HTMLDivElement>, b: string) => {
@@ -66,12 +57,14 @@ const SidebarSection = ({ ui, repo }: UseMainLogicResult) => {
             return (
               <div
                 key={b}
-                className={`br${isHead ? " head" : ""}`}
+                className={`br${isHead ? " head" : ""}${b === ui.selectedBranch ? " selected" : ""}`}
+                aria-pressed={b === ui.selectedBranch}
                 data-checkout={b}
                 role="button"
                 tabIndex={0}
                 aria-label={t("graph.branchLabel", { name: b, head: isHead })}
                 title={t("sb.branchTip")}
+                onClick={() => selectBranch(b)}
                 onDoubleClick={() => { if (!isHead) checkout(b); }}
                 onKeyDown={(e) => handleRowKey(e, b)}
               >

@@ -1,6 +1,6 @@
 // 드래그: 끌기 시작하면 놓을 수 있는 곳마다 동사 라벨을 띄우고, 가까이 가면 자석처럼 붙고,
 // 결과를 캔버스 위에 겹쳐 보여 준다. 조작이 여러 개면 놓을 때 메뉴로 고른다.
-import { blocked, runPreviewed } from "@/app/actions";
+import { blocked, run, runPreviewed } from "@/app/actions";
 import { setRefreshGuard } from "@/app/repoSession";
 import { store } from "@/app/store";
 import { SNAP_PX } from "@/constants/layout";
@@ -251,6 +251,17 @@ export function withSelection(src: DragSource): DragSource {
   return { ...src, ids: oldestFirst(store.repo, multi) };
 }
 
+/** 브랜치 이름표 클릭: 그 브랜치를 고르고 끝 커밋의 상세를 연다 */
+export function selectBranch(branch: string): void {
+  const tip = store.repo.branches[branch];
+  if (tip) store.update({ selected: tip, selectedBranch: branch, multi: [], selectedFile: null });
+}
+
+/** 이름표 더블클릭: checkout (지금 브랜치면 그대로) */
+function checkoutBranch(branch: string): void {
+  if (branch !== store.repo.head) void run({ op: "checkout", args: [branch], summary: t("act.switchTo", { branch }) });
+}
+
 /** 커밋 클릭: ⌘/Ctrl 은 하나씩 더하고 빼기, Shift 는 같은 줄기에서 범위, 그냥 클릭은 하나만 */
 function clickCommit(id: string, e: PointerEvent): void {
   const ui = store.ui;
@@ -308,8 +319,17 @@ export function mountDrag(onCommitDoubleClick: (id: string) => void = focusMessa
     if (drag.active) { drop(e); return; }
     const d = drag;
     drag = null;
-    if (d.src.kind !== "commit" || !d.src.id) return;
     // 클릭으로 다시 그리면 브라우저의 dblclick 이벤트가 사라지므로, 더블클릭은 직접 판정한다
+    if (d.src.kind === "label" && d.src.branch) {
+      const key = `label:${d.src.branch}`;
+      const now = Date.now();
+      const dbl = lastClick.id === key && now - lastClick.t < DOUBLE_CLICK_MS;
+      lastClick = { id: key, t: now };
+      if (dbl) checkoutBranch(d.src.branch);
+      else selectBranch(d.src.branch);
+      return;
+    }
+    if (d.src.kind !== "commit" || !d.src.id) return;
     const now = Date.now();
     const dbl = lastClick.id === d.src.id && now - lastClick.t < DOUBLE_CLICK_MS;
     lastClick = { id: d.src.id, t: now };
