@@ -1,4 +1,7 @@
-# 의존성 업데이트 PR 자동 생성 (dev 브랜치로). Electron 은 Chromium 보안 패치가 자주 나오므로 따로 묶어 빨리 받는다.
+# 의존성 업데이트 PR 자동 생성 (dev 브랜치로).
+# - 작은 업데이트(minor · patch)는 묶음 PR 하나로, 큰 버전(major)은 하나씩 따로 와서 살펴보고 병합한다
+# - Electron 은 Chromium 보안 패치가 자주 나오므로 따로 묶어 빨리 받는다
+# - @types/node 는 Electron 이 쓰는 Node 버전(Electron 45 = Node 24)에 맞춰 둔다 — major 는 받지 않는다
 version: 2
 updates:
   - package-ecosystem: npm
@@ -10,15 +13,21 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       electron:
         patterns: ["electron", "electron-builder", "electron-updater", "electron-vite"]
+        update-types: ["minor", "patch"]
       dev-tools:
         dependency-type: development
         exclude-patterns: ["electron", "electron-builder", "electron-vite"]
+        update-types: ["minor", "patch"]
       runtime:
         dependency-type: production
         exclude-patterns: ["electron-updater"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: github-actions
     directory: /
     target-branch: dev
@@ -26,3 +35,6 @@ updates:
       interval: monthly
     commit-message:
       prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
