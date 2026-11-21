@@ -20,7 +20,7 @@ jobs:
       tag_name: ${{ steps.rp.outputs.tag_name }}
     steps:
       - id: rp
-        uses: googleapis/release-please-action@v4
+        uses: googleapis/release-please-action@v5
         with:
           # 기본 GITHUB_TOKEN 이 만든 PR 에는 CI 가 돌지 않는다. main 에 "CI 통과 필수" 를 걸었다면
           # 저장소 권한(contents · pull requests)이 있는 토큰을 RELEASE_PLEASE_TOKEN 시크릿으로 넣는다
