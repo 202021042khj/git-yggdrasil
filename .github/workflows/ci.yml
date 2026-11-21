@@ -51,7 +51,7 @@ jobs:
       - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       # 화면이 없는 러너라 가상 화면(xvfb) 위에서 Electron 을 띄운다
       - run: xvfb-run --auto-servernum -- npx playwright test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-report
