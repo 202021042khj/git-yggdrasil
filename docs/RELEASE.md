@@ -69,7 +69,7 @@ npm run dist       # 지금 OS 용
 1. `main` 브랜치 만들기: `git push origin dev:main`
 2. Settings › Branches › Add rule (`main`): **Require a pull request before merging**, **Require status checks to pass** (CI 의 두 job)
 3. Settings › Actions › General › Workflow permissions: **Allow GitHub Actions to create and approve pull requests** 켜기 (release-please 가 PR 을 연다)
-4. 2번처럼 CI 통과를 필수로 했다면: 기본 토큰이 만든 PR 에는 CI 가 돌지 않으므로, contents · pull requests 쓰기 권한의 fine-grained 토큰을 만들어 **`RELEASE_PLEASE_TOKEN`** 시크릿으로 넣습니다
+4. contents · pull requests 쓰기 권한의 fine-grained 토큰을 만들어 **`RELEASE_PLEASE_TOKEN`** 시크릿으로 넣습니다 (필수). 기본 토큰이 만든 PR 에는 CI 가 돌지 않고, 기본 토큰이 만든 태그는 `release.yml` 을 깨우지 못해 설치 파일이 안 올라갑니다
 5. Settings › Code security: **Dependabot alerts / security updates** 켜기
 
 - 파일 이름에는 버전이 없습니다 (`Yggdrasil-mac-arm64.dmg`, `Yggdrasil-mac-x64.dmg`, `Yggdrasil-windows-setup.exe`, `Yggdrasil-linux-x64.AppImage`). 랜딩의 `releases/latest/download/<파일>` 링크가 릴리스마다 그대로 맞습니다. 이름을 바꾸면 랜딩 `features/download/constants.ts` 도 같이 바꿉니다.

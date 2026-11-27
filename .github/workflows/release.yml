@@ -1,8 +1,9 @@
 # 릴리스 빌드: macOS · Windows · Linux 에서 빌드 → 서명 검증 · 스모크 테스트 → GitHub 초안 릴리스에 올린다.
 #
-# 보통은 release-please 가 부른다 (release-please.yml): main 의 "chore(main): release x.y.z" PR 을 병합하면
-# 태그와 초안 릴리스(CHANGELOG 내용)가 생기고, 이 워크플로가 그 초안에 설치 파일을 올린다.
-# 비상용으로 main 의 커밋에 직접 v* 태그를 push 해도 돈다.
+# v* 태그 push 로 돈다: main 의 "chore(main): release x.y.z" PR 을 병합하면 release-please 가
+# 태그와 초안 릴리스(CHANGELOG 내용)를 만들고, 이 워크플로가 그 초안에 설치 파일을 올린다.
+# (태그를 RELEASE_PLEASE_TOKEN 으로 만들어야 이 워크플로가 깨어난다. 기본 GITHUB_TOKEN 태그는 다른 워크플로를 못 깨운다)
+# 비상용으로 main 의 커밋에 직접 v* 태그를 push 해도 같다.
 # 어느 쪽이든 결과는 "초안" — GitHub Releases 에서 파일을 확인하고 Publish 해야 사용자(랜딩 · 자동 업데이트)에게 보인다.
 #
 # 인증서가 없으므로 macOS 는 ad-hoc 서명만 한다 (서명이 없으면 "손상됨" 으로 막힌다).
@@ -11,12 +12,6 @@ name: Release
 on:
   push:
     tags: ["v*"]
-  workflow_call:
-    inputs:
-      tag:
-        description: 빌드할 태그 (예 v0.2.0)
-        required: true
-        type: string
   workflow_dispatch:
     inputs:
       tag:
