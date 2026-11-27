@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/202021042khj/git-yggdrasil/compare/v0.2.0...v0.3.0) (2026-11-27)
+
+
+### Features
+
+* fill feature gaps — commit/pull to other branches, merge-aware … ([2fdaf2c](https://github.com/202021042khj/git-yggdrasil/commit/2fdaf2c3e2f503a5d02e08916b1be31e3af98d54))
+* fill feature gaps — commit/pull to other branches, merge-aware rewrites, stash cleanup, signing, bisect, patches, .gitignore, hooks ([b7d2ea2](https://github.com/202021042khj/git-yggdrasil/commit/b7d2ea289bb75b23d1979bd5d71a44dc53c6fd53))
+
 ## [0.2.0](https://github.com/202021042khj/git-yggdrasil/compare/v0.1.2...v0.2.0) (2026-11-21)
 
 
