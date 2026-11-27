@@ -99,4 +99,8 @@
   .diff, .hunk { border-color: var(--line); }
   .diff pre .add, .hunk pre .add, table.split td.add { background: var(--accent-bg); }
   .diff pre .del, .hunk pre .del, table.split td.del { background: var(--danger-bg); }
+  .sig-badge { display: inline-block; font-size: var(--fs-sm); padding: 0 8px; border-radius: var(--r-pill); border: 1px solid var(--line); color: var(--muted); }
+  .sig-badge.sig-verified { color: var(--ok); border-color: var(--ok); }
+  .sig-badge.sig-unverified { color: var(--warn); border-color: var(--warn); }
+  .sig-badge.sig-bad { color: var(--danger); border-color: var(--danger); background: var(--danger-bg); }
 }

@@ -1,8 +1,10 @@
-// 서브모듈 받기 · worktree 만들기·지우기·정리
+// 서브모듈 받기 · worktree 만들기·지우기·정리 · 커밋 서명 켜기·끄기
 import fs from "node:fs";
 import path from "node:path";
 import { readSubmodules, readWorktrees } from "@/git/extras";
 import { registerOps } from "@/git/ops/execute";
+import { skipHooksConfigArgs } from "@/git/hooks";
+import { signingConfigArgs } from "@/git/sign";
 import { NET, type OpFn } from "@/git/ops/context";
 import { t } from "@shared/i18n/i18n";
 
@@ -44,6 +46,16 @@ const worktreeRemove: OpFn = async (ctx, [wtPath]: [string]) => {
   }
 };
 
+/** 커밋 서명 켜기·끄기: 이 저장소(.git/config)에만 쓴다. 전역 설정·키·암호는 건드리지 않는다 */
+const setSigning: OpFn = async (ctx, [enabled]: [boolean]) => {
+  await ctx.run(signingConfigArgs(!!enabled));
+};
+
+/** hook 건너뛰기 (--no-verify) 켜기·끄기: 이 저장소(.git/config)에만 쓴다 */
+const setSkipHooks: OpFn = async (ctx, [on]: [boolean]) => {
+  await ctx.run(skipHooksConfigArgs(!!on));
+};
+
 export function registerExtraOps(): void {
-  registerOps({ submoduleUpdate, worktreeAdd, worktreeRemove });
+  registerOps({ submoduleUpdate, worktreeAdd, worktreeRemove, setSigning, setSkipHooks });
 }

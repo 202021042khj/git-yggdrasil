@@ -1,10 +1,12 @@
 // 저장소 IPC: 열기 · clone · 읽기 · 더 불러오기 · diff · 조작 실행
 import fs from "node:fs";
 import path from "node:path";
-import { dialog } from "electron";
+import { clipboard, dialog } from "electron";
 import { handle } from "@/ipc/guard";
 import { git, repoRoot } from "@/git/cli";
 import { execute } from "@/git/ops/execute";
+import { createContext } from "@/git/ops/context";
+import { patchText } from "@/git/ops/patchOps";
 import { authUrlFromError, forgetCredential, saveCredential, systemHelper } from "@/git/credential";
 import { explainRemoteError, hintText } from "@/git/remoteErrors";
 import { fileDiff } from "@/git/diff";
@@ -12,12 +14,38 @@ import { loadMore, readRepo } from "@/git/readRepo";
 import { gitAuth } from "@/github/auth";
 import { currentRoot, getWindow, openRepo, requireRoot } from "@/repo/session";
 import { t } from "@shared/i18n/i18n";
-import type { DiffOptions, OpExtra, OpName, RunResult } from "@shared/types/ipc";
+import type { DiffOptions, OpExtra, OpName, PatchSource, RunResult } from "@shared/types/ipc";
 
 const CLONE_TIMEOUT = 10 * 60 * 1000;
 
+/** 파일 경로를 인자로 받는 조작: 화면이 보낸 경로로는 실행하지 않고, main 의 저장·열기 창에서 고른 경로로만 실행한다 */
+const DIALOG_OPS = new Set<OpName>(["patchExport", "patchApply"]);
+const PATCH_SOURCES = new Set<PatchSource>(["commits", "staged", "working"]);
 
 let busy = false;
+
+/** 조작 하나를 다른 조작과 겹치지 않게 실행하고, 끝나면 저장소 상태를 붙여 돌려준다 */
+async function exclusive(fn: (root: string) => Promise<RunResult>): Promise<RunResult> {
+  const root = currentRoot();
+  if (!root) return { ok: false, cmds: [], error: t("m.noRepo") };
+  if (busy) return { ok: false, cmds: [], error: t("act.busy") };
+  busy = true;
+  try {
+    const result = await fn(root);
+    if (!result.canceled) result.repo = await readRepo(root);
+    return result;
+  } finally {
+    busy = false;
+  }
+}
+
+/** 화면에서 온 패치 대상 검사 (커밋 id 는 16진수만) */
+function patchArgs(source: PatchSource, ids: unknown): string[] {
+  if (!PATCH_SOURCES.has(source)) throw new Error(t("m.unknownOp", { op: String(source) }));
+  const list = Array.isArray(ids) ? ids.map(String) : [];
+  if (list.some((id) => !/^[0-9a-f]{4,64}$/.test(id))) throw new Error(t("m.patchEmpty"));
+  return source === "commits" ? list : [];
+}
 
 export function registerRepoIpc(): void {
   handle("repo:pick", async () => {
@@ -96,19 +124,50 @@ export function registerRepoIpc(): void {
     return readRepo(root);
   });
 
-  handle("repo:run", async (_e, { op, args, extra }: { op: OpName; args: unknown[]; extra?: OpExtra }): Promise<RunResult> => {
-    const root = currentRoot();
-    if (!root) return { ok: false, cmds: [], error: t("m.noRepo") };
-    if (busy) return { ok: false, cmds: [], error: t("act.busy") };
-    busy = true;
-    try {
-      const result = await execute(root, op, args, extra);
-      result.repo = await readRepo(root);
-      return result;
-    } finally {
-      busy = false;
-    }
+  handle("repo:run", (_e, { op, args, extra }: { op: OpName; args: unknown[]; extra?: OpExtra }): Promise<RunResult> => {
+    if (DIALOG_OPS.has(op)) return Promise.resolve({ ok: false, cmds: [], error: t("m.unknownOp", { op }) });
+    return exclusive((root) => execute(root, op, args, extra));
   });
+
+  // 패치 저장: 저장 창에서 고른 파일에 format-patch / diff 결과를 쓴다
+  handle("patch:save", (_e, { source, ids }: { source: PatchSource; ids?: string[] }) => {
+    const list = patchArgs(source, ids);
+    return exclusive(async (root) => {
+      const name = source === "commits" ? (list.length === 1 ? `${list[0].slice(0, 7)}.patch` : "commits.patch") : `${source}.diff`;
+      const opts = { title: t("m.patchSaveTitle"), defaultPath: path.join(root, name),
+        filters: [{ name: "Patch", extensions: ["patch", "diff", "mbox"] }] };
+      const win = getWindow();
+      const r = win ? await dialog.showSaveDialog(win, opts) : await dialog.showSaveDialog(opts);
+      if (r.canceled || !r.filePath) return { ok: false, canceled: true, cmds: [] };
+      return execute(root, "patchExport", [source, list, r.filePath]);
+    });
+  });
+
+  // 패치 복사: 같은 내용을 파일 대신 클립보드로 (조작이 아니라 실행 기록만 돌려준다)
+  handle("patch:copy", (_e, { source, ids }: { source: PatchSource; ids?: string[] }) => {
+    const list = patchArgs(source, ids);
+    return exclusive(async (root) => {
+      const { ctx, cmds, warnings } = createContext(root);
+      try {
+        clipboard.writeText(await patchText(ctx, source, list));
+        cmds.push(`# ${t("m.patchCopied")}`);
+        return { ok: true, cmds, warnings };
+      } catch (err) {
+        const e = err as { stderr?: string; message: string };
+        return { ok: false, cmds, error: e.stderr || e.message };
+      }
+    });
+  });
+
+  // 패치 적용: 열기 창에서 고른 파일만 (메일 형식이면 git am --3way, 아니면 git apply)
+  handle("patch:apply", () => exclusive(async (root) => {
+    const opts = { title: t("m.patchApplyTitle"), properties: ["openFile"] as Array<"openFile">,
+      filters: [{ name: "Patch", extensions: ["patch", "diff", "mbox", "eml", "txt"] }, { name: "*", extensions: ["*"] }] };
+    const win = getWindow();
+    const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
+    if (r.canceled || !r.filePaths[0]) return { ok: false, canceled: true, cmds: [] };
+    return execute(root, "patchApply", [r.filePaths[0]]);
+  }));
 
   handle("repo:diff", (_e, { file, commit, opts }: { file: string; commit: string | null; opts?: DiffOptions }) =>
     fileDiff(requireRoot(), file, commit, opts));

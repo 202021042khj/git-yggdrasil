@@ -34,6 +34,16 @@
   .node.going .msg { text-decoration: line-through; fill: var(--danger); }
   .node.new circle:not(.halo) { stroke: var(--ok) !important; stroke-dasharray: 4 2; }
   .node.new .msg { fill: var(--ok); font-weight: 600; }
+  /* bisect: good 초록 · bad 빨강 · 시험 중 주의색 점선 · 첫 나쁜 커밋은 굵은 빨강. 노드 아래 글자로도 구분한다 */
+  .node .bisect-tag { font-size: 10px; text-anchor: middle; font-weight: 600; fill: var(--muted); }
+  .node.bisect-good circle:not(.halo):not(.sel-ring), .node.bisect-good rect { stroke: var(--ok) !important; stroke-width: 4; }
+  .node.bisect-good .bisect-tag { fill: var(--ok); }
+  .node.bisect-bad circle:not(.halo):not(.sel-ring), .node.bisect-bad rect { stroke: var(--danger) !important; stroke-width: 4; }
+  .node.bisect-bad .bisect-tag, .node.bisect-first .bisect-tag { fill: var(--danger); }
+  .node.bisect-first circle:not(.halo):not(.sel-ring), .node.bisect-first rect { stroke: var(--danger) !important; stroke-width: 5; }
+  .node.bisect-current circle:not(.halo):not(.sel-ring), .node.bisect-current rect { stroke: var(--warn) !important; stroke-width: 4; stroke-dasharray: 4 2; }
+  .node.bisect-current .bisect-tag { fill: var(--warn); }
+  .node.bisect-skip { opacity: 0.6; }
   .ref { cursor: grab; }
   .ref text { font-size: 11px; text-anchor: middle; fill: var(--on-lane); font-weight: 600; }
   .ref.remote rect { stroke-dasharray: 3 2; }

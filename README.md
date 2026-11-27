@@ -96,7 +96,7 @@ Drag a commit onto a branch label. Pick **Move**, **Copy (cherry-pick)** or **Me
 <td valign="top">
 
 ### Clean up commits (interactive rebase)
-Reorder, reword, squash, fixup or drop commits in one dialog, preview the result, then apply. Works on branches you haven't checked out.
+Reorder, reword, squash, fixup or drop commits in one dialog, preview the result, then apply. Works on branches you haven't checked out, branches with merge commits, and branches that start at the root commit.
 
 </td>
 </tr>
@@ -145,11 +145,16 @@ Follows your system theme and language, or pick them in Settings (<kbd>⌘,</kbd
 
 | Area | What you can do |
 |---|---|
-| **Everyday** | Stage / unstage files, hunks or single lines · commit, amend, commit selected paths · discard changes · stash by dragging · checkout, new branch, delete branch |
+| **Everyday** | Stage / unstage files, hunks or single lines · commit, amend, commit selected paths · commit straight to a branch you haven't checked out · fold staged changes into an earlier commit (fixup) · discard changes · stash by dragging (a conflicted pop can drop the stash once resolved, or be aborted) · checkout, new branch, delete branch |
 | **History** | Cherry-pick (one or many) · move commits · rebase a branch · merge · squash, reorder, drop · revert · reset (soft / mixed / hard) · move branch pointers · split a commit |
-| **Remotes** | Clone · fetch / pull / push (drag a label onto the remote lane) · add / rename / remove remotes · set upstream · delete remote branches · tags (create, move, delete, push) |
+| **Remotes** | Clone · fetch / pull / push (drag a label onto the remote lane; pull works on branches that aren't checked out too) · add / rename / remove remotes · set upstream · delete remote branches · tags (create, move, delete, push) |
 | **GitHub** | Sign in with Device Flow · clone your repos · publish a repo · open a PR from a branch · list PRs with review and check status · check out `pr/<number>` |
 | **Recovery** | Find lost commits from the reflog and app backups (`refs/yggdrasil/backup/`) · restore as a branch, copy, or reset to them |
+| **Signing** | GPG / SSH commit signing follows your git config, and every commit the app writes (rewrites included) is signed · verified / unverified / unsigned badge on the selected commit · turn signing on or off per repository in Settings |
+| **Bisect** | Mark a good and a bad commit in the graph and Yggdrasil checks out the midpoint each step · good / bad / skip from the banner with a remaining-steps estimate · good, bad and current commits highlighted · selects the first bad commit when found · Finish (reset) returns to your branch (bisect steps aren't on the ⌘Z stack) · picks up a bisect started in a terminal |
+| **Patches** | Save one or more commits as a patch file or copy them to the clipboard (format-patch) · save uncommitted or staged changes as a diff · File > Apply Patch… runs `git am --3way` for mbox patches (undoable with ⌘Z, conflicts use the in-progress banner) or `git apply` for plain diffs (checked first) |
+| **.gitignore** | Right-click an untracked file: ignore this file, all `*.ext`, or its folder (escaped, appended to the repo-root `.gitignore` without duplicates) or ignore only for you (`.git/info/exclude`) · tracked file: Stop Tracking and Ignore (`git rm --cached`, staged as a deletion) · Edit .gitignore… dialog with add/remove, live matching-files preview and "why is this ignored?" (`git check-ignore -v`) · all undoable with ⌘Z |
+| **Git hooks** | Commits, rewording, committing to another branch, fixups and new messages in Clean up commits run `pre-commit` / `commit-msg` like git does (even when the app writes commits itself), push runs `pre-push` · a failing hook changes nothing and its output appears in the error · Settings shows installed hooks, the hooks folder (`core.hooksPath` / husky) and a per-repository "skip hooks" (`--no-verify`) switch |
 | **Repositories** | Open any folder, even one without git (**Start git** runs `git init`) · submodules · worktrees · Git LFS indicators · large repos load 400 commits at a time |
 | **Other hosts** | HTTPS sign-in for GitLab, Bitbucket and self-hosted servers via your system git credential helper · clear explanations for SSH, host key and permission errors |
 
@@ -180,6 +185,7 @@ flowchart LR
 - Yggdrasil runs your installed `git`. It doesn't send your code anywhere.
 - GitHub tokens are encrypted with your OS keychain (Electron `safeStorage`) and passed to git **only through an environment variable, only for github.com**, never as a command argument.
 - Passwords for other hosts go straight into your system git credential helper. Yggdrasil keeps no copy.
+- Commit signing uses gpg-agent / ssh-agent. Yggdrasil never reads private keys or passphrases, and only writes signing settings to the repository config after you confirm.
 - The renderer is sandboxed with context isolation, and navigation and new windows are blocked.
 
 </details>

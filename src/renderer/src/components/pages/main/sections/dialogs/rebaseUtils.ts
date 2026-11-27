@@ -12,7 +12,5 @@ export const openRebaseEditor = (b: string) => {
   const s = store.repo;
   const st = stems(s).stems[b];
   if (!st?.ids.length) { toast(t("rb.nothing", { branch: b })); return; }
-  if (!st.base) { toast(t("rb.root", { branch: b })); return; }
-  if (st.ids.some((id) => s.commits[id].parents.length > 1)) { toast(t("rb.hasMerge")); return; }
   rebaseStore.set({ branch: b, ids: [...st.ids] });
 };

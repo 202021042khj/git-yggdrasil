@@ -7,6 +7,9 @@ import { runSmoke } from "@/dev/smoke";
 import { setOpener } from "@/git/ops/conflictOps";
 import { registerExtraOps } from "@/git/ops/extraOps";
 import { registerAdvancedOps } from "@/git/ops/advancedOps";
+import { registerBisectOps } from "@/git/ops/bisectOps";
+import { registerPatchOps } from "@/git/ops/patchOps";
+import { registerIgnoreOps } from "@/git/ops/ignoreOps";
 import { initAuth } from "@/github/auth";
 import { registerGithubIpc } from "@/ipc/githubIpc";
 import { registerQueryIpc } from "@/ipc/queryIpc";
@@ -27,6 +30,9 @@ if (isolated) {
 
 registerAdvancedOps();
 registerExtraOps();
+registerBisectOps();
+registerPatchOps();
+registerIgnoreOps();
 registerRepoIpc();
 registerQueryIpc();
 registerGithubIpc();

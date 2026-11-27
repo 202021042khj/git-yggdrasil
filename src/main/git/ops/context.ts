@@ -1,4 +1,6 @@
 // 조작 실행 컨텍스트: 실행 기록, 경고, 공용 도우미
+import fs from "node:fs";
+import path from "node:path";
 import { git, type GitOptions } from "@/git/cli";
 import { gitAuth } from "@/github/auth";
 import { t } from "@shared/i18n/i18n";
@@ -16,6 +18,18 @@ export interface OpContext {
   note(line: string): void;
   /** 실패는 아니지만 알려야 할 일 */
   warn(msg: string): void;
+  /** 이 조작이 지운 stash (⌘Z 로 git stash store 해 되살린다) */
+  droppedStash?: { oid: string; msg: string };
+  /** 이 조작이 바꾼 파일 (⌘Z 로 이전 내용을 되쓴다. 예: .gitignore) */
+  fileUndo?: FileUndo;
+}
+
+/** 파일 하나의 전후 내용 (null 은 파일 없음) + git rm --cached 로 index 에서 뺀 항목 (되돌리면 다시 넣는다) */
+export interface FileUndo {
+  file: string;
+  before: string | null;
+  after: string | null;
+  untracked?: { mode: string; oid: string; path: string }[];
 }
 
 // 인자는 화면에서 IPC 로 넘어온 값이라 조작마다 모양이 다르다. 각 조작이 구조 분해에서 자기 모양을 적는다.
@@ -79,4 +93,23 @@ export function unsupported(what: string): never {
   const e: OpError = new Error(t("m.unsupported", { what }));
   e.unsupported = true;
   throw e;
+}
+
+/** ⌘Z: 이전 내용을 되쓰고, index 에서 뺀 항목을 다시 넣는다 */
+export async function undoFile(ctx: OpContext, u: FileUndo): Promise<void> {
+  writeOrRemove(u.file, u.before);
+  ctx.note(`# ${t("m.ignoreRestored", { file: path.basename(u.file) })}`);
+  for (const e of u.untracked || []) await ctx.run(["update-index", "--add", "--cacheinfo", `${e.mode},${e.oid},${e.path}`]);
+}
+
+/** 다시 실행: 조작 직후 내용으로 되쓰고, 다시 index 에서 뺀다 */
+export async function redoFile(ctx: OpContext, u: FileUndo): Promise<void> {
+  writeOrRemove(u.file, u.after);
+  ctx.note(`# ${t("m.ignoreRestored", { file: path.basename(u.file) })}`);
+  if (u.untracked?.length) await ctx.run(["rm", "--cached", "-q", "--", ...u.untracked.map((e) => e.path)]);
+}
+
+function writeOrRemove(file: string, text: string | null): void {
+  if (text === null) fs.rmSync(file, { force: true });
+  else fs.writeFileSync(file, text);
 }

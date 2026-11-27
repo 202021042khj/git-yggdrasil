@@ -9,6 +9,9 @@ import { actionsFor, candidateTargets, sourceFromElement, sourceLabel, type Drag
 import { addWorktree } from "@/components/pages/main/sections/sidebar/extrasUtils";
 import { openRebaseEditor } from "@/components/pages/main/sections/dialogs/rebaseUtils";
 import { open } from "@/app/repoSession";
+import { copyPatch, savePatch } from "@/app/patch";
+import { addIgnore, appendCmd, openIgnoreEditor, untrackAndIgnore } from "@/components/pages/main/sections/dialogs/ignoreUtils";
+import { dirPattern, extPattern, filePattern } from "@shared/ignore";
 import { askText, confirmAction } from "@/components/ui/dialogUtils";
 import { openMenu, type MenuItem } from "@/components/ui/menuUtils";
 import { toast } from "@/components/ui/toastUtils";
@@ -41,12 +44,45 @@ function dragActionItems(src: DragSource): MenuItem[] {
   return items;
 }
 
+/** 커밋(여러 개면 오래된 것부터) 을 패치로 저장 · 복사 */
+const patchItems = (ids: string[]): MenuItem[] => {
+  const arg = ids.length === 1 ? `-1 ${short(ids[0])}` : ids.map(short).join(" ");
+  return [
+    direct(t("ctx.patchSave"), `git format-patch --stdout ${arg} > ${t("ctx.ph.file")}`, () => void savePatch("commits", ids)),
+    direct(t("ctx.patchCopy"), `git format-patch --stdout ${arg}`, () => void copyPatch("commits", ids)),
+  ];
+};
+
+/** 파일 하나: 추적 안 하는 파일은 무시 패턴 추가, 추적 중인 파일은 추적 멈추고 무시 */
+function ignoreItems(file: string): MenuItem[] {
+  const w = store.repo.working;
+  const items: MenuItem[] = [];
+  const untracked = (w.untracked || []).includes(file);
+  const tracked = !untracked && [...w.staged, ...w.unstaged].includes(file);
+  const fp = filePattern(file);
+  if (untracked) {
+    items.push(direct(t("ctx.ignoreFile"), appendCmd(fp, "gitignore"), () => void addIgnore(fp)));
+    const ext = extPattern(file);
+    if (ext) items.push(direct(t("ctx.ignoreExt", { ext }), appendCmd(ext, "gitignore"), () => void addIgnore(ext)));
+    const dir = dirPattern(file);
+    if (dir) items.push(direct(t("ctx.ignoreDir", { dir }), appendCmd(dir, "gitignore"), () => void addIgnore(dir)));
+    items.push(direct(t("ctx.ignoreLocal"), appendCmd(fp, "exclude"), () => void addIgnore(fp, "exclude")));
+  } else if (tracked) {
+    items.push(direct(t("ctx.untrackIgnore"), `git rm --cached -- ${file} && ${appendCmd(fp, "gitignore")}`, () => {
+      if (confirmAction(t("ctx.untrackConfirm", { file }))) void untrackAndIgnore(file, fp);
+    }));
+  }
+  items.push(direct(t("ctx.ignoreWhy"), `git check-ignore -v --no-index -- ${file}`, () => openIgnoreEditor(file)));
+  return items;
+}
+
 /** 드래그와 상관없이 항목 종류별로 붙는 조작 */
 function extraItems(src: DragSource): MenuItem[] {
   const s = store.repo;
   const items: MenuItem[] = [];
   if (src.ids && src.ids.length > 1) {
     items.push(direct(t("ctx.clearSelection"), "", () => store.update({ multi: [] })));
+    if (src.kind === "commit") items.push(...patchItems(src.ids));
     return items;
   }
   if (src.kind === "commit" && src.id) {
@@ -64,6 +100,19 @@ function extraItems(src: DragSource): MenuItem[] {
     }));
     items.push(direct(t("ctx.detach"), `git switch --detach ${short(id)}`, () =>
       void run({ op: "checkoutCommit", args: [id], summary: t("ctx.detachSummary", { commit: short(id) }) })));
+    // bisect: 진행 중이 아니면 첫 표시로 시작하고, 진행 중이면 이 커밋에 표시를 더한다 (HEAD 만 옮겨 ⌘Z 기록에는 남지 않는다)
+    const bis = s.bisect;
+    for (const mark of bis ? (["bad", "good", "skip"] as const) : (["bad", "good"] as const)) {
+      const key = mark === "bad" ? "ctx.bisectBad" : mark === "good" ? "ctx.bisectGood" : "ctx.bisectSkip";
+      const cmd = `${bis ? "" : "git bisect start && "}git bisect ${mark} ${short(id)}`;
+      items.push(direct(t(key), cmd, () => {
+        if (s.working.staged.length || s.working.unstaged.length) { toast(t("m.bisectDirty")); return; }
+        const p = { mark, commit: short(id) };
+        void (bis ? run({ op: "bisectMark", args: [mark, id], summary: t("ctx.bisectMarkSummary", p) })
+          : run({ op: "bisectStart", args: [mark, id], summary: t("ctx.bisectStartSummary", p) }));
+      }));
+    }
+    items.push(...patchItems([id]));
     if (s.head && s.branches[s.head] && isAncestor(s, id, s.branches[s.head]) && s.commits[id].parents.length === 1) {
       items.push(direct(t("ctx.split"), "git rebase -i (edit) && git reset HEAD~1", () => {
         if (s.working.staged.length || s.working.unstaged.length) { toast(t("ctx.splitDirty")); return; }
@@ -92,6 +141,15 @@ function extraItems(src: DragSource): MenuItem[] {
       if (remoteBranch === null) return;
       await run({ op: "setUpstream", args: [b, remoteBranch], summary: remoteBranch ? t("ctx.upstreamSummary", { branch: b, upstream: remoteBranch }) : t("ctx.upstreamUnset", { branch: b }) });
     }));
+  }
+  if (src.kind === "working") {
+    items.push(direct(t("ctx.patchSaveWorking"), `git diff HEAD --binary > ${t("ctx.ph.file")}`, () => void savePatch("working")));
+    if (s.working.staged.length) items.push(direct(t("ctx.patchSaveStaged"), `git diff --cached --binary > ${t("ctx.ph.file")}`, () => void savePatch("staged")));
+    items.push(direct(t("ctx.ignoreEdit"), "$EDITOR .gitignore", () => openIgnoreEditor()));
+  }
+  if (src.kind === "file" && src.file) {
+    items.push(...ignoreItems(src.file));
+    items.push(direct(t("ctx.ignoreEdit"), "$EDITOR .gitignore", () => openIgnoreEditor()));
   }
   if (src.kind === "remote" && src.remote) {
     const r = src.remote;

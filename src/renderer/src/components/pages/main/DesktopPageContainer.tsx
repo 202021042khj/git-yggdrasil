@@ -6,6 +6,7 @@ import DetailSection from "@/components/pages/main/sections/detail/DetailSection
 import LogSection from "@/components/pages/main/sections/detail/LogSection";
 import GithubSection from "@/components/pages/main/sections/dialogs/GithubSection";
 import RebaseEditor from "@/components/pages/main/sections/dialogs/RebaseEditor";
+import IgnoreSection from "@/components/pages/main/sections/dialogs/IgnoreSection";
 import ReflogSection from "@/components/pages/main/sections/dialogs/ReflogSection";
 import SearchSection from "@/components/pages/main/sections/dialogs/SearchSection";
 import SettingsSection from "@/components/pages/main/sections/dialogs/SettingsSection";
@@ -59,6 +60,7 @@ const DesktopPageContainer = ({ ui, repo, hasRepo }: UseMainLogicResult) => {
       <SettingsSection />
       <RebaseEditor />
       <ReflogSection />
+      <IgnoreSection />
       <GithubSection />
     </>
   );

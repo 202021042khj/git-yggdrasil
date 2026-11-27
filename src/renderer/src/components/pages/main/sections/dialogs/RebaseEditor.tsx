@@ -118,7 +118,7 @@ const RebaseEditor = () => {
               <Dropdown label={t("rb.actionFor", { msg: c.msg })} value={x.action} options={actionOptions()} onChange={(a) => setAction(i, a)} />
               <span className="rb-main">
                 <span className="rb-msg">{c.msg}</span>
-                <span className="muted rb-meta">{short(x.id)}{!!c.files.length && t("rb.files", { n: c.files.length })}{pushed.has(x.id) && t("rb.pushed")}</span>
+                <span className="muted rb-meta">{short(x.id)}{c.parents.length > 1 && t("rb.merge")}{!!c.files.length && t("rb.files", { n: c.files.length })}{pushed.has(x.id) && t("rb.pushed")}</span>
                 {needsMsg(x.action) && <textarea data-msg={i} rows={x.action === "squash" ? 3 : 1} aria-label={t("rb.newMsg")} value={x.msg ?? ""} onChange={(e) => setMsg(i, e.target.value)} />}
               </span>
             </li>
@@ -130,6 +130,7 @@ const RebaseEditor = () => {
           ? <p className="muted">{res.error}</p>
           : <>
             <p><b>{res.summary}</b></p>
+            <p className="muted"><code>{res.cmd}</code></p>
             {!!res.conflicts.length && <p className="warn">{t("rb.conflicts", { files: res.conflicts.join(", ") })}</p>}
             {res.rewrites.some((id) => pushed.has(id)) && <p className="warn">{t("rb.rewritesPushed")}</p>}
           </>}

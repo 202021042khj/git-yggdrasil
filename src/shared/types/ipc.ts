@@ -11,7 +11,7 @@ export type OpName =
   | "tagCreate" | "tagMove" | "tagDelete" | "tagPush"
   | "stashPush" | "stashPop" | "stashDrop"
   | "cherryPick" | "moveCommit" | "dropCommit" | "rebaseStem" | "squash" | "reorder" | "revertCommit" | "merge" | "splitCommit"
-  | "resolveFile" | "resolveContent" | "checkoutPull" | "rebasePlan" | "submoduleUpdate" | "worktreeAdd" | "worktreeRemove" | "continueOp" | "skipOp" | "abortOp"
+  | "resolveFile" | "resolveContent" | "checkoutPull" | "rebasePlan" | "submoduleUpdate" | "worktreeAdd" | "worktreeRemove" | "setSigning" | "setSkipHooks" | "bisectStart" | "bisectMark" | "bisectReset" | "patchExport" | "patchApply" | "ignoreAdd" | "ignoreRemove" | "untrackIgnore" | "continueOp" | "skipOp" | "abortOp"
   | "undo"
   | "redo";
 
@@ -35,8 +35,31 @@ export interface RebaseStep {
   msg?: string;
 }
 
+/** 패치로 내보낼 것: 고른 커밋 (format-patch) · staged 변경 (diff --cached) · 커밋 안 한 변경 전체 (diff HEAD) */
+export type PatchSource = "commits" | "staged" | "working";
+
+/** 무시 패턴을 쓸 파일: 저장소 맨 위 .gitignore (공유) · .git/info/exclude (나만) */
+export type IgnoreTarget = "gitignore" | "exclude";
+
+/** 무시 파일 두 곳의 패턴 줄 (주석·빈 줄 제외) */
+export interface IgnoreFiles {
+  gitignore: string[];
+  exclude: string[];
+}
+
+/** git check-ignore -v 결과: 어느 파일 몇째 줄의 어떤 패턴 때문인가 (무시되지 않으면 null) */
+export interface IgnoreReason {
+  source: string;
+  line: number;
+  pattern: string;
+  /** "!" 패턴에 걸려 무시에서 빠진 경우 */
+  negated: boolean;
+}
+
 export interface RunResult {
   ok: boolean;
+  /** 저장·열기 창에서 취소함 (아무것도 하지 않았다) */
+  canceled?: boolean;
   /** 실제로 실행한 git 명령 (기록용) */
   cmds: string[];
   warnings?: string[];
@@ -127,6 +150,40 @@ export interface ReflogEntry {
 }
 
 /** 앱 설정 (userData/settings.json) */
+/** 저장소에 적용되는 커밋 서명 설정 (git config 를 읽은 값) */
+export interface SigningInfo {
+  enabled: boolean;
+  /** gpg.format: openpgp · ssh · x509 */
+  format: string;
+  /** user.signingkey (없으면 "") */
+  key: string;
+  /** 이 저장소(.git/config)에 따로 정한 commit.gpgsign (없으면 null) */
+  local: boolean | null;
+}
+
+/** git hook 상태 (설정 창) */
+export interface HookInfo {
+  /** 실제 hook 폴더 (git rev-parse --git-path hooks) */
+  dir: string;
+  /** core.hooksPath (없으면 null) */
+  configured: string | null;
+  /** core.hooksPath 가 .husky 를 가리킴 */
+  husky: boolean;
+  /** 폴더에 있는 hook (executable: 실행 권한이 있어 git 이 실제로 돌린다) */
+  hooks: { name: string; executable: boolean }[];
+  /** 이 저장소에서 hook 건너뛰기 (--no-verify) */
+  skip: boolean;
+}
+
+/** 커밋 하나의 서명 상태 */
+export interface SignatureInfo {
+  status: "verified" | "unverified" | "bad" | "unsigned";
+  /** git log %G? 원래 글자 */
+  code: string;
+  signer: string;
+  key: string;
+}
+
 export interface Settings {
   /** 화면 색: 시스템을 따름 · 밝게 · 어둡게 */
   theme: "system" | "light" | "dark";
@@ -158,6 +215,18 @@ export interface GitApi {
   more(): Promise<RepoState | null>;
   diff(file: string, commit: string | null, opts?: DiffOptions): Promise<FileDiff>;
   run(op: OpName, args: unknown[], extra?: OpExtra): Promise<RunResult>;
+  /** 패치 저장: main 이 저장 창을 띄워 고른 파일에 쓴다 */
+  patchSave(source: PatchSource, ids?: string[]): Promise<RunResult>;
+  /** 패치를 클립보드로 복사 */
+  patchCopy(source: PatchSource, ids?: string[]): Promise<RunResult>;
+  /** 패치 적용: main 이 열기 창을 띄워 고른 .patch · .diff · mbox 를 am 또는 apply */
+  patchApply(): Promise<RunResult>;
+  /** 무시 파일 두 곳의 현재 패턴 */
+  ignoreRead(): Promise<IgnoreFiles>;
+  /** 이 패턴이 걸리는 파일 (추적 안 함 · 추적 중) */
+  ignoreMatches(pattern: string): Promise<{ untracked: string[]; tracked: string[] }>;
+  /** 이 파일이 왜 무시되는가 (git check-ignore -v) */
+  ignoreWhy(file: string): Promise<IgnoreReason | null>;
   search(query: string): Promise<SearchHit[]>;
   fileHistory(file: string): Promise<FileHistoryEntry[]>;
   blame(file: string, commit?: string | null): Promise<BlameLine[]>;
@@ -165,6 +234,12 @@ export interface GitApi {
   conflictText(file: string): Promise<string | null>;
   /** HEAD reflog 와 앱 백업 (최신 순) */
   reflog(): Promise<ReflogEntry[]>;
+  /** 저장소에 적용되는 커밋 서명 설정 */
+  signing(): Promise<SigningInfo>;
+  /** 설치된 git hook 과 hook 폴더 */
+  hooks(): Promise<HookInfo>;
+  /** 커밋 하나의 서명 상태 (선택한 커밋만 그때그때 읽는다) */
+  signature(id: string): Promise<SignatureInfo>;
   getSettings(): Promise<Settings>;
   /** 바꾼 항목만 넘긴다. 검사·정리한 전체 설정을 돌려준다 */
   setSettings(patch: Partial<Settings>): Promise<Settings>;
@@ -178,6 +253,7 @@ export interface GitApi {
   onMenuOpen(fn: () => void): void;
   onMenuClone(fn: () => void): void;
   onMenuSearch(fn: () => void): void;
+  onMenuApplyPatch(fn: () => void): void;
 }
 
 export interface GhUser {

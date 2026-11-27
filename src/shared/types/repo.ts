@@ -16,6 +16,8 @@ export interface WorkingState {
   staged: string[];
   unstaged: string[];
   conflicted: string[];
+  /** unstaged 중 아직 추적하지 않는 파일 (무시 메뉴용) */
+  untracked?: string[];
 }
 
 export interface StashEntry {
@@ -39,7 +41,7 @@ export interface TagInfo {
   message?: string;
 }
 
-export type OpKind = "rebase" | "merge" | "cherry-pick" | "revert" | "files" | "stash" | "split";
+export type OpKind = "rebase" | "merge" | "cherry-pick" | "revert" | "am" | "files" | "stash" | "split";
 
 /** 충돌·편집으로 멈춘 진행 중 작업 */
 export interface OpState {
@@ -53,10 +55,29 @@ export interface OpState {
   current?: { msg: string; files?: string[] };
   /** rebase 중 지금까지 적용된 끝 커밋 (⏸ 진행 중 레인) */
   tip?: string;
+  /** stash 충돌일 때 적용하던 stash 커밋 (keep: apply 였음) */
+  stash?: { oid: string; keep: boolean };
   oursName: string;
   theirsName: string;
   conflicts: string[];
   resolved: Record<string, string>;
+}
+
+/** git bisect 진행 상태 (.git/BISECT_START · refs/bisect/* 에서 읽는다. 터미널에서 시작한 것도 같다) */
+export interface BisectState {
+  /** 시작 전 체크아웃했던 브랜치 (reset 하면 돌아갈 곳. detached 였으면 커밋 해시) */
+  original: string;
+  /** 나쁜(bad) 표시 커밋 */
+  bad: string | null;
+  good: string[];
+  skipped: string[];
+  /** 지금 시험 중인 커밋 (HEAD) */
+  current: string | null;
+  /** 다음 단계 뒤에 남는 후보 수 · 대략 남은 단계 수 (good·bad 가 다 있어야 계산) */
+  remaining: number | null;
+  steps: number | null;
+  /** 찾아낸 첫 나쁜 커밋 */
+  first: string | null;
 }
 
 export interface SubmoduleInfo {
@@ -108,6 +129,8 @@ export interface RepoState {
   working: WorkingState;
   stash: StashEntry[];
   op: OpState | null;
+  /** 진행 중인 git bisect (없으면 null) */
+  bisect?: BisectState | null;
   born?: Record<string, number>;
   submodules?: SubmoduleInfo[];
   worktrees?: WorktreeInfo[];

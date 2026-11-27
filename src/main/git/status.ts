@@ -5,7 +5,7 @@ import type { WorkingState } from "@shared/types/repo";
 /** git status --porcelain=v1 -z : "XY path\0" (이름 변경은 뒤에 원래 경로가 한 번 더) */
 export async function readStatus(root: string): Promise<WorkingState> {
   const out = await git(root, ["status", "--porcelain=v1", "-z", "-uall"]);
-  const staged: string[] = [], unstaged: string[] = [], conflicted: string[] = [];
+  const staged: string[] = [], unstaged: string[] = [], conflicted: string[] = [], untracked: string[] = [];
   const parts = out.split("\0");
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i];
@@ -14,14 +14,14 @@ export async function readStatus(root: string): Promise<WorkingState> {
     if (x === "R" || x === "C") i++; // 원래 경로 건너뛰기
     const unmerged = x === "U" || y === "U" || (x === "A" && y === "A") || (x === "D" && y === "D");
     if (unmerged) conflicted.push(file);
-    else if (x === "?" && y === "?") unstaged.push(file);
+    else if (x === "?" && y === "?") { unstaged.push(file); untracked.push(file); }
     else {
       if (x !== " ") staged.push(file);
       // 일부만 stage 한 파일은 양쪽에 모두 나온다 (부분 stage)
       if (y !== " ") unstaged.push(file);
     }
   }
-  return { staged, unstaged, conflicted };
+  return { staged, unstaged, conflicted, untracked };
 }
 
 export interface StatusRow {

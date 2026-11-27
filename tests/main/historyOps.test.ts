@@ -141,6 +141,91 @@ test("커밋 정리: 충돌이 나면 현재 브랜치에서는 실제 rebase -i
   assert.equal(fs.readFileSync(path.join(repo, "app.js"), "utf8"), "again\n");
 });
 
+// feat 에 fix 를 merge 해 둔 줄기: init ─ f1 ─ f2 ─ M(fix) ─ f3
+const withMerge = () => {
+  sh(repo, "switch", "-q", "feat");
+  sh(repo, "reset", "-q", "--hard", ids.f2);
+  sh(repo, "merge", "-q", "--no-ff", "-X", "theirs", "-m", "merge fix", "fix"); // app.js 충돌은 fix 쪽으로 해결
+  ids.mg = tip("HEAD");
+  ids.g3 = commit("g3", { "g.txt": "g\n" });
+  sh(repo, "switch", "-q", "main");
+};
+const parentsOf = (ref: string) => sh(repo, "rev-list", "--parents", "-n1", ref).split(" ").slice(1);
+
+test("merge 커밋이 있는 줄기 rebase: merge 를 merge 로 다시 만든다 (곁가지 부모 그대로)", async () => {
+  withMerge();
+  await run("rebaseStem", ["feat", tip("main")], { base: ids.init });
+  assert.deepEqual(sh(repo, "log", "--first-parent", "--format=%s", "feat").split("\n"), ["g3", "merge fix", "f2", "f1", "m2", "m1", "init"]);
+  assert.deepEqual(parentsOf("feat~1"), [tip("feat~2"), ids.x1]);
+  assert.equal(sh(repo, "show", "feat:app.js"), "fixed", "merge 에서 들어온 내용 (충돌 해결 포함) 유지");
+  assert.equal(sh(repo, "log", "-n1", "--format=%an", "feat~1"), "Tester");
+});
+
+test("merge 커밋이 있는 줄기 정리: 앞 구간 순서 · 메시지 · 빼기, merge 너머로 옮기기와 merge squash 는 거절", async () => {
+  withMerge();
+  const before = tip("feat");
+  const [f1, f2] = [ids.f1, ids.f2];
+  await run("rebasePlan", ["feat", [
+    { id: f2, action: "pick" }, { id: f1, action: "reword", msg: "f1 새 메시지" }, { id: ids.mg, action: "pick" }, { id: ids.g3, action: "pick" },
+  ]], { base: ids.init });
+  assert.deepEqual(sh(repo, "log", "--first-parent", "--format=%s", "feat").split("\n"), ["g3", "merge fix", "f1 새 메시지", "f2", "init"]);
+  assert.equal(parentsOf("feat~1")[1], ids.x1);
+  const now = tip("feat");
+  const cross = await execute(repo, "rebasePlan", ["feat", [
+    { id: tip("feat~3"), action: "pick" }, { id: tip("feat~1"), action: "pick" }, { id: tip("feat~2"), action: "pick" }, { id: now, action: "pick" },
+  ]], { base: ids.init });
+  assert.equal(cross.ok, false);
+  const sq = await execute(repo, "rebasePlan", ["feat", [
+    { id: tip("feat~3"), action: "pick" }, { id: tip("feat~2"), action: "pick" }, { id: tip("feat~1"), action: "fixup" }, { id: now, action: "pick" },
+  ]], { base: ids.init });
+  assert.equal(sq.ok, false);
+  assert.equal(tip("feat"), now, "거절하면 아무것도 바뀌지 않는다");
+  await run("undo", []);
+  assert.equal(tip("feat"), before);
+});
+
+test("merge 커밋 앞의 커밋 빼기 · merge 뒤 커밋을 merge 에 합치기", async () => {
+  withMerge();
+  await run("dropCommit", [ids.f1], { from: "feat" });
+  assert.deepEqual(sh(repo, "log", "--first-parent", "--format=%s", "feat").split("\n"), ["g3", "merge fix", "f2", "init"]);
+  assert.ok(!sh(repo, "ls-tree", "--name-only", "feat").split("\n").includes("login.js"));
+  await run("squash", [tip("feat"), tip("feat~1")], { from: "feat" });
+  assert.deepEqual(sh(repo, "log", "--first-parent", "--format=%s", "feat").split("\n"), ["merge fix", "f2", "init"]);
+  assert.equal(parentsOf("feat").length, 2);
+  assert.equal(sh(repo, "show", "feat:g.txt"), "g");
+});
+
+test("첫 커밋부터인 줄기 정리: 첫 커밋 메시지 수정 · 첫 커밋에 합치기", async () => {
+  const tipBefore = tip("main");
+  await run("rebasePlan", ["main", [
+    { id: ids.init, action: "reword", msg: "처음" }, { id: ids.m2, action: "fixup" }, { id: ids.m1, action: "pick" },
+  ]], { base: null });
+  assert.deepEqual(msgs("main", 5), ["m1", "처음"]);
+  assert.equal(parentsOf("main~1").length, 0, "새 첫 커밋");
+  assert.equal(sh(repo, "show", "main~1:docs.md"), "d");
+  assert.equal(sh(repo, "show", "main:README.md"), "r2");
+  assert.equal(sh(repo, "status", "--porcelain"), "");
+  await run("undo", []);
+  assert.equal(tip("main"), tipBefore);
+});
+
+test("첫 커밋과 순서 바꾸기 · 첫 커밋 빼기 · 첫 커밋부터인 줄기를 다른 커밋 위로", async () => {
+  sh(repo, "switch", "-q", "--orphan", "other");
+  ids.o1 = commit("o1", { "o.txt": "o\n" });
+  ids.o2 = commit("o2", { "p.txt": "p\n" });
+  sh(repo, "switch", "-q", "main");
+  await run("rebasePlan", ["other", [{ id: ids.o2, action: "pick" }, { id: ids.o1, action: "pick" }]], { base: null });
+  assert.deepEqual(msgs("other", 5), ["o1", "o2"]);
+  await run("undo", []);
+  await run("dropCommit", [ids.o1], { from: "other" });
+  assert.deepEqual(msgs("other", 5), ["o2"]);
+  assert.equal(parentsOf("other").length, 0);
+  const all = await execute(repo, "dropCommit", [tip("other")], { from: "other" });
+  assert.equal(all.ok, false, "모두 빼면 둘 곳이 없다");
+  await run("rebaseStem", ["other", tip("main")], { base: null });
+  assert.deepEqual(msgs("other", 2), ["o2", "m2"]);
+});
+
 test("되돌리기: rebase → undo 하면 원래 위치", async () => {
   const before = tip("feat");
   await run("rebaseStem", ["feat", tip("main")], { base: ids.init });
