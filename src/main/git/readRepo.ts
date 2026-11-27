@@ -2,7 +2,7 @@
 import { readLfs, readSubmodules, readWorktrees } from "@/git/extras";
 import path from "node:path";
 import { git, repoRoot } from "@/git/cli";
-import { readOpState } from "@/git/opState";
+import { readBisectState, readOpState } from "@/git/opState";
 import { readStatus } from "@/git/status";
 import type { Commit, RemoteInfo, RepoState, StashEntry, TagInfo } from "@shared/types/repo";
 
@@ -149,6 +149,7 @@ export async function readRepo(dir: string): Promise<RepoState> {
     working,
     stash,
     op: await readOpState(root, working.conflicted, headInfo.head),
+    bisect: await readBisectState(root),
     born: {},
     submodules,
     worktrees,

@@ -96,7 +96,7 @@ xattr -dr com.apple.quarantine /Applications/Yggdrasil.app
 <td valign="top">
 
 ### 커밋 정리 (interactive rebase)
-한 창에서 순서 바꾸기, 메시지 수정, 합치기(squash · fixup), 빼기를 정하고 결과를 미리 본 뒤 실행해요. 체크아웃하지 않은 브랜치에도 돼요.
+한 창에서 순서 바꾸기, 메시지 수정, 합치기(squash · fixup), 빼기를 정하고 결과를 미리 본 뒤 실행해요. 체크아웃하지 않은 브랜치, merge 커밋이 있는 브랜치, 첫 커밋부터인 브랜치에도 돼요.
 
 </td>
 </tr>
@@ -145,11 +145,16 @@ merge · rebase · cherry-pick 이 충돌로 멈추면 배너가 떠요. 구간�
 
 | 분야 | 할 수 있는 일 |
 |---|---|
-| **매일 하는 일** | 파일 · 변경 덩어리 · 한 줄 단위 stage / unstage · 커밋, amend, 고른 경로만 커밋 · 변경 버리기 · 끌어서 stash · checkout, 새 브랜치, 브랜치 삭제 |
+| **매일 하는 일** | 파일 · 변경 덩어리 · 한 줄 단위 stage / unstage · 커밋, amend, 고른 경로만 커밋 · 체크아웃하지 않은 브랜치에 바로 커밋 · 과거 커밋에 staged 변경 합치기(fixup) · 변경 버리기 · 끌어서 stash (충돌한 pop 은 해결 뒤 stash 지우기 · 중단) · checkout, 새 브랜치, 브랜치 삭제 |
 | **히스토리** | cherry-pick (여러 개도) · 커밋 옮기기 · 브랜치 rebase · merge · 합치기, 순서 바꾸기, 빼기 · revert · reset (soft / mixed / hard) · 브랜치 위치 옮기기 · 커밋 나누기 |
-| **원격** | clone · fetch / pull / push (이름표를 원격 줄로 끌기) · 원격 추가 · 주소 변경 · 삭제 · upstream 연결 · 원격 브랜치 삭제 · 태그 (달기, 옮기기, 삭제, push) |
+| **원격** | clone · fetch / pull / push (이름표를 원격 줄로 끌기, 체크아웃하지 않은 브랜치에도 pull) · 원격 추가 · 주소 변경 · 삭제 · upstream 연결 · 원격 브랜치 삭제 · 태그 (달기, 옮기기, 삭제, push) |
 | **GitHub** | Device Flow 로그인 · 내 저장소 clone · 새 저장소로 올리기 · 브랜치에서 PR 만들기 · 리뷰와 검사 결과가 보이는 PR 목록 · `pr/<번호>` 로 받아 보기 |
 | **복구** | reflog 와 앱 백업(`refs/yggdrasil/backup/`)에서 잃어버린 커밋 찾기 · 새 브랜치로 살리기, 복사하기, 그 커밋으로 되돌리기 |
+| **서명** | git 설정을 따라 GPG / SSH 커밋 서명, 앱이 만드는 모든 커밋(다시 쓰기 포함)도 서명 · 고른 커밋에 확인됨 / 확인 안 됨 / 서명 없음 표시 · 설정에서 저장소별로 서명 켜기·끄기 |
+| **bisect** | 그래프에서 좋은 커밋 · 나쁜 커밋을 표시하면 가운데 커밋을 차례로 체크아웃 · 배너에서 좋음/나쁨/건너뛰기와 남은 단계 · 그래프에 good/bad/시험 중 표시 · 찾으면 첫 나쁜 커밋을 고름 · 끝내기(reset)로 원래 브랜치로 (⌘Z 대상 아님) · 터미널에서 시작한 bisect 도 이어서 |
+| **패치** | 커밋(여러 개 선택 가능)을 패치 파일로 저장 · 클립보드로 복사 (format-patch) · 커밋 안 한 변경 / staged 변경을 diff 로 저장 · 파일 메뉴 "패치 적용…" 으로 mbox 는 `git am --3way` (⌘Z 가능, 충돌은 진행 중 배너), diff 는 `git apply` (적용 전 검사) |
+| **.gitignore** | 추적 안 하는 파일 오른쪽 클릭: 이 파일 · 같은 확장자 `*.ext` · 폴더 무시 (escape 해 저장소 맨 위 `.gitignore` 에 중복 없이 추가) 또는 나만 무시 (`.git/info/exclude`) · 추적 중인 파일: 추적 멈추고 무시 (`git rm --cached`, 삭제로 stage) · ".gitignore 편집…" 창에서 패턴 추가·삭제, 걸리는 파일 미리 보기, 왜 무시되는지 (`git check-ignore -v`) · 모두 ⌘Z 로 되돌림 |
+| **git hook** | 커밋 · 메시지 수정 · 다른 브랜치에 커밋 · fixup · 커밋 정리의 새 메시지에 git 과 같게 `pre-commit` / `commit-msg` 를 실행 (앱이 직접 만드는 커밋도), push 는 `pre-push` · hook 이 실패하면 아무것도 바꾸지 않고 오류에 hook 출력 표시 · 설정에서 설치된 hook, hook 폴더(`core.hooksPath` / husky), 저장소별 hook 건너뛰기(`--no-verify`) |
 | **저장소** | git 이 없는 폴더도 열기 (**git 시작하기** 가 `git init`) · 서브모듈 · worktree · Git LFS 표시 · 큰 저장소는 커밋 400개씩 불러오기 |
 | **다른 호스트** | GitLab · Bitbucket · 사내 서버 HTTPS 로그인 (시스템 git 자격 증명 도우미 사용) · SSH · 호스트 키 · 권한 오류를 원인과 해결 방법으로 안내 |
 
@@ -180,6 +185,7 @@ flowchart LR
 - Yggdrasil 은 설치된 `git` 을 실행할 뿐, 코드를 어디에도 보내지 않아요.
 - GitHub 토큰은 OS 키체인(Electron `safeStorage`)으로 암호화해 두고, git 에는 **github.com 에 한해서 환경 변수로만** 넘겨요. 명령 인자로는 절대 넘기지 않아요.
 - 다른 호스트의 비밀번호는 시스템 git 자격 증명 도우미에 바로 저장되고, 앱은 따로 보관하지 않아요.
+- 커밋 서명은 gpg-agent · ssh-agent 를 써요. 앱은 개인 키·암호를 읽지 않고, 서명 설정은 확인을 받은 뒤 저장소 설정에만 써요.
 - 화면은 샌드박스와 context isolation 으로 격리되어 있고, 다른 페이지로 이동하거나 새 창을 여는 것도 막혀 있어요.
 
 </details>

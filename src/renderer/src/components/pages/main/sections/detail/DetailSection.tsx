@@ -68,6 +68,20 @@ const DiffBody = ({ d, onFull }: { d: FileDiff; onFull: () => void }) => {
   );
 };
 
+const SIG_LABEL = { verified: "dt.sig.verified", unverified: "dt.sig.unverified", bad: "dt.sig.bad", unsigned: "dt.sig.unsigned" } as const;
+
+/** 선택한 커밋의 서명 상태. 그래프 전체가 아니라 고른 커밋 하나만 그때그때 읽는다 */
+const SignatureBadge = ({ id }: { id: string }) => {
+  const { data } = useAsync(() => window.gitApi.signature(id), [id]);
+  if (!data) return null;
+  return (
+    <div className="kv">
+      <span className={`sig-badge sig-${data.status}`} title={data.key ? `%G? ${data.code} · ${data.key}` : `%G? ${data.code}`}>{t(SIG_LABEL[data.status])}</span>
+      {data.signer && <span className="muted"> {t("dt.sig.by", { signer: data.signer })}</span>}
+    </div>
+  );
+};
+
 const DiffBox = ({ file, commit, repo }: { file: string; commit: string | null; repo: RepoState }) => {
   const prefs = useSmallStore(diffPrefsStore);
   // 다른 파일·커밋이면 부모가 key 를 바꿔 새로 만든다 ("전체 보기" 도 처음으로)
@@ -271,6 +285,7 @@ const CommitView = ({ id, repo, ui, onGoto }: { id: string; repo: RepoState; ui:
       {pushedSet(repo).has(id) && <div className="kv lock-note">{t("dt.pushedNote")}</div>}
       <div className="kv"><code>{c.id}</code></div>
       {c.author && <div className="kv">{t("dt.author", { author: c.author })}</div>}
+      {!id.startsWith("preview") && <SignatureBadge id={id} />}
       {c.date && <div className="kv" title={fullTime(c.date)}>{t("dt.date", { rel: relTime(c.date), full: fullTime(c.date) })}</div>}
       <div className="kv">{t("dt.stem", { stem: st.owner.get(id) || t("dt.noBranch") })}</div>
       {!!tags.length && (

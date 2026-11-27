@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { syncLocale } from "@/app/locale";
+import { applyPatch } from "@/app/patch";
 import { open, recent, refresh } from "@/app/repoSession";
 import { installDebug } from "@/dev/debug";
 import { mountContextMenu } from "@/interactions/contextMenu";
@@ -19,6 +20,7 @@ window.gitApi.onMenuOpen(() => void open(window.gitApi.pick()));
 window.gitApi.onMenuClone(() => void cloneFlow());
 window.gitApi.onMenuSearch(openSearch);
 window.gitApi.onMenuSettings(openSettings);
+window.gitApi.onMenuApplyPatch(() => void applyPatch());
 
 mountDrag();
 mountContextMenu();

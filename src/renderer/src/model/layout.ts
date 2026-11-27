@@ -40,6 +40,12 @@ function refsAt(s: RepoState): Record<string, RefLabel[]> {
   return at;
 }
 
+/** bisect 표시 → 노드 아래 글자 (색만으로 구분하지 않게) */
+const BISECT_LABEL = {
+  "bisect-first": "graph.bisectFirst", "bisect-current": "graph.bisectCurrent",
+  "bisect-bad": "graph.bisectBad", "bisect-good": "graph.bisectGood", "bisect-skip": "graph.bisectSkip",
+} as const;
+
 export function layout(s: RepoState): Layout {
   const { stems: st, owner } = stems(s);
   const g = generations(s);
@@ -158,6 +164,14 @@ export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
     }
   }
 
+  // bisect 표시: 첫 나쁜 커밋 > 시험 중 > bad > good > skip
+  const bisectClass = (st: RepoState, c: string) => {
+    const b = st.bisect;
+    if (!b) return "";
+    if (b.first === c) return "bisect-first";
+    if (!b.first && b.current === c && b.bad && b.good.length) return "bisect-current";
+    return b.bad === c ? "bisect-bad" : b.good.includes(c) ? "bisect-good" : b.skipped.includes(c) ? "bisect-skip" : "";
+  };
   // 커밋 노드와 이름표
   const labels = refsAt(s);
   const headTip = s.head ? s.branches[s.head] : s.detached;
@@ -165,7 +179,7 @@ export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
   for (const [c, p] of Object.entries(pos)) {
     const cm = s.commits[c];
     const isPushed = pushed.has(c);
-    const cls = ["node", isPushed ? "pushed" : "local", newIds.has(c) && "new", goingIds.has(c) && "going", opts.selected === c && "selected", opts.dim?.has(c) && "dim", opts.multi?.has(c) && "multi"].filter(Boolean).join(" ");
+    const cls = ["node", isPushed ? "pushed" : "local", newIds.has(c) && "new", goingIds.has(c) && "going", opts.selected === c && "selected", opts.dim?.has(c) && "dim", opts.multi?.has(c) && "multi", bisectClass(s, c)].filter(Boolean).join(" ");
     const fill = isPushed ? p.lane.color : "var(--bg)";
     const shape = cm.parents.length > 1
       ? `<rect x="-10" y="-10" width="20" height="20" transform="rotate(45)" style="stroke:${p.lane.color};fill:${fill}"/>`
@@ -173,11 +187,13 @@ export function renderGraph(s: RepoState, opts: RenderOptions = {}) {
     const tip = `${short(c)} ${cm.msg}${cm.author ? `\n${cm.author} · ${relTime(cm.date)}` : ""}\n${t("graph.tipFiles", { files: cm.files.join(", ") || "-" })}\n${isPushed ? t("graph.tipPushed") : t("graph.tipLocal")}`;
     // 화면 낭독기용 이름: 메시지 · 해시 · 줄기 · 공유 여부 · HEAD (그래프 안에서는 화살표로 이동, 하나만 Tab 으로 닿는다)
     const where = labels[c]?.filter((r) => r.kind === "local").map((r) => r.name).join(", ");
-    const spoken = t("graph.commitLabel", { msg: cm.msg, id: short(c), lane: p.lane.name.startsWith("·") ? null : p.lane.name, tipOf: where || null, head: c === headTip, pushed: isPushed, merge: cm.parents.length > 1 });
+    const bis = bisectClass(s, c);
+    const bisLabel = bis ? t(BISECT_LABEL[bis as keyof typeof BISECT_LABEL]) : "";
+    const spoken = (bisLabel ? `${bisLabel} · ` : "") + t("graph.commitLabel", { msg: cm.msg, id: short(c), lane: p.lane.name.startsWith("·") ? null : p.lane.name, tipOf: where || null, head: c === headTip, pushed: isPushed, merge: cm.parents.length > 1 });
     const focusable = opts.interactive && c === (opts.focusId ?? opts.selected ?? headTip);
     out.push(`<g class="${cls}" ${opts.interactive ? `data-drag="commit" data-drop="commit" data-id="${c}" role="button" aria-label="${esc(spoken)}" aria-pressed="${opts.selected === c || !!opts.multi?.has(c)}" tabindex="${focusable ? 0 : -1}"` : ""} transform="translate(${p.x},${p.y})">
       ${opts.selected === c || opts.multi?.has(c) ? `<circle class="sel-ring" r="21"/>` : ""}${c === headTip ? `<circle class="halo" r="17"/>` : ""}${shape}
-      <text class="msg" y="-22" aria-hidden="true">${esc(trunc(cm.msg, 15))}</text><title>${esc(tip)}</title></g>`);
+      <text class="msg" y="-22" aria-hidden="true">${esc(trunc(cm.msg, 15))}</text>${bis ? `<text class="bisect-tag" y="28" aria-hidden="true">${esc(bisLabel)}</text>` : ""}<title>${esc(bisLabel ? `${bisLabel}\n${tip}` : tip)}</title></g>`);
 
     (labels[c] || []).forEach((r, i) => {
       out.push(refLabel(s, r, p.x, p.y + 30 + i * LABEL_STEP, laneColor(r.name) || p.lane.color, !!opts.interactive, r.kind === "local" && r.name === opts.selectedBranch));

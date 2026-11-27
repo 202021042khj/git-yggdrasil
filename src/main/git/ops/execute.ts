@@ -2,11 +2,12 @@
 // 실행 전후의 브랜치 위치를 비교해 되돌리기(⌘Z) 기록을 남긴다.
 import { git } from "@/git/cli";
 import { branchOps } from "@/git/ops/branchOps";
-import { conflictOps } from "@/git/ops/conflictOps";
-import { createContext, headInfo, type OpError, type OpFn } from "@/git/ops/context";
+import { conflictOps, dropStashByOid, storeStash } from "@/git/ops/conflictOps";
+import { createContext, headInfo, redoFile, undoFile, type FileUndo, type OpError, type OpFn } from "@/git/ops/context";
 import { authUrlFromError } from "@/git/credential";
 import { explainRemoteError } from "@/git/remoteErrors";
 import { historyOps } from "@/git/ops/historyOps";
+import { bisecting } from "@/git/opState";
 import { remoteOps } from "@/git/ops/remoteOps";
 import { workingOps } from "@/git/ops/workingOps";
 import { t } from "@shared/i18n/i18n";
@@ -22,6 +23,10 @@ interface UndoEntry {
   args: unknown[];
   before: Snapshot;
   after: Snapshot;
+  /** 지운 stash (되돌리면 git stash store 로 되살리고, 다시 실행하면 해시로 찾아 다시 지운다) */
+  stash?: { oid: string; msg: string };
+  /** 바꾼 파일 (.gitignore 등). 되돌리면 이전 내용을 되쓴다 */
+  file?: FileUndo;
 }
 
 const undoStacks = new Map<string, UndoEntry[]>();
@@ -70,11 +75,16 @@ const undo: OpFn = async (ctx) => {
   const stack = stackOf(undoStacks, ctx.root);
   const last = stack.at(-1);
   if (!last) throw new Error(t("m.noUndo"));
-  if (last.op === "renameBranch") { // 이름 변경은 이름만 되돌린다 (원격에 반영한 것은 그대로)
+  // bisect 중에는 HEAD 가 bisect 것이라 브랜치를 옮기면 꼬인다. 빠져나오는 길은 bisect reset
+  if (await bisecting(ctx.root)) throw new Error(t("m.bisectUndo"));
+  if (last.file) { // 파일만 바꾼 조작 (무시 패턴)
+    await undoFile(ctx, last.file);
+  } else if (last.op === "renameBranch") { // 이름 변경은 이름만 되돌린다 (원격에 반영한 것은 그대로)
     await ctx.run(["branch", "-m", String(last.args[1]), String(last.args[0])]);
     ctx.note(`# ${t("m.undoRename")}`);
   } else {
     await restore(ctx, last, last.after, last.before);
+    if (last.stash) await storeStash(ctx, last.stash);
     ctx.note(`# ${t("m.undoOp", { op: last.op })}`);
   }
   stack.pop();
@@ -86,11 +96,15 @@ const redo: OpFn = async (ctx) => {
   const stack = stackOf(redoStacks, ctx.root);
   const next = stack.at(-1);
   if (!next) throw new Error(t("top.noRedo"));
-  if (next.op === "renameBranch") {
+  if (await bisecting(ctx.root)) throw new Error(t("m.bisectUndo"));
+  if (next.file) {
+    await redoFile(ctx, next.file);
+  } else if (next.op === "renameBranch") {
     await ctx.run(["branch", "-m", String(next.args[0]), String(next.args[1])]);
     ctx.note(`# ${t("m.redoRename")}`);
   } else {
     await restore(ctx, next, next.before, next.after);
+    if (next.stash && !(await dropStashByOid(ctx, next.stash.oid))) throw new Error(t("m.stashGone", { msg: next.stash.msg }));
     ctx.note(`# ${t("m.redoOp", { op: next.op })}`);
   }
   stack.pop();
@@ -112,6 +126,19 @@ export function registerOps(ops: Partial<Record<OpName, OpFn>>): void {
   Object.assign(OPS, ops);
 }
 
+/** git commit 이 서명에 실패한 경우 (gpg-agent·ssh-agent 없음, pinentry 를 띄울 수 없음 등) 안내 */
+function signHint(text: string | undefined): RunResult["hint"] | null {
+  return text && /gpg failed to sign|failed to sign|signing failed|error: (?:gpg|ssh-keygen)|Couldn't (?:load|find) (?:public )?key/i.test(text)
+    ? { title: t("m.signHint.title"), fix: t("m.signHint.fix") } : null;
+}
+
+/** hook 이 막은 경우 안내 (앱이 직접 돌린 hook, 또는 git commit/push 가 돌린 hook) */
+function hookHint(err: OpError & { hook?: string }): RunResult["hint"] | null {
+  const text = err.stderr || err.message || "";
+  return err.hook || /hook (?:declined|failed)|pre-commit hook|commit-msg hook|pre-push hook|husky - /i.test(text)
+    ? { title: t("m.hookHint.title"), fix: t("m.hookHint.fix") } : null;
+}
+
 export async function execute(root: string, op: OpName, args: unknown[] = [], extra: OpExtra = {}): Promise<RunResult> {
   const fn = OPS[op];
   if (!fn) throw new Error(t("m.unknownOp", { op }));
@@ -121,9 +148,9 @@ export async function execute(root: string, op: OpName, args: unknown[] = [], ex
     await fn(ctx, args);
     if (before) {
       const after = await snapshot(root);
-      if (JSON.stringify(after.heads) !== JSON.stringify(before.heads)) {
+      if (JSON.stringify(after.heads) !== JSON.stringify(before.heads) || ctx.droppedStash || ctx.fileUndo) {
         const stack = undoStacks.get(root) || [];
-        stack.push({ op, args, before, after });
+        stack.push({ op, args, before, after, stash: ctx.droppedStash, file: ctx.fileUndo });
         undoStacks.set(root, stack.slice(-UNDO_LIMIT));
         redoStacks.set(root, []); // 새 조작을 하면 다시 실행 기록은 버린다
       }
@@ -141,7 +168,7 @@ export async function execute(root: string, op: OpName, args: unknown[] = [], ex
       authUrl: authUrl ?? undefined,
       branch: err.branch,
       error: err.stderr || String(err.message || err),
-      hint: explainRemoteError(err.stderr || err.message) ?? undefined,
+      hint: hookHint(err) ?? explainRemoteError(err.stderr || err.message) ?? signHint(err.stderr || err.message) ?? undefined,
     };
   }
 }

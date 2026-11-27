@@ -38,19 +38,36 @@ function predictConflicts(s: RepoState, files: string[], origBase: string | null
   return [...new Set(files)].filter((f) => touched.has(f));
 }
 
-interface Spec { keep?: string; msg?: string; files?: string[] }
+/** keep: 그대로 다시 올릴 커밋 · 아니면 msg/files 로 새로 만든다. side: 첫 부모 말고 이어 줄 부모 (merge 커밋) */
+interface Spec { keep?: string; msg?: string; files?: string[]; side?: string[] }
 
-/** specs 를 onto 위에 차례로 새 커밋으로 만든다 */
+const isMerge = (s: RepoState, id: string) => s.commits[id].parents.length > 1;
+
+/** specs 를 onto 위에 차례로 새 커밋으로 만든다. merge 커밋은 merge 로 (첫 부모만 바꾸고 곁가지 부모는 그대로) */
 function replay(s: RepoState, specs: Spec[], onto: string | null): string | null {
   let tip = onto;
   for (const sp of specs) {
     const src = sp.keep ? s.commits[sp.keep] : { msg: sp.msg ?? "", files: sp.files ?? [] };
+    const side = sp.side ?? (sp.keep ? s.commits[sp.keep].parents.slice(1) : []);
     const id = newId();
-    s.commits[id] = { id, msg: src.msg, parents: tip ? [tip] : [], files: [...src.files] };
+    s.commits[id] = { id, msg: src.msg, parents: [...(tip ? [tip] : []), ...side], files: [...src.files] };
     tip = id;
   }
   return tip;
 }
+
+/** merge 커밋 너머로 순서를 바꿨는지 (merge 커밋끼리의 순서 · merge 앞뒤 구간이 그대로여야 한다) */
+function crossesMerge(s: RepoState, stem: string[], order: string[]): boolean {
+  const key = new Map<string, number>();
+  let k = 0;
+  for (const id of stem) {
+    if (isMerge(s, id)) { key.set(id, ++k); k++; } else key.set(id, k);
+  }
+  return order.some((id, i) => i > 0 && key.get(id)! < key.get(order[i - 1])!);
+}
+
+/** 줄기에 merge 커밋이 있으면 git 명령에 붙일 옵션 */
+const mergesFlag = (s: RepoState, ids: string[]) => (ids.some((id) => isMerge(s, id)) ? " --rebase-merges" : "");
 
 /** 로컬 브랜치 줄기를 새 spec 목록으로 다시 쓴다 (앞부분이 같으면 그대로 둔다). 다시 쓰인 원본 커밋을 돌려준다. */
 function rewriteStem(s: RepoState, branch: string, specs: Spec[]): string[] {
@@ -100,7 +117,7 @@ export const previews: Partial<Record<OpName, PreviewFn>> = {
     const ch = takeChanges(s, paths);
     if (!ch) return fail(t("pv.noAmendChanges"));
     const isTip = s.branches[br] === id;
-    const specs = stems(s).stems[br].ids.map((c): Spec => (c === id ? { msg: s.commits[c].msg, files: [...s.commits[c].files, ...ch.files] } : { keep: c }));
+    const specs = stems(s).stems[br].ids.map((c): Spec => (c === id ? { msg: s.commits[c].msg, files: [...s.commits[c].files, ...ch.files], side: s.commits[c].parents.slice(1) } : { keep: c }));
     const rewrites = rewriteStem(s, br, specs);
     return ok(s, isTip ? t("pv.amendTip", { commit: label(s0, id) }) : t("pv.fixupPast", { commit: label(s0, id) }),
       ch.addCmd + (isTip ? `git commit --amend${ch.suffix}` : `git commit --fixup ${short(id)}${ch.suffix} && git rebase -i --autosquash`), { rewrites });
@@ -132,8 +149,12 @@ export const previews: Partial<Record<OpName, PreviewFn>> = {
     const br = ownerBranch(s0, id);
     if (!br) return fail(t("pv.dropOnlyLocal"));
     const s = clone(s0);
-    const rewrites = rewriteStem(s, br, stems(s).stems[br].ids.filter((c) => c !== id).map((c) => ({ keep: c })));
-    return ok(s, t("pv.drop", { commit: label(s0, id), branch: br }), `git rebase --onto ${short(id)}~1 ${short(id)} ${br}`, { rewrites });
+    const rest = stems(s).stems[br].ids.filter((c) => c !== id);
+    if (!rest.length && !s0.commits[id].parents.length) return fail(t("pv.planDropAll"));
+    const rewrites = rewriteStem(s, br, rest.map((c) => ({ keep: c })));
+    const flag = mergesFlag(s0, rest);
+    return ok(s, t("pv.drop", { commit: label(s0, id), branch: br }),
+      s0.commits[id].parents.length ? `git rebase${flag} --onto ${short(id)}~1 ${short(id)} ${br}` : `git rebase -i${flag} --root ${br}  # drop ${short(id)}`, { rewrites });
   },
 
   revertCommit(s0, id: string) {
@@ -147,14 +168,19 @@ export const previews: Partial<Record<OpName, PreviewFn>> = {
   squash(s0, src: string, dst: string) {
     const br = ownerBranch(s0, src);
     if (!br || br !== ownerBranch(s0, dst)) return fail(t("pv.squashSameStem"));
+    if (isMerge(s0, src)) return fail(t("pv.mergeSquash"));
     const s = clone(s0);
     const specs: Spec[] = [];
-    for (const c of stems(s).stems[br].ids) {
+    const ids = stems(s).stems[br].ids;
+    for (const c of ids) {
       if (c === src) continue;
-      specs.push(c === dst ? { msg: s.commits[dst].msg, files: [...s.commits[dst].files, ...s.commits[src].files] } : { keep: c });
+      specs.push(c === dst ? { msg: s.commits[dst].msg, files: [...s.commits[dst].files, ...s.commits[src].files], side: s.commits[dst].parents.slice(1) } : { keep: c });
     }
+    const lo = Math.min(ids.indexOf(src), ids.indexOf(dst));
+    const order = ids.filter((c) => c !== src).flatMap((c) => (c === dst ? [c, src] : [c]));
+    if (crossesMerge(s, ids.slice(lo), order.slice(lo))) return fail(t("pv.mergeOrder"));
     const rewrites = rewriteStem(s, br, specs);
-    return ok(s, t("pv.squash", { src: label(s0, src), dst: label(s0, dst) }), `git rebase -i  # fixup ${short(src)} → ${short(dst)}`, { rewrites });
+    return ok(s, t("pv.squash", { src: label(s0, src), dst: label(s0, dst) }), `git rebase -i${mergesFlag(s0, ids)}  # fixup ${short(src)} → ${short(dst)}`, { rewrites });
   },
 
   /** 커밋 정리(interactive rebase): 위에서부터 오래된 커밋 */
@@ -166,6 +192,8 @@ export const previews: Partial<Record<OpName, PreviewFn>> = {
     if (!kept.length) return fail(t("pv.planDropAll"));
     if (kept[0].action === "squash" || kept[0].action === "fixup") return fail(t("pv.planFirstSquash"));
     if (steps.some((x) => (x.action === "reword" || x.action === "squash") && !(x.msg ?? "").trim())) return fail(t("pv.planEmptyMsg"));
+    if (kept.some((x) => (x.action === "squash" || x.action === "fixup") && isMerge(s0, x.id))) return fail(t("pv.mergeSquash"));
+    if (crossesMerge(s0, st.ids, kept.map((x) => x.id))) return fail(t("pv.mergeOrder"));
     const s = clone(s0);
     const specs: Spec[] = [];
     for (const x of kept) {
@@ -173,8 +201,9 @@ export const previews: Partial<Record<OpName, PreviewFn>> = {
       const last = specs[specs.length - 1];
       if ((x.action === "squash" || x.action === "fixup") && last) {
         const files = [...(last.files ?? s.commits[last.keep!].files), ...c.files];
-        specs[specs.length - 1] = { msg: x.action === "squash" ? x.msg! : last.msg ?? s.commits[last.keep!].msg, files: [...new Set(files)] };
-      } else if (x.action === "reword") specs.push({ msg: x.msg!, files: [...c.files] });
+        const side = last.side ?? s.commits[last.keep!].parents.slice(1);
+        specs[specs.length - 1] = { msg: x.action === "squash" ? x.msg! : last.msg ?? s.commits[last.keep!].msg, files: [...new Set(files)], side };
+      } else if (x.action === "reword") specs.push({ msg: x.msg!, files: [...c.files], side: c.parents.slice(1) });
       else specs.push({ keep: x.id });
     }
     const same = specs.length === st.ids.length && specs.every((sp, i) => sp.keep === st.ids[i]);
@@ -189,7 +218,7 @@ export const previews: Partial<Record<OpName, PreviewFn>> = {
     const rewrites = rewriteStem(s, branch, specs);
     const counts = (["reword", "squash", "fixup", "drop"] as const).map((a) => [a, steps.filter((x) => x.action === a).length] as const).filter(([, n]) => n);
     const parts = [moved.length ? t("pv.plan.reorder") : "", ...counts.map(([a, n]) => t(`pv.plan.${a}`, { n }))].filter(Boolean);
-    return ok(s, t("pv.plan", { branch, parts: parts.join(", ") }), `git rebase -i ${st.base ? short(st.base) : "--root"}  # ${branch}`, { conflicts, rewrites });
+    return ok(s, t("pv.plan", { branch, parts: parts.join(", ") }), `git rebase -i${mergesFlag(s0, st.ids)} ${st.base ? short(st.base) : "--root"}  # ${branch}`, { conflicts, rewrites });
   },
 
   reorder(s0, id: string, branch: string, index: number) {
@@ -200,21 +229,21 @@ export const previews: Partial<Record<OpName, PreviewFn>> = {
     if (index === from || index === from + 1) return fail(t("pv.samePlace"));
     const order = ids.filter((c) => c !== id);
     order.splice(index > from ? index - 1 : index, 0, id);
+    if (crossesMerge(s, ids, order)) return fail(t("pv.mergeOrder"));
     const rewrites = rewriteStem(s, branch, order.map((c) => ({ keep: c })));
-    return ok(s, t("pv.reorder", { commit: label(s0, id) }), `git rebase -i  # move ${short(id)}`, { rewrites });
+    return ok(s, t("pv.reorder", { commit: label(s0, id) }), `git rebase -i${mergesFlag(s0, ids)}  # move ${short(id)}`, { rewrites });
   },
 
   rebaseStem(s0, branch: string, onto: string) {
     const st = stems(s0).stems[branch];
     if (!st?.ids.length) return fail(t("pv.noCommitsToMove"));
-    if (!st.base) return fail(t("pv.rebaseRoot", { branch }));
     if (st.base === onto) return fail(t("pv.alreadyOnto"));
     if (st.ids.includes(onto)) return fail(t("pv.ontoSelf"));
     const s = clone(s0);
     const conflicts = predictConflicts(s, st.ids.flatMap((c) => s.commits[c].files), st.base, onto);
     s.branches[branch] = replay(s, st.ids.map((c) => ({ keep: c })), onto)!;
     return ok(s, t("pv.rebase", { branch, n: st.ids.length, onto: label(s0, onto) }),
-      `git rebase --onto ${short(onto)} ${short(st.base)} ${branch}`, { conflicts, rewrites: st.ids });
+      `git rebase${mergesFlag(s0, st.ids)} --onto ${short(onto)} ${st.base ? short(st.base) : "--root"} ${branch}`, { conflicts, rewrites: st.ids });
   },
 
   merge(s0, src: string, dst: string) {
@@ -297,11 +326,11 @@ export const previews: Partial<Record<OpName, PreviewFn>> = {
     const r = s0.remotes[remote], l = s0.branches[branch];
     if (!r) return fail(t("pv.noUpstream", { branch, remote }));
     if (isAncestor(s0, r, l)) return fail(t("pv.nothingToPull"));
-    if (branch !== s0.head) return fail(t("pv.pullOnlyHead"));
+    const other = branch !== s0.head; // 체크아웃 안 한 브랜치: 작업 폴더 없이 브랜치만 옮긴다
     const s = clone(s0);
     if (isAncestor(s, l, r)) {
       s.branches[branch] = r;
-      return ok(s, t("pv.pullFf", { remote, branch }), "git pull  # fast-forward");
+      return ok(s, t("pv.pullFf", { remote, branch }), other ? `git fetch && git branch -f ${branch} ${remote}` : "git pull  # fast-forward");
     }
     const base = mergeBase(s, l, r);
     const baseAnc = ancestors(s, base);
@@ -310,13 +339,13 @@ export const previews: Partial<Record<OpName, PreviewFn>> = {
     if (mode === "rebase") {
       const conflicts = predictConflicts(s, localOnly.flatMap((c) => s.commits[c].files), base, r);
       s.branches[branch] = replay(s, localOnly.map((c) => ({ keep: c })), r)!;
-      return ok(s, t("pv.pullRebase", { remote, n: localOnly.length }), "git pull --rebase", { conflicts, rewrites: localOnly });
+      return ok(s, t("pv.pullRebase", { remote, n: localOnly.length }), other ? `git fetch && git rebase ${remote} ${branch}` : "git pull --rebase", { conflicts, rewrites: localOnly });
     }
     const conflicts = predictConflicts(s, [...ancestors(s, r)].filter((c) => !baseAnc.has(c)).flatMap((c) => s.commits[c].files), base, l);
     const id = newId();
     s.commits[id] = { id, msg: `Merge ${remote} into ${branch}`, parents: [l, r], files: [] };
     s.branches[branch] = id;
-    return ok(s, t("pv.pullMerge", { remote, branch }), "git pull  # merge", { conflicts });
+    return ok(s, t("pv.pullMerge", { remote, branch }), other ? `git fetch && git merge ${remote}  # into ${branch}` : "git pull  # merge", { conflicts });
   },
 
   discard(s0, paths: string[]) {

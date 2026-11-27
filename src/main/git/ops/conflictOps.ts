@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { git } from "@/git/cli";
-import { readOpKind, recordConflicts, gitDir, SPLIT_FILE } from "@/git/opState";
+import { readOpKind, readStashMark, recordConflicts, gitDir, writeStashMark, SPLIT_FILE } from "@/git/opState";
 import { unmergedFiles } from "@/git/status";
 import { t } from "@shared/i18n/i18n";
 import type { GitOptions } from "@/git/cli";
@@ -31,6 +31,27 @@ export async function runOrStop(ctx: OpContext, args: string[], opts?: GitOption
     }
     throw err;
   }
+}
+
+/** stash 목록 (최신부터) 의 커밋 해시와 메시지 */
+export async function stashList(root: string): Promise<{ oid: string; msg: string }[]> {
+  const out = (await git(root, ["log", "-g", "--format=%H%x1f%gs", "refs/stash"], { allowFail: true })) || "";
+  return out.split("\n").filter(Boolean).map((l) => { const [oid, msg] = l.split("\x1f"); return { oid, msg }; });
+}
+
+/** 번호는 앞 stash 가 지워지면 밀리므로, 커밋 해시로 찾아 지운다. 못 찾으면 false. */
+export async function dropStashByOid(ctx: OpContext, oid: string): Promise<boolean> {
+  const list = await stashList(ctx.root);
+  const i = list.findIndex((s) => s.oid === oid);
+  if (i < 0) return false;
+  await ctx.run(["stash", "drop", `stash@{${i}}`]);
+  ctx.droppedStash = list[i];
+  return true;
+}
+
+/** 지운 stash 커밋을 목록 맨 위에 다시 넣는다 (되돌리기) */
+export async function storeStash(ctx: OpContext, s: { oid: string; msg: string }): Promise<void> {
+  await ctx.run(["stash", "store", "-m", s.msg, s.oid]);
 }
 
 /** choice: ours(A 쪽) · theirs(B 쪽) · both(에디터에서 직접 고치기 → 다시 누르면 해결 완료) */
@@ -95,13 +116,22 @@ const continueOp: OpFn = async (ctx) => {
   } else if (kind === "merge") await ctx.run(["commit", "--no-edit"]);
   else if (kind === "cherry-pick") await runOrStop(ctx, ["cherry-pick", "--continue"]);
   else if (kind === "revert") await runOrStop(ctx, ["revert", "--continue"]);
-  // kind 가 없으면 (stash 충돌 등) 파일 정리만으로 끝
+  else if (kind === "am") await runOrStop(ctx, ["am", "--continue"]);
+  else {
+    // kind 가 없으면 파일 정리만으로 끝. stash pop 충돌이었으면 git 이 남겨 둔 그 stash 를 지운다 (apply 였으면 그대로)
+    const mark = await readStashMark(root);
+    if (!mark) return;
+    await writeStashMark(root, null);
+    if (mark.keep) ctx.note(`# ${t("m.stashKept", { msg: mark.msg })}`);
+    else if (!(await dropStashByOid(ctx, mark.oid))) ctx.warn(t("m.stashGone", { msg: mark.msg }));
+  }
 };
 
 const skipOp: OpFn = async (ctx) => {
   const kind = readOpKind(ctx.root);
   if (kind === "rebase") await runOrStop(ctx, ["rebase", "--skip"]);
   else if (kind === "cherry-pick") await runOrStop(ctx, ["cherry-pick", "--skip"]);
+  else if (kind === "am") await runOrStop(ctx, ["am", "--skip"]);
   else throw new Error(t("m.cantSkip"));
 };
 
@@ -113,7 +143,17 @@ const abortOp: OpFn = async (ctx) => {
   } else if (kind === "merge") await ctx.run(["merge", "--abort"]);
   else if (kind === "cherry-pick") await ctx.run(["cherry-pick", "--abort"]);
   else if (kind === "revert") await ctx.run(["revert", "--abort"]);
-  else throw new Error(t("m.nothingToAbort"));
+  else if (kind === "am") await ctx.run(["am", "--abort"]);
+  else {
+    const mark = await readStashMark(ctx.root);
+    if (!mark) throw new Error(t("m.nothingToAbort"));
+    // stash 를 적용하기 전으로: 적용한 변경(staged · 충돌)을 되돌리고, stash 가 되살린 추적 안 하는 파일은 지운다. stash 는 그대로 남는다
+    await ctx.run(["reset", "--merge"]);
+    const restored = ((await git(ctx.root, ["ls-tree", "-r", "-z", "--name-only", `${mark.oid}^3`], { allowFail: true })) || "").split("\0").filter(Boolean);
+    if (restored.length) await ctx.run(["clean", "-f", "-q", "--", ...restored]);
+    await writeStashMark(ctx.root, null);
+    ctx.note(`# ${t("m.stashKept", { msg: mark.msg })}`);
+  }
 };
 
 export const conflictOps = { resolveFile, resolveContent, continueOp, skipOp, abortOp };

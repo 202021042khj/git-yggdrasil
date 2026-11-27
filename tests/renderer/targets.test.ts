@@ -28,3 +28,18 @@ test("여러 커밋 → 이름표: 한꺼번에 복사, 진행 중 작업이 있
   s.op = { kind: "merge", title: "", oursName: "", theirsName: "", conflicts: [], resolved: {} } as never;
   assert.deepEqual(verbs({ kind: "commit", id: "x" }, { kind: "label", branch: "main" }, s), []);
 });
+
+test("staged 변경 → 다른 브랜치 이름표: 체크아웃 없이 커밋, → 과거 커밋: 그 커밋에 합치기(fixup)", () => {
+  const s = BASE();
+  s.working.staged = ["note.txt"];
+  const toLabel = actionsFor({ kind: "working" }, { kind: "label", branch: "feat" }, s);
+  assert.deepEqual(toLabel.map((a) => a.op), ["commitTo"]);
+  assert.equal(toLabel[0].res.state.branches.feat !== "y", true);
+  assert.equal(toLabel[0].res.state.branches.main, "c", "현재 브랜치는 그대로");
+  assert.match(toLabel[0].res.summary, /체크아웃 없이/);
+  const toPast = actionsFor({ kind: "working" }, { kind: "commit", id: "c" }, s);
+  assert.deepEqual(toPast.map((a) => a.op), ["amendInto"]);
+  const past = actionsFor({ kind: "file", file: "note.txt" }, { kind: "commit", id: "a" }, s);
+  assert.deepEqual(past.map((a) => a.op), ["amendInto"]);
+  assert.match(past[0].res.cmd, /--fixup/);
+});

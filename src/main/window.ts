@@ -80,6 +80,8 @@ export function buildMenu(): void {
         { label: t("menu.open"), accelerator: "CmdOrCtrl+O", click: () => send("menu:open") },
         { label: t("menu.clone"), accelerator: "CmdOrCtrl+Shift+O", click: () => send("menu:clone") },
         { type: "separator" },
+        { label: t("menu.applyPatch"), click: () => send("menu:applyPatch") },
+        { type: "separator" },
         { role: "close" },
       ],
     },

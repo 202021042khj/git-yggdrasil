@@ -1,0 +1,12 @@
+/* IgnoreSection 스타일. 색과 간격은 styles/tokens.css 변수만 쓴다. */
+@layer components {
+  .ig-list { list-style: none; margin: 0 0 10px; padding: 0; max-height: 220px; overflow: auto; }
+  .ig-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 6px; border-radius: var(--r-sm); }
+  .ig-row:hover { background: var(--panel-2); }
+  .ig-row code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ig-add { margin-top: 8px; }
+  .ig-line { display: flex; gap: 8px; align-items: center; }
+  .ig-line input { flex: 1; }
+  .ig-cmd { display: block; font-size: 11px; margin-top: 4px; overflow-wrap: anywhere; }
+  .ig-matches p { margin: 4px 0; overflow-wrap: anywhere; }
+}

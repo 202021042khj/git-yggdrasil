@@ -9,7 +9,7 @@ import { askText, confirmAction, showNotice } from "@/components/ui/dialogUtils"
 import { askCredential } from "@/components/ui/credentialUtils";
 import { toast } from "@/components/ui/toastUtils";
 import { t } from "@shared/i18n/i18n";
-import type { OpExtra, OpName } from "@shared/types/ipc";
+import type { OpExtra, OpName, RunResult } from "@shared/types/ipc";
 import type { RepoState } from "@shared/types/repo";
 
 export interface RunRequest {
@@ -17,6 +17,8 @@ export interface RunRequest {
   args: unknown[];
   summary: string;
   extra?: OpExtra;
+  /** repo:run 대신 부를 IPC (패치 저장·적용처럼 main 이 창을 띄워 경로를 고르는 조작) */
+  invoke?: () => Promise<RunResult>;
 }
 
 export const opBlockMsg = () => t("act.blocked");
@@ -75,7 +77,8 @@ export async function run(req: RunRequest, retried = false): Promise<boolean> {
   let followUp: (() => Promise<unknown>) | null = null;
   let ok = false;
   try {
-    const r = await window.gitApi.run(req.op, req.args, extra);
+    const r = await (req.invoke ? req.invoke() : window.gitApi.run(req.op, req.args, extra));
+    if (r.canceled) { toast(t("act.canceled")); return false; }
     ok = r.ok;
     if (r.ok && r.undoable !== undefined) store.update({ undoCount: r.undoable, redoCount: r.redoable ?? 0 });
     if (r.ok) {
